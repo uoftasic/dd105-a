@@ -17,6 +17,18 @@
 //
 // If you override final_phase or pre_abort, call super.final_phase(phase) or
 // super.pre_abort() from yours, or you lose point 2.
+//
+// Drivers: drive the design's inputs through a clocking block,
+//
+//     vif.cb.valid <= 1;  @(vif.cb);  vif.cb.valid <= 0;
+//
+// rather than with plain nonblocking assignments such as vif.valid <= 1. On
+// this simulator (5.050), a module task that does "x <= 1; @(posedge clk);
+// x <= 0;" and is called in a loop keeps the 0 when the next call's 1 lands
+// in the same time step, so beats go missing; the standard, and Icarus, keep
+// the 1. Class code kept every assignment in every shape the selftest tries,
+// but a clocking block works everywhere and is what the course teaches.
+// labs/common/README.md ("Drive through a clocking block") has the cases.
 
 package dd105_pkg;
   import uvm_pkg::*;
