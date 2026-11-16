@@ -62,10 +62,9 @@ These are measurements of Verilator 5.050, which is the simulator your runs use.
 So on this simulator, one more random call, or one more sequence, anywhere in a test can change the
 random choices made after it everywhere else, in other threads as well as its own.
 
-Lab 06, Part 1 shows the same thing on `router_test`, where a new sequence that doesn't do
-anything yet changes every count the scoreboard prints. Lab 07 puts its new sequence at the end of
-`router_test` for this reason, and checked that everything before it then ran number for number as
-in Lab 06.
+In Lab 06, Part 1 you'll see this happen to `router_test`, and be asked why. Lab 07 puts its new
+sequence at the end of `router_test` for this reason, and checked that everything before it then
+ran number for number as in Lab 06.
 
 Three habits follow from it:
 

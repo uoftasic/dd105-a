@@ -112,7 +112,7 @@ nothing ready. Then the driver keeps `ready` at 0 for that cycle and asks again 
 Lab 05's driver has the same shape, and Part 3 asks you why it is built that way.
 
 The split between the edge and the middle of the cycle matters on this simulator. The comment at the
-top of each lab's `tb/router_agents_pkg.sv` records what the labs found on Verilator 5.050: a drive
+top of `tb/router_agents_pkg.sv` in Labs 04 to 07 records what the labs found on Verilator 5.050: a drive
 issued in the same time step as a clock edge, but after the sequencer has handed over an item,
 lands a cycle late. Asking for items in the middle of the cycle and driving only from an edge
 keeps the two apart.
