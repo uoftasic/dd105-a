@@ -138,7 +138,8 @@ module router_ingress
         if (counting) beat_q <= beat_q + 1'b1;
         if (at_head) begin
           // The decision for the whole packet, made once, here.
-          state_q <= admit ? ST_FWD : ST_DROP;
+          if (admit) state_q <= ST_FWD;
+          else       state_q <= ST_DROP;
           port_q  <= lkp_port;
         end
       end
