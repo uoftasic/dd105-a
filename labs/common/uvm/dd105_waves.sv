@@ -12,7 +12,7 @@ module dd105_waves;
     if ($value$plusargs("WAVES=%s", file)) begin
       $display("DD105: writing waves to %s", file);
       $dumpfile(file);
-      $dumpvars;
+      $dumpvars;   // dd105_trace.vlt keeps the packages out
     end
   end
 endmodule
