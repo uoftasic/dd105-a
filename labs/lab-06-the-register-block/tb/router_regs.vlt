@@ -1,0 +1,15 @@
+`verilator_config
+// DD105-A Lab 06: the router's registers that the back door reaches.
+//
+// UVM's back door (peek, poke, and a write or read with UVM_BACKDOOR) finds a
+// signal by its hierarchical name through VPI, and Verilator lets VPI see a
+// signal only if it's marked public. These are the five flip-flop variables
+// that hold CTRL, STATUS, INT_EN and DROP_CNT inside router_regs; the HDL
+// paths in tb/router_ral_pkg.sv name them. The course's research found that
+// the command-line flag that marks everything public (--public-flat-rw)
+// breaks the UVM build on this simulator (5.050), so only these five are.
+public_flat_rw -module "router_regs" -var "en_q"
+public_flat_rw -module "router_regs" -var "status_q"
+public_flat_rw -module "router_regs" -var "int_en_q"
+public_flat_rw -module "router_regs" -var "cnt_noroute_q"
+public_flat_rw -module "router_regs" -var "cnt_full_q"
