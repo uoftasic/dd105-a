@@ -3,9 +3,12 @@
 // On Verilator 5.050, two nonblocking assignments to one signal in the same
 // time step are committed in source order, not in the order they ran, when a
 // timing control separates the two statements. xfer() raises a, waits for an edge
-// and lowers it, the way an APB or stream driver task does. Called three times
-// in a row, it should leave a high at three rising edges: each call's a <= 1
-// runs after the previous call's a <= 0, in the same time step, and wins.
+// and lowers it, the way a module-level driver task in a directed testbench does.
+// Called three times in a row from a repeat loop, it should leave a high at three
+// rising edges: each call's a <= 1 runs after the previous call's a <= 0, in the
+// same time step, and wins. The same pattern in class code, in an interface task
+// called from a class, and in UVM drivers gave 3 of 3; three calls written out
+// one after another also gave 3 of 3 (../selftest/nba/nba_repro.sv pins them all).
 //
 // Observed in asic-edu/gui-rig:2026.08, from this folder:
 //   $ verilator --binary --timing verilator_nba_repro.sv
