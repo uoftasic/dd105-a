@@ -18,8 +18,8 @@ simulator, and the course image doesn't ship one, so the course carries its own 
 `third_party/uvm`: UVM 2020-3.2 from `chipsalliance/uvm-verilator` at commit `5d72b66`, which
 compiles on the course's Verilator 5.050. Every lab's build compiles it along with your testbench.
 
-What the library gives you is a base class for each job a testbench does, and the machinery that
-connects them. Lab 01's testbench uses most of it:
+The library gives you a base class for each job a testbench does, and the machinery that connects
+them. Lab 01's testbench uses most of it:
 
 - base classes for the pieces: `uvm_sequence_item` for one transaction, `uvm_sequence` for a
   stream of them, and `uvm_driver`, `uvm_monitor`, `uvm_scoreboard`, `uvm_agent`, `uvm_env` and
@@ -89,12 +89,12 @@ compiler cache (ccache) in your clone, so a rebuild can reuse whatever didn't ch
 line inside a function body rebuilt in 26 s, with 35 of 36 compiled files taken from the cache.
 Adding one member to the scoreboard class rebuilt in 93 s, with only 10 of 36 taken from the cache,
 because a new member changes the class's layout and most of the C++ that Verilator generates
-changes with it. So when you can, iterate on function bodies and on plusargs, which need no rebuild
-at all.
+changes with it. So when you can, make your changes inside function bodies, or through plusargs,
+which need no rebuild at all.
 
-**Speed.** The UVM testbench isn't faster per vector; it's more than ten times slower. The run is
-still quick, 1.17 s, because the test sends 2000 random vectors rather than sweeping all 393,216 as
-DD104's `t02` does.
+**Speed.** Per vector, the UVM testbench is more than ten times slower than the cocotb test, about
+0.6 ms against 0.04 ms. The run is still quick, 1.17 s, because the test sends 2000 random vectors
+rather than sweeping all 393,216 as DD104's `t02` does.
 
 There are also costs that come from running UVM on Verilator rather than on a commercial simulator.
 On Verilator 5.050 a UVM run that reports errors still exits with status 0, and a constrained
@@ -119,17 +119,18 @@ On one ALU, what you get back is modest, but each item is something the cocotb t
   summary counts value mismatches and flag mismatches separately, which is the two-bucket report
   DD104 Lab 03's `t02` builds by hand.
 
-What the framework doesn't do is decide what to check. Against Lab 01's three bugs, the shipped UVM
-scoreboard caught A01 (282 errors) and A02 (255) and missed A03 with no errors at all, while the
-cocotb test caught all three, because its `t02` compares the flags and the shipped scoreboard
-doesn't. Once you add the flag check, the UVM test catches A03 with 131 errors in 2000 vectors.
+The framework doesn't decide what to check; that's still up to you. Against Lab 01's three bugs,
+the shipped UVM scoreboard caught A01 (282 errors) and A02 (255) and missed A03 with no errors at
+all, while the cocotb test caught all three, because its `t02` compares the flags and the shipped
+scoreboard doesn't. Once you add the flag check, the UVM test catches A03 with 131 errors in 2000
+vectors.
 
-The return grows with the design. The router you'll test from Lab 02 on has a register bus, an
-input stream and two output streams, so a testbench for it has one driver and monitor per
-interface, and a scoreboard that predicts which output each packet comes out of. That's the kind of
-design the structure is for. Labs 02 and 03 build that testbench from plain classes first, so that
-each UVM piece has an obvious job when it appears, and Lab 04 moves it into UVM and counts what
-moved and what was added.
+You get more back on a bigger design, and UVM's structure was made for designs like the router
+you'll test from Lab 02 on. It has a register bus, an input stream and two output streams, so a
+testbench for it has one driver and monitor per interface, and a scoreboard that predicts which
+output each packet comes out of. Labs 02 and 03 build that testbench from plain classes first, so
+that each UVM piece has an obvious job when it appears, and Lab 04 moves it into UVM and counts
+what moved and what was added.
 
 ## Check yourself
 
