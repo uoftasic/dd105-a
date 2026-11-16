@@ -38,7 +38,7 @@ What does the shipped testbench do, and what does it check?
    make build
    ```
 
-   The banner estimates 5 to 6 minutes, but with an empty ccache it took us 90 s. It ends with:
+   The banner estimates 1.5 to 2.5 minutes, and with an empty ccache it took us 90 s. It ends with:
 
    ```text
    - V e r i l a t i o n   R e p o r t: Verilator 5.050 2026-07-01 rev v5.050

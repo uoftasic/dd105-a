@@ -204,7 +204,7 @@ $(SIM): $(STAMP) $(BUILD_DEPS) $(SRC_DEPS) | solver-check
 	@if [ -z "$(strip $(TOP))" ]; then echo "uvm.mk: the lab's Makefile must set TOP (the top module)."; exit 1; fi
 	@echo "$(RULE)"
 	@echo " BUILD  $(TOP)   ($(JOBS) jobs; ccache: $(CCACHE_DIR))"
-	@echo " A cold build takes 5 to 6 minutes on 2 CPUs; a rebuild with a warm"
+	@echo " A cold build takes 1.5 to 2.5 minutes on 2 CPUs; a rebuild with a warm"
 	@echo " ccache takes from 10 s to about 2 minutes. Full log: $(BUILD_LOG)"
 	@echo "$(RULE)"
 	@mkdir -p $(BUILD_DIR) $(CCACHE_DIR)

@@ -230,8 +230,8 @@ What does the same job cost when it's built the UVM way?
    make build
    ```
 
-   The banner the build starts with estimates 5 to 6 minutes for a cold build, but on the course's
-   2 CPUs it took us 102 s. It ends with:
+   The banner the build starts with estimates 1.5 to 2.5 minutes for a cold build, and on the
+   course's 2 CPUs it took us 102 s. It ends with:
 
    ```text
    - V e r i l a t i o n   R e p o r t: Verilator 5.050 2026-07-01 rev v5.050
