@@ -1,9 +1,9 @@
 // DD105-A Lab 04: the top module.
 //
 // A 10 ns clock, a reset, the four interfaces, the router, and run_test().
-// Lab 02's top module built the environment and ran the test itself; here
-// run_test() builds whichever test +UVM_TESTNAME names, and the top module
-// only hands each agent its virtual interface through config_db.
+// As in Lab 02, run_test() builds whichever test +UVM_TESTNAME names. The
+// top module hands each agent its virtual interface through config_db, so
+// no test has to fetch the interfaces and pass them down itself.
 
 module router_tb_top;
   import uvm_pkg::*;

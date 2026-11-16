@@ -63,8 +63,8 @@ Does the port do what your Lab 03 testbench did, and which of this lab's bugs do
    | `router_env_pkg.sv` | the scoreboard, the coverage and `router_env`, which builds and connects everything |
    | `router_tests_pkg.sv` | the tests, from `router_smoke_test` (Lab 02) and `router_rand_test` (Lab 03) to the two this lab adds |
 
-   Lab 03 watched only output 0, so `router_env` makes only one `out_agent`, and the scoreboard
-   queues only output 0's beats. Find the `TODO (Part n)` comments: four in `router_env_pkg.sv`
+   Your Lab 02 testbench watched only output 0, and so does the port: `router_env` makes only one
+   `out_agent`, and the scoreboard queues only output 0's beats. Find the `TODO (Part n)` comments: four in `router_env_pkg.sv`
    and three in `router_tests_pkg.sv`.
 
 3. Run Lab 02's test, then the default test, then Lab 03's test with more packets:
@@ -152,8 +152,8 @@ Does the port do what your Lab 03 testbench did, and which of this lab's bugs do
    <summary>Answer</summary>
 
    `router_pkt`'s `c_dst` constraint sends random packets only to enabled routes. The one packet
-   the test sends to a disabled route is in Lab 03's second directed step (`lab03_steps()`), when
-   output 0 already holds 9 beats, so there's no room and B06 drops it just as the golden router
+   the test sends to a disabled route is in the port's version of Lab 03's directed steps
+   (`lab03_steps()`), when output 0 already holds 9 beats, so there's no room and B06 drops it just as the golden router
    does.
 
    B13 changes a packet's fate only when one output holds more than 8 beats and the other 8 or
@@ -289,8 +289,8 @@ What does B13 need from the stimulus, and does the scoreboard know enough to jud
    <details>
    <summary>Answer</summary>
 
-   `level()` returns 0 for output 1, a shortcut that was safe in Lab 03, where output 1 was always
-   ready. With output 1 ready in only 5% of cycles it fills past 8, and the router drops its next
+   `level()` returns 0 for output 1, a shortcut that was safe while output 1 was always ready, as
+   it was in every test before this one. With output 1 ready in only 5% of cycles it fills past 8, and the router drops its next
    packets as FULL, as the specification says. The scoreboard still expected them: the packet
    starting `45` (`DST` 1, routed to output 1 in this phase) was dropped, and the next header to
    come out, `57`, was compared with it.
@@ -461,10 +461,11 @@ Check: `2 of 2 caught.` from `make check-all`, and `cp_fate.full` hit.
 
 Where did the lines go, compared with your Lab 02 testbench, and what did they buy you?
 
-1. Count both testbenches. Put the paths of your own Lab 02 files after `FILES=`:
+1. Count both testbenches. `FILES` takes the paths of your Lab 02 files; with the monitor and
+   scoreboard you wrote in Lab 02's `tb/`, that's:
 
    ```bash
-   make loc FILES="<your Lab 02 testbench files>"
+   make loc FILES="../lab-02-a-class-testbench-without-uvm/tb/*.sv ../lab-02-a-class-testbench-without-uvm/tb/*.svh"
    ```
 
    With the reference solution's edits, the UVM part prints:
@@ -492,14 +493,15 @@ Where did the lines go, compared with your Lab 02 testbench, and what did they b
 
    | Lab 02 | Lab 04 | What happened |
    |---|---|---|
-   | the packet class | `router_pkt` | moved; it gained `` `uvm_object_utils `` and is made through the factory |
-   | the loop that made packets | `router_rand_seq` | changed shape: `start_item`/`finish_item` on a sequencer instead of a mailbox `put` |
-   | the input driver | `src_driver` | moved; `get_next_item`/`item_done` replace the mailbox `get`, and the clocking-block drives are the same |
-   | the monitors | `src_monitor`, `out_monitor` | moved; `ap.write(b)` replaces a mailbox `put` |
-   | the scoreboard's loop over its mailboxes | `write_in`, `write_out`, `write_apb` | changed shape: the monitors call it, and it has no thread |
-   | the register write and read tasks | `apb_agent`, `apb_rw_seq`, `write_reg`, `read_reg` | grew: a driver, a monitor and a sequence |
-   | the environment class | `router_env` | changed shape: `build_phase` and `connect_phase` |
-   | the test module's `initial` block | `router_base_test` and the tests | changed shape, and `+UVM_TESTNAME` picks one at run time |
+   | `packet` | `router_pkt` | moved; it gained `` `uvm_object_utils `` and is made through the factory |
+   | `generator` and the mailbox to the driver | `router_rand_seq` on the input agent's sequencer | changed shape: `start_item`/`finish_item` instead of a mailbox `put` |
+   | `driver` | `src_driver` | moved; `get_next_item`/`item_done` replace the mailbox `get`, and the clocking-block drives are the same |
+   | `sink` | `out_ready_driver` | moved; it reads how often to be ready from its `out_cfg` |
+   | `monitor` and the mailboxes to the scoreboard | `src_monitor`, `out_monitor` and their analysis ports | changed shape: each beat goes to `ap.write()` as it moves, instead of a whole packet into a mailbox |
+   | `scoreboard` and its `run()` loop | `write_in`, `write_out`, `write_apb` | changed shape: the monitors call it, and it has no thread |
+   | `apb_master` | `apb_agent`, `apb_rw_seq`, `write_reg`, `read_reg` | grew: a driver, a monitor and a sequence, and it reads as well as writes |
+   | `env` | `router_env` | changed shape: `build_phase` and `connect_phase` instead of a constructor that makes the mailboxes |
+   | `router_class_test` | `router_base_test` and the four tests | changed shape, and `+UVM_TESTNAME` picks one at run time |
    | nothing | the agent classes, `out_cfg` and `config_db`, the factory registration lines, `router_coverage` as a subscriber | new |
 
    The code that touches the router (the drives, the sampling, the prediction) does the same work
@@ -513,7 +515,7 @@ Where did the lines go, compared with your Lab 02 testbench, and what did they b
    <summary>Answer</summary>
 
    Watching output 1 took two lines in `router_env`, because `out_agent` is a class that
-   `config_db` tells which output it's on, and one in the scoreboard, which Lab 03 had written for
+   `config_db` tells which output it's on, and one in the scoreboard, which Lab 02 had written for
    output 0 alone. Stalling one output was a short function in a new test,
    chosen at run time, because the test holds the `out_cfg` handles the drivers read. And the
    factory override changed every packet in every phase without editing the sequence or the

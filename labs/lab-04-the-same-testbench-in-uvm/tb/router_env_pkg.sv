@@ -1,12 +1,12 @@
 // DD105-A Lab 04: the scoreboard, the coverage and the environment.
 //
 //   pkt_fate           what happened to one input packet, for the coverage
-//   router_scoreboard  Lab 03's scoreboard, fed by analysis ports
-//   router_coverage    Lab 03's covergroup, as a subscriber
+//   router_scoreboard  the scoreboard, fed by analysis ports
+//   router_coverage    the covergroup, as a subscriber
 //   router_env         makes the agents, the scoreboard and the coverage,
 //                      and connects them
 //
-// Lab 03 watched only output 0, and so does this port of it. Parts 2 and 3
+// Lab 02 watched only output 0, and so does this port of it. Parts 2 and 3
 // of the lab fill in the TODOs below.
 
 package router_env_pkg;
@@ -37,9 +37,9 @@ package router_env_pkg;
   `uvm_analysis_imp_decl(_apb)
 
   // ── the scoreboard ────────────────────────────────────────────────────────
-  // Lab 03's scoreboard. It used to take beats out of three mailboxes in a
-  // loop of its own; here each monitor calls one of the write_*() functions
-  // below as each beat moves, and the scoreboard has no thread at all.
+  // Lab 02's scoreboard took packets out of its mailboxes in a run() loop of
+  // its own; here each monitor calls one of the write_*() functions below as
+  // each beat moves, and the scoreboard has no thread at all.
   //
   // For every packet that comes in, it decides at the header what the router
   // must do with it (spec, Routing), using the routing table it has seen
@@ -88,7 +88,7 @@ package router_env_pkg;
     // Routing). A beat taken in cycle t itself doesn't count, and its monitor
     // may already have reported it, in the same time step as the header.
     //
-    // TODO (Part 3): Lab 03 never stalled output 1, so it never held more
+    // TODO (Part 3): no test before now stalled output 1, so it never held more
     // than two beats, and this treats it as always empty. Make it give output
     // 1's real level, as it does output 0's.
     function int level(int p, int unsigned t);
@@ -127,7 +127,7 @@ package router_env_pkg;
       // 8th always ends it (spec, Oversize packets).
       if (in_port >= 0 && in_beats <= 8) begin
         written[in_port]++;
-        // TODO (Part 2): Lab 03 watched only output 0, so this queues only
+        // TODO (Part 2): Lab 02 watched only output 0, so this queues only
         // output 0's beats. Queue output 1's as well, once router_env
         // connects output 1's monitor.
         if (in_port == 0) expected[0].push_back({b.last || in_beats == 8, b.data});
@@ -216,7 +216,7 @@ package router_env_pkg;
   endclass
 
   // ── the coverage ──────────────────────────────────────────────────────────
-  // Lab 03's covergroup, as a subscriber to the scoreboard's fate_ap. It's
+  // Lab 03's coverage, as a subscriber to the scoreboard's fate_ap. It's
   // written `with function sample`, because this simulator drops a class's
   // covergroup that reads class members (Lab 03). `make cov` lists the bins.
   class router_coverage extends uvm_subscriber #(pkt_fate);
