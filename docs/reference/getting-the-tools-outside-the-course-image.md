@@ -118,9 +118,8 @@ variable `VERILATOR_SOLVER`. Verilator 5.050's documentation says that if the va
 it uses the solver supplied or found when Verilator was configured, or `z3 --in` if that is empty.
 In the course image the configured solver is empty (`verilator -V` prints `VERILATOR_SOLVER   = `)
 and `z3` isn't installed, so `uvm.mk` sets `VERILATOR_SOLVER="yices-smt2 --incremental"` for every
-build and run, and refuses to start if the solver it names isn't on your `PATH`. That guard
-matters, because without a solver every constrained `randomize()` returns 0 and the run still
-passes. The build also bakes the solver into the simulator, as its default for a run you start by
+build and run, and refuses to start if the solver it names isn't on your `PATH`. It checks because
+without a solver every constrained `randomize()` returns 0 and the run still passes. The build also bakes the solver into the simulator, as its default for a run you start by
 hand rather than through `make`. Verilator 5.050 bakes a value with a space in it wrongly, so
 `uvm.mk` builds with the variable unset and passes the default as a define of its own
 (`-DVM_SOLVER_DEFAULT`, in the table above).

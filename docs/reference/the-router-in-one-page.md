@@ -26,8 +26,8 @@ ingress."}
 
 The RTL is 730 lines in five files in
 [`labs/common/rtl/`](https://github.com/uoftasic/dd105-a/tree/main/labs/common/rtl): a package of
-sizes and register offsets, one file for each of the three blocks, and the top module, `router`,
-which connects them. You don't need to read them, and in the later labs you'll be testing builds
+sizes and register offsets, one file for each of the three kinds of block (the two buffers are two
+instances of `router_fifo`), and the top module, `router`, which connects them. You don't need to read them, and in the later labs you'll be testing builds
 whose RTL you can't trust anyway, but this is how they divide the work:
 
 - The **ingress** takes packets from the input stream. When a packet's header arrives it looks up
@@ -91,7 +91,7 @@ the write completes uses the new value, and one accepted in the same cycle uses 
 dropped packet is still taken from the input, with `in_ready` at 1 for every beat, so a full output
 never holds up packets for the other one.
 
-Three consequences are worth having in your head when you write a scoreboard:
+Keep three consequences of this in mind when you write a scoreboard:
 
 - A packet is admitted at a level of 8 or less and is at most 8 beats long, so an admitted packet
   always fits in 16. With output 0 stalled, two 8-beat packets are admitted (at levels 0 and 8) and
