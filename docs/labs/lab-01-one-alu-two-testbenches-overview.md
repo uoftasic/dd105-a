@@ -134,17 +134,18 @@ What does the cocotb test cost to build and run, and what does it report on each
    It takes about 25 seconds, and Icarus runs it, as in DD104. You should see, at the end:
 
    ```text
-   ** TEST                                            STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
-   ********************************************************************************************************
-   ** test_alu.t01_one_vector_per_operation            PASS           6.00           0.00       8662.93  **
-   ** test_alu.t02_every_vector_the_alu_can_be_given   PASS      393216.00          17.34      22682.57  **
-   ** test_alu.t03_the_undefined_opcodes               PASS           2.00           0.00      11881.88  **
-   ********************************************************************************************************
-   ** TESTS=3 PASS=3 FAIL=0 SKIP=0                               393224.00          17.34      22679.29  **
-   ********************************************************************************************************
+   393224.00ns INFO     cocotb.regression                  ********************************************************************************************************
+                                                           ** TEST                                            STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                           ********************************************************************************************************
+                                                           ** test_alu.t01_one_vector_per_operation            PASS           6.00           0.00       6710.89  **
+                                                           ** test_alu.t02_every_vector_the_alu_can_be_given   PASS      393216.00          17.50      22472.77  **
+                                                           ** test_alu.t03_the_undefined_opcodes               PASS           2.00           0.00       8264.64  **
+                                                           ********************************************************************************************************
+                                                           ** TESTS=3 PASS=3 FAIL=0 SKIP=0                               393224.00          17.50      22468.63  **
+                                                           ********************************************************************************************************
    ALU: no bug switched on, this is the golden ALU
    ========================================================================
-    cocotb, test_alu on icarus, the golden ALU: build 0.6 s, run 23.5 s
+    cocotb, test_alu on icarus, the golden ALU: build 0.6 s, run 23.8 s
    ========================================================================
    ```
 
@@ -625,12 +626,16 @@ Run the cocotb test on Verilator instead of Icarus:
 make cocotb COCOTB_SIM=verilator
 ```
 
-Its first build took 12.8 s and its run 14.5 s:
+Its first build took 13.3 s and its run 17.3 s:
 
 ```text
-** TESTS=3 PASS=3 FAIL=0 SKIP=0                               393224.00          12.21      32201.60  **
+                                                        ** TESTS=3 PASS=3 FAIL=0 SKIP=0                               393224.00          11.48      34242.85  **
+                                                        ********************************************************************************************************
 ALU: no bug switched on, this is the golden ALU
- cocotb, test_alu on verilator, the golden ALU: build 12.8 s, run 14.5 s
+- :0: Verilog $finish
+========================================================================
+ cocotb, test_alu on verilator, the golden ALU: build 13.3 s, run 17.3 s
+========================================================================
 ```
 
 Verilator compiles only the ALU for cocotb, so this shows how much of the UVM build's 102 s goes
