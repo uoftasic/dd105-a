@@ -6,20 +6,25 @@ Open this after `make check BUG=A03` passes on your own scoreboard.
 |---|---|
 | `alu_pkg.sv` | `tb/alu_pkg.sv` with the scoreboard extended to check `N` and `Z` |
 
-Only `alu_scoreboard` differs from the shipped file. Compare the two with:
+Apart from its header comment, only `alu_scoreboard` differs from the shipped file. Compare the
+two with:
 
 ```bash
 diff tb/alu_pkg.sv solutions/alu_pkg.sv
 ```
 
-To run the solution, keep your own file and put the solution in its place for one build:
+To run the solution, keep a copy of your own file outside `tb/` and put the solution in its
+place:
 
 ```bash
-cp tb/alu_pkg.sv tb/alu_pkg.mine.sv
+cp tb/alu_pkg.sv my_alu_pkg.sv
 cp solutions/alu_pkg.sv tb/alu_pkg.sv
 make check-all
-cp tb/alu_pkg.mine.sv tb/alu_pkg.sv
+cp my_alu_pkg.sv tb/alu_pkg.sv
 ```
+
+The solution adds members to the scoreboard class, so swapping it in costs nearly a full build:
+87 s and 99 s when we timed it on 2 CPUs.
 
 ## What changed
 
