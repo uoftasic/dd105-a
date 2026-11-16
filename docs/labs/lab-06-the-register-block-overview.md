@@ -324,7 +324,8 @@ sequence test?
    It came back in bit 1, `PORT`: `ROUTE3` reads back with its two fields swapped. The route itself
    works, because B03 is in the read path only, so every packet still went where `ROUTE3` sent it.
    Lab 04's steps and your Lab 05 sequence never read a `ROUTEn`, so no read ever came back with
-   the fields swapped. The bit bash reads after every write, with one bit different each time.
+   the fields swapped. A test that never reads a register can't see a bug in its read path. The
+   bit bash reads after every write, with one bit different each time.
 
    </details>
 
