@@ -9,7 +9,7 @@ reaches two coverage holes.
 Run it in the course image, from this folder:
 
 ```bash
-make build                         # the simulator (about 95 s the first time)
+make build                         # the simulator (93 s the first time, on 2 CPUs)
 make run                           # router_rand_test on the golden router
 make cov                           # every coverage.dat under build/runs, merged, bin by bin
 make traps                         # the constraint experiments in traps/traps.sv (under 15 s)
