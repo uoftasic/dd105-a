@@ -6,8 +6,8 @@
 //   router_env         makes the agents, the scoreboard and the coverage,
 //                      and connects them
 //
-// Lab 02 watched only output 0, and so does this port of it. Parts 2 and 3
-// of the lab fill in the TODOs below.
+// Lab 03's testbench watched only output 0, and so does this port of it.
+// Parts 2 and 3 of the lab fill in the TODOs below.
 
 package router_env_pkg;
   import uvm_pkg::*;
@@ -18,8 +18,10 @@ package router_env_pkg;
   localparam bit [7:0] A_ID = 8'h00, A_CTRL = 8'h04, A_STATUS = 8'h08, A_INT_EN = 8'h0C,
                        A_DROP_CNT = 8'h10, A_LEVEL = 8'h14, A_ROUTE0 = 8'h20;
 
-  typedef enum int {FWD0, FWD1, NOROUTE, FULL} fate_e;
+  // Lab 03's fates, in Lab 03's order: the coverage's cp_fate bins are 0 to 3.
+  typedef enum int {FATE_NOROUTE, FATE_FULL, FATE_OUT0, FATE_OUT1} fate_e;
 
+  // Lab 03's pkt_fate: one record per packet, for the coverage.
   class pkt_fate extends uvm_object;
     `uvm_object_utils(pkt_fate)
     bit [1:0]    dst;
@@ -37,15 +39,19 @@ package router_env_pkg;
   `uvm_analysis_imp_decl(_apb)
 
   // ── the scoreboard ────────────────────────────────────────────────────────
-  // Lab 02's scoreboard took packets out of its mailboxes in a run() loop of
-  // its own; here each monitor calls one of the write_*() functions below as
-  // each beat moves, and the scoreboard has no thread at all.
+  // Lab 03's scoreboard and its tracker, in one class. Both took their
+  // inputs in run() loops of their own, from mailboxes and from the pins;
+  // here each monitor calls one of the write_*() functions below as each
+  // beat moves, and the scoreboard has no thread at all.
   //
   // For every packet that comes in, it decides at the header what the router
-  // must do with it (spec, Routing), using the routing table it has seen
-  // written over APB and the level of each output, and queues the beats it
-  // expects on that output. Every beat that comes out must be the next one
-  // queued for its output, and every read of DROP_CNT must match its counts.
+  // must do with it (spec, Routing), as Lab 03's tracker did, using the
+  // routing table it has seen written over APB and the level of each output,
+  // and queues the beats it expects on that output. Lab 03's scoreboard
+  // expected every packet for an enabled route to come out; this one also
+  // predicts FULL drops, from the levels. Every beat that comes out must be
+  // the next one queued for its output, and every read of DROP_CNT must
+  // match the drops counted since DROP_CNT was last written.
   class router_scoreboard extends uvm_scoreboard;
     `uvm_component_utils(router_scoreboard)
 
@@ -72,7 +78,8 @@ package router_env_pkg;
     int unsigned noroute_cnt, full_cnt;
 
     // For the report.
-    int unsigned n_pkts, n_fwd[2], n_noroute, n_full, n_ok[2], n_dropcnt;
+    int unsigned n_pkts, n_fate[4], n_ok[2], n_dropcnt;
+    int          max_level;       // the highest level a header saw
     int unsigned n_unwatched;     // beats written to an output that nothing watches
 
     function new(string name, uvm_component parent);
@@ -87,10 +94,13 @@ package router_env_pkg;
     // before t, minus the beats taken from it in cycles before t (spec,
     // Routing). A beat taken in cycle t itself doesn't count, and its monitor
     // may already have reported it, in the same time step as the header.
+    // That is Lab 03's tracker's rule: a cycle's input handshake before its
+    // output handshake.
     //
-    // TODO (Part 3): no test before now stalled output 1, so it never held more
-    // than two beats, and this treats it as always empty. Make it give output
-    // 1's real level, as it does output 0's.
+    // TODO (Part 3): Lab 03's tracker took output 1's level as 0, because no
+    // test stalled output 1, so it never held more than two beats, and this
+    // does the same. Make it give output 1's real level, as it does output
+    // 0's.
     function int level(int p, int unsigned t);
       int l;
       if (p == 1) return 0;
@@ -108,17 +118,18 @@ package router_env_pkg;
         cur = pkt_fate::type_id::create("fate");
         cur.dst   = dst;
         cur.level = level(p, b.cycle);
+        if (cur.level > max_level) max_level = cur.level;
         n_pkts++;
         if (!route_en[dst]) begin
-          cur.fate = NOROUTE;
+          cur.fate = FATE_NOROUTE;
           noroute_cnt++;
           in_port = -1;
         end else if (cur.level > 8) begin
-          cur.fate = FULL;
+          cur.fate = FATE_FULL;
           full_cnt++;
           in_port = -1;
         end else begin
-          cur.fate = (p == 1) ? FWD1 : FWD0;
+          cur.fate = (p == 1) ? FATE_OUT1 : FATE_OUT0;
           in_port = p;
         end
       end
@@ -127,7 +138,7 @@ package router_env_pkg;
       // 8th always ends it (spec, Oversize packets).
       if (in_port >= 0 && in_beats <= 8) begin
         written[in_port]++;
-        // TODO (Part 2): Lab 02 watched only output 0, so this queues only
+        // TODO (Part 2): Lab 03 watched only output 0, so this queues only
         // output 0's beats. Queue output 1's as well, once router_env
         // connects output 1's monitor.
         if (in_port == 0) expected[0].push_back({b.last || in_beats == 8, b.data});
@@ -135,12 +146,7 @@ package router_env_pkg;
       end
       if (b.last) begin
         cur.len = in_beats;
-        case (cur.fate)
-          FWD0:    n_fwd[0]++;
-          FWD1:    n_fwd[1]++;
-          NOROUTE: n_noroute++;
-          FULL:    n_full++;
-        endcase
+        n_fate[cur.fate]++;
         fate_ap.write(cur);
         in_beats = 0;
       end
@@ -180,11 +186,14 @@ package router_env_pkg;
           route_port[r] = t.wdata[1];
         end
       end else if (t.addr == A_DROP_CNT) begin
+        // Lab 03's check_drops(): {FULL_CNT, NOROUTE_CNT}, each stopping at 255.
         bit [31:0] want = {16'h0, sat(full_cnt), sat(noroute_cnt)};
         n_dropcnt++;
         if (t.rdata != want)
-          `uvm_error("DROP_CNT", $sformatf("read %08h, expected %08h (NOROUTE_CNT %0d, FULL_CNT %0d)",
-                     t.rdata, want, sat(noroute_cnt), sat(full_cnt)))
+          `uvm_error("DROP_CNT", $sformatf("read %08h, expected %08h (FULL_CNT %0d, NOROUTE_CNT %0d)",
+                     t.rdata, want, sat(full_cnt), sat(noroute_cnt)))
+        else
+          `uvm_info("DROP", $sformatf("DROP_CNT %08h as expected", t.rdata), UVM_LOW)
       end
     endfunction
 
@@ -206,8 +215,9 @@ package router_env_pkg;
     endfunction
 
     function void report_phase(uvm_phase phase);
-      `uvm_info("SB", $sformatf("%0d packets in: %0d to output 0, %0d to output 1, %0d NOROUTE, %0d FULL",
-                n_pkts, n_fwd[0], n_fwd[1], n_noroute, n_full), UVM_LOW)
+      `uvm_info("SB", $sformatf("%0d packets in: %0d to output 0, %0d to output 1, %0d NOROUTE, %0d FULL; the highest level a header saw was %0d",
+                n_pkts, n_fate[FATE_OUT0], n_fate[FATE_OUT1], n_fate[FATE_NOROUTE], n_fate[FATE_FULL],
+                max_level), UVM_LOW)
       `uvm_info("SB", $sformatf("beats checked: %0d on output 0, %0d on output 1; %0d DROP_CNT reads checked",
                 n_ok[0], n_ok[1], n_dropcnt), UVM_LOW)
       if (n_unwatched > 0)
@@ -216,32 +226,61 @@ package router_env_pkg;
   endclass
 
   // ── the coverage ──────────────────────────────────────────────────────────
-  // Lab 03's coverage, as a subscriber to the scoreboard's fate_ap. It's
-  // written `with function sample`, because this simulator drops a class's
-  // covergroup that reads class members (Lab 03). `make cov` lists the bins.
+  // Lab 03's coverage, as a subscriber to the scoreboard's fate_ap: cg_pkt,
+  // with Lab 03's coverpoints, bins and cross. It's written `with function
+  // sample`, because this simulator leaves out a class's covergroup whose
+  // coverpoints read a member of the class (Lab 03, Part 2), and every bin
+  // of a crossed coverpoint is written out by name, because an array of bins
+  // on a coverpoint in a cross becomes a single bin here. `make cov` lists
+  // the bins.
   class router_coverage extends uvm_subscriber #(pkt_fate);
     `uvm_component_utils(router_coverage)
 
-    covergroup cg with function sample(int len, int dst, int fate, int level);
-      cp_len:   coverpoint len   { bins one = {1}; bins two_to_7 = {[2:7]}; bins eight = {8}; }
-      cp_dst:   coverpoint dst   { bins d0 = {0}; bins d1 = {1}; bins d2 = {2}; bins d3 = {3}; }
-      cp_fate:  coverpoint fate  { bins fwd0 = {0}; bins fwd1 = {1}; bins noroute = {2}; bins full = {3}; }
-      cp_level: coverpoint level { bins empty = {0}; bins one_to_7 = {[1:7]}; bins eight = {8};
-                                   bins nine_up = {[9:16]}; }
+    covergroup cg_pkt with function sample(int len, int dst, int fate, int level);
+      cp_len: coverpoint len {
+        bins len1 = {1};
+        bins len2 = {2};
+        bins len3 = {3};
+        bins len4 = {4};
+        bins len5 = {5};
+        bins len6 = {6};
+        bins len7 = {7};
+        bins len8 = {8};
+      }
+      cp_dst: coverpoint dst {
+        bins dst0 = {0};
+        bins dst1 = {1};
+        bins dst2 = {2};
+        bins dst3 = {3};
+      }
+      cp_fate: coverpoint fate {
+        bins noroute = {0};
+        bins full    = {1};
+        bins out0    = {2};
+        bins out1    = {3};
+      }
+      cp_level: coverpoint level {
+        bins empty = {0};
+        bins low   = {[1:7]};
+        bins at_8  = {8};
+        bins at_9  = {9};
+        bins high  = {[10:16]};
+      }
+      x_fate_level: cross cp_fate, cp_level;
     endgroup
 
     function new(string name, uvm_component parent);
       super.new(name, parent);
-      cg = new();
+      cg_pkt = new();
     endfunction
 
     function void write(pkt_fate t);
-      cg.sample(t.len, int'(t.dst), int'(t.fate), t.level);
+      cg_pkt.sample(t.len, int'(t.dst), int'(t.fate), t.level);
     endfunction
   endclass
 
   // ── the environment ───────────────────────────────────────────────────────
-  // Lab 02's env class built its pieces in its constructor and handed them
+  // Lab 03's env class built its pieces in its constructor and handed them
   // mailboxes. Here build_phase makes them through the factory, and
   // connect_phase joins each monitor's analysis port to the scoreboard.
   class router_env extends uvm_env;

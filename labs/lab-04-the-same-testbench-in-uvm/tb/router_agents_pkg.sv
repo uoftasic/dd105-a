@@ -11,7 +11,7 @@
 //   apb_item         one APB transfer
 //   apb_agent        the APB port: sequencer, driver, monitor
 //   router_rand_seq  n random packets
-//   router_one_seq   one packet built by hand
+//   router_one_seq   one packet that the test made itself
 //   apb_rw_seq       one APB transfer
 //
 // Every virtual interface is written out in full (`virtual stream_src_if`),
@@ -29,63 +29,75 @@ package router_agents_pkg;
   `include "uvm_macros.svh"
 
   // ── the packet ────────────────────────────────────────────────────────────
-  // The packet as a sequence item. Its length kind is drawn with randcase in
-  // pre_randomize(), as labs/ref does, because a dist on this simulator is
-  // right only with literal values; the solver then picks len from the
-  // kind's range. Packets are 1 to 8 beats: nothing here is oversize.
+  // Lab 03's rand_packet, as a sequence item. Its fields and its three
+  // constraints are Lab 03's: c_dst keeps it on an enabled route, c_kind
+  // weights the three length kinds 25/50/25, and c_len solves len from kind.
+  // The DST field is still called hdr_dst. post_randomize() fills in the
+  // beats and the idle gaps before them, as Lab 03's build() did. Packets are
+  // 1 to 8 beats: nothing here is oversize.
+  typedef enum bit [1:0] {LEN_ONE, LEN_MID, LEN_MAX} len_kind_e;
+
   class router_pkt extends uvm_sequence_item;
     `uvm_object_utils(router_pkt)
 
-    rand bit [1:0]    dst;        // the header's DST field: which route
-    rand bit [5:0]    tag;        // the header's other six bits
+    rand bit [1:0]    hdr_dst;    // the header's DST: which routing table entry it uses
+    rand len_kind_e   kind;       // one beat, 2 to 7 beats, or exactly 8
     rand int unsigned len;        // beats, header included
-    rand int unsigned idle;       // idle cycles before the header
-    bit [1:0]         kind;       // 0: one beat, 1: 2 to 7, 2: eight (pre_randomize)
-    bit [3:0]         route_en;   // set by the sequence: bit d is ROUTE[d].EN
-    bit [7:0]         data[];     // the beats, built by post_randomize() or make()
+    bit [5:0]         tag;        // the header's other six bits: the packet's number
+    bit [3:0]         route_en;   // set by whoever makes it: bit d is ROUTE[d].EN
+    int unsigned      gap_pct = 25;  // percent of beats that wait 1 to 3 idle cycles first
+    bit [7:0]         data[];     // the beats; data[0] is the header
+    int unsigned      gap[];      // idle cycles the driver leaves before each beat
 
-    constraint c_len  { (kind == 0) -> len == 1;
-                        (kind == 1) -> len inside {[2:7]};
-                        (kind == 2) -> len == 8; }
-    constraint c_idle { idle inside {[0:3]}; }
-    // Only to enabled routes. A packet for a disabled route is dropped, and
-    // the random traffic before this lab never sent one.
-    constraint c_dst  { ((route_en >> dst) & 4'h1) == 4'h1; }
+    // Only to enabled routes, so a random packet is never dropped as NOROUTE.
+    // The bit is picked with a shift because the index, hdr_dst, is random.
+    constraint c_dst { ((route_en >> hdr_dst) & 4'h1) == 4'h1; }
+
+    // How often each kind comes out, in parts of the total. A dist written
+    // with the enum's names put its weights on the wrong values on this
+    // simulator (Lab 03, traps line 2), so its values are numbers.
+    int unsigned w_one = 25, w_mid = 50, w_max = 25;
+    constraint c_kind { kind dist {0 := w_one, 1 := w_mid, 2 := w_max}; }
+    constraint c_len  { (kind == LEN_ONE) -> len == 1;
+                        (kind == LEN_MID) -> len inside {[2:7]};
+                        (kind == LEN_MAX) -> len == 8; }
 
     function new(string name = "router_pkt");
       super.new(name);
     endfunction
 
-    function void pre_randomize();
-      randcase
-        25: kind = 0;
-        50: kind = 1;
-        25: kind = 2;
-      endcase
-    endfunction
-
     function void post_randomize();
-      build();
+      build(1);
     endfunction
 
-    function void build();
+    // Fill data and gap from hdr_dst, tag and len. The payload is random, and
+    // with random_gaps 1 about one beat in four (gap_pct) waits 1 to 3 idle
+    // cycles before it is offered, as in Lab 03; with 0 the beats go back to
+    // back.
+    function void build(bit random_gaps);
       data = new[len];
-      foreach (data[i]) data[i] = (i == 0) ? {dst, tag} : 8'($urandom);
+      gap  = new[len];
+      foreach (data[i]) begin
+        data[i] = (i == 0) ? {hdr_dst, tag} : 8'($urandom);
+        gap[i]  = (random_gaps && $urandom_range(99) < gap_pct) ? $urandom_range(3, 1) : 0;
+      end
     endfunction
 
-    // A packet built by hand, for the directed steps.
+    // A packet built by hand, without the solver: len beats for DST dst, back
+    // to back.
     static function router_pkt make(bit [1:0] dst, int unsigned len, bit [5:0] tag = 0);
       router_pkt p = router_pkt::type_id::create("pkt");
-      p.dst  = dst;
-      p.tag  = tag;
-      p.len  = len;
-      p.idle = 0;
-      p.build();
+      p.hdr_dst = dst;
+      p.len     = len;
+      p.tag     = tag;
+      p.kind    = len == 1 ? LEN_ONE : len < 8 ? LEN_MID : LEN_MAX;
+      p.build(0);
       return p;
     endfunction
 
+    // "dst 2, 3 beats: 85 3c f0", as Lab 03 printed a packet.
     virtual function string convert2string();
-      string s = $sformatf("DST %0d, %0d beats:", dst, len);
+      string s = $sformatf("dst %0d, %0d beat%s:", hdr_dst, len, len == 1 ? string'("") : string'("s"));
       foreach (data[i]) s = {s, $sformatf(" %02h", data[i])};
       return s;
     endfunction
@@ -107,8 +119,10 @@ package router_agents_pkg;
   endclass
 
   // ── the input stream ──────────────────────────────────────────────────────
-  // Lab 02's driver, as a uvm_driver: it takes a packet from the sequencer
-  // instead of a mailbox, and sends its beats back to back.
+  // Lab 03's driver, as a uvm_driver: it takes each packet from the
+  // sequencer instead of a mailbox, leaves the packet's idle gaps before its
+  // beats, and offers each beat until in_ready is 1. Lab 03's driver gave up
+  // on a beat after 1000 cycles; here the test's watchdog stops the run.
   class src_driver extends uvm_driver #(router_pkt);
     `uvm_component_utils(src_driver)
     virtual stream_src_if vif;
@@ -128,8 +142,11 @@ package router_agents_pkg;
       forever begin
         seq_item_port.get_next_item(req);
         @(vif.cb);
-        repeat (req.idle) @(vif.cb);
         foreach (req.data[i]) begin
+          if (req.gap[i] > 0) begin
+            vif.cb.valid <= 1'b0;
+            repeat (req.gap[i]) @(vif.cb);
+          end
           vif.cb.valid <= 1'b1;
           vif.cb.data  <= req.data[i];
           vif.cb.last  <= (i == req.data.size() - 1);
@@ -142,8 +159,9 @@ package router_agents_pkg;
   endclass
 
   // Lab 02's monitor, as a uvm_monitor: it writes each beat to an analysis
-  // port instead of putting packets in a mailbox, so any number of
-  // subscribers can have it, and the monitor doesn't know who they are.
+  // port as it moves, instead of putting whole packets in a mailbox, so any
+  // number of subscribers can have it, and the monitor doesn't know who they
+  // are.
   class src_monitor extends uvm_monitor;
     `uvm_component_utils(src_monitor)
     uvm_analysis_port #(stream_beat) ap;
@@ -212,10 +230,12 @@ package router_agents_pkg;
     endfunction
   endclass
 
-  // Lab 02's sink. It takes no items, so it's a plain component rather than a
-  // uvm_driver: every cycle it sets out_ready to 1 with probability
-  // ready_pct percent. (Lab 05 replaces it with a reactive driver that
-  // answers each beat.)
+  // Lab 03's sink, with its stall knob grown into a percentage: every cycle
+  // it sets out_ready to 1 with probability ready_pct percent, so 100 is the
+  // sink that is always ready and 0 is Lab 03's stall. It takes no items, so
+  // it's a plain component rather than a uvm_driver, and it counts nothing:
+  // the monitor beside it reports every beat. (Lab 05 replaces it with a
+  // reactive driver that answers each beat.)
   class out_ready_driver extends uvm_component;
     `uvm_component_utils(out_ready_driver)
     out_cfg cfg;
@@ -295,7 +315,9 @@ package router_agents_pkg;
   endclass
 
   // ── the APB port ──────────────────────────────────────────────────────────
-  // Lab 02's apb_master, as an agent that can read as well as write.
+  // Lab 03's apb_master, with Lab 02's write() and Lab 03's read(), as an
+  // agent: a sequence item per transfer, a driver, and a monitor that
+  // reports every transfer to the scoreboard.
   class apb_item extends uvm_sequence_item;
     `uvm_object_utils(apb_item)
     bit        write;
@@ -409,12 +431,13 @@ package router_agents_pkg;
   endclass
 
   // ── sequences ─────────────────────────────────────────────────────────────
-  // Lab 02's generator. Each packet is made through the factory
+  // Lab 03's generator. Each packet is made through the factory
   // (router_pkt::type_id::create), so a test can swap in a subclass of
-  // router_pkt without touching this sequence.
+  // router_pkt without touching this sequence. As in Lab 03, the tag is the
+  // packet's number, so you can find a packet in a log by its header.
   class router_rand_seq extends uvm_sequence #(router_pkt);
     `uvm_object_utils(router_rand_seq)
-    int unsigned n = 60;
+    int unsigned n = 200;
     bit [3:0]    route_en = 4'hF;   // which routes are enabled now
     int unsigned first_tag = 0;
 
@@ -428,15 +451,16 @@ package router_agents_pkg;
       for (int k = 0; k < n; k++) begin
         p = router_pkt::type_id::create("pkt");
         p.route_en = route_en;
+        p.tag      = 6'(first_tag + k);
         start_item(p);
-        ok = p.randomize() with { tag == 6'(first_tag + k); };
+        ok = p.randomize();
         if (ok == 0) `uvm_fatal("RAND", "router_pkt randomize() failed")
         finish_item(p);
       end
     endtask
   endclass
 
-  // One packet, built by hand.
+  // One packet that the test made itself, by hand or with randomize().
   class router_one_seq extends uvm_sequence #(router_pkt);
     `uvm_object_utils(router_one_seq)
     router_pkt pkt;
