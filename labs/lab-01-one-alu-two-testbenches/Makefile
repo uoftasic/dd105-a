@@ -7,7 +7,8 @@
 #   make cocotb-all            ... on the golden ALU and each of A01 to A03
 #   make build                 build the UVM simulator (the first build takes a while)
 #   make run                   run alu_rand_test on the golden ALU
-#   make check BUG=A03         the verdict: pass on the golden ALU, fail on A03
+#   make check                 the verdict: pass on the golden ALU, fail on A03
+#   make check-all             the same against A03, A01 and A02
 #   make loc                   count each testbench's lines
 #
 # `make help` lists every target; labs/common/README.md describes the UVM ones.
@@ -16,7 +17,9 @@ TOP           := alu_tb_top
 DUT_SRCS      := rtl/alu.sv
 TB_SRCS       := tb/alu_if.sv tb/alu_pkg.sv tb/alu_tb_top.sv
 TESTS         := alu_rand_test alu_directed_test
-BUG_LIST      := A01 A02 A03
+# A03 first: make check with no BUG grades it, and it's the one bug of the
+# three that the shipped scoreboard misses.
+BUG_LIST      := A03 A01 A02
 BUG_CATALOGUE := bugs.json
 # No file here has a `timescale, so this makes #5 in the top module 5 ns.
 VFLAGS        := --timescale 1ns/1ps
@@ -47,9 +50,9 @@ endef
 cocotb:
 	@$(call cocotb_one,$(BUG))
 
-## cocotb-all — the cocotb test on the golden ALU, then on each bug in BUG_LIST
+## cocotb-all — the cocotb test on the golden ALU, then on A01, A02 and A03 in turn
 cocotb-all:
-	@for b in "" $(BUG_LIST); do echo "$(RULE)"; $(MAKE) --no-print-directory -s cocotb BUG=$$b 2>&1 \
+	@for b in "" $(sort $(BUG_LIST)); do echo "$(RULE)"; $(MAKE) --no-print-directory -s cocotb BUG=$$b 2>&1 \
 	  | grep -E '^ cocotb, |\*\* TESTS=|\*\* [^ ]+\.[^ ]+ +(PASS|FAIL) |^ *AssertionError: |^ALU: ' \
 	  | sed -E 's/^ {20,}//'; done; echo "$(RULE)"
 

@@ -33,8 +33,8 @@ and the UVM targets from [`../common/uvm.mk`](../common/README.md), the ones thi
 | `make run` | run `UVM_TESTNAME` (default `alu_rand_test`) once and print a verdict |
 | `make waves` | the same run, writing `build/runs/<run>/waves.fst` |
 | `make tests` | list the tests: `alu_rand_test`, `alu_directed_test` |
-| `make check` | the test must pass the correct ALU and fail on `BUG` (default `A01`) |
-| `make check-all` | the same against A01, A02 and A03 |
+| `make check` | the test must pass the correct ALU and fail on `BUG` (default `A03`, the first in `BUG_LIST`) |
+| `make check-all` | the same against A03, A01 and A02 |
 | `make clean` | remove `build/` |
 | `make help` | every target and the current variables |
 
