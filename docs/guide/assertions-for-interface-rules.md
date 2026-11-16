@@ -144,8 +144,8 @@ UVM_ERROR guide-examples/assertions-for-interface-rules/stage_tb.sv(79) @ 202500
 ```
 
 The `-Info` line appears once, after the first failure. The limit you set is still a limit, so a run
-stops at the error that reaches it, again before UVM's summary, and that's why the labs use a number
-no run will reach.
+stops at the error that reaches it, again before UVM's summary, so the labs use a number no run
+will reach.
 
 The `UVM_ERROR` on the last line is there because our test puts it there. UVM's report server
 counts only `UVM_ERROR`s and `UVM_FATAL`s, and an assertion's `$error` is neither. With
