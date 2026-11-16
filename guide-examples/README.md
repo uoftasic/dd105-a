@@ -13,17 +13,18 @@ to check what a page says, or to change an example and see what happens. Every q
 from a run in a folder with no `build/`. Run each command from the example's folder, in the course
 image, and finish with `make clean`.
 
-On 2 CPUs, the first build of one of the six examples from `constrained-random-on-verilator` to
-`the-factory-and-config-db` took 85 to 129 s with little in the ccache, and 13 to 32 s after
-`make clean` with the ccache warm. The first builds of the five from
-`assertions-for-interface-rules` on took 1.5 to 2 minutes. A run takes under two seconds.
-
 ## Building every example
 
 `make -C guide-examples`, run from the top of the clone, runs `make build` in each of the fifteen
 folders in turn, in the order of the sections below, and `make -C guide-examples clean` runs
 `make clean` in each. The folders build one after another because each build already uses both
 CPUs.
+
+In a fresh clone with an empty ccache, in the course image with 2 CPUs and 3 GB,
+`make -C guide-examples` built all fifteen in 24 min (1,439 s). Each build took 82 to 106 s, and
+the ccache held 1.5 GB at the end. After `make clean`, with the ccache warm, the six examples from
+`constrained-random-on-verilator` to `the-factory-and-config-db` rebuilt in 13 to 32 s each. A run
+takes under two seconds.
 
 ## Getting started and What a framework buys you
 
@@ -310,7 +311,7 @@ This page has no example of its own. It quotes runs of Lab 07's starter package 
 
 `./run-all.sh`, run from this folder, covers the last five examples above, from
 `assertions-for-interface-rules` to `regressions-and-seeds`. It rebuilds each of them from a clean
-`build/` and runs every command in their tables, printing the lines the pages quote. It took 1 min
+`build/`, runs every command in their tables and prints the lines the pages quote. It took 1 min
 49 s with a warm ccache; with an empty one, add the five cold builds of about 100 s each.
 
 ## Figures
