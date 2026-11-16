@@ -320,7 +320,8 @@ The rules marked *master* are the testbench's job; the router doesn't check them
   (`psel` = 0) or in the setup cycle of the next transfer. Transfers may follow each other with no
   idle cycle between them.
 - **A4** (master). `psel` is 0 while `rst_n` is 0. A transfer that is in progress when `rst_n`
-  falls is abandoned: it has no effect, and the master starts it again after the reset.
+  falls is abandoned and has no effect. The master may start it again after the reset, from its
+  setup cycle, or drop it; to the router a restarted transfer is just the next transfer.
 - **A5**. In the first access cycle of a write, `pready` is 1.
 - **A6**. In the first access cycle of a read, `pready` is 0; in the second, it's 1. This is the
   only time `pready` is 0.
