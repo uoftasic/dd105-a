@@ -29,7 +29,7 @@ in this lab._
 |---|---|---|---|
 | | | | |
 
-## 3. The plan, closed
+## 3. The plan's status
 
 _How many rows the plan has, how many are `done`, and each `gap` with the reason in one line.
 Name any rule whose only evidence is a check that has never fired._
