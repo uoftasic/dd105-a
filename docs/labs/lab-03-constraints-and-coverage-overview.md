@@ -70,7 +70,7 @@ What does the starting testbench check, and does it catch this lab's two bugs?
    | `stream_if.sv`, `apb_if.sv`, `router_tb_top.sv` | Lab 02's interfaces and top module, with the same code |
    | `monitor.svh`, `scoreboard.svh` | Lab 02's monitor and scoreboard: our solution, or yours |
    | `driver.svh` | Lab 02's driver, sink and APB master, with two additions: `sink.stall`, which holds `out_ready` at 0 from the next rising edge while it's 1, and `apb_master.read()` |
-   | `packet.svh` | Lab 02's `packet` and `router_cfg`, and a new `rand_packet`, whose DST (`hdr_dst`) and length kind (`kind`) come from `randomize()`. Its constraint `c_dst` keeps a packet on an enabled route. Part 3 adds the rest. |
+   | `packet.svh` | Lab 02's `packet` and `router_cfg`, and a new `rand_packet`, whose DST (`hdr_dst`) and length kind (`kind`) come from `randomize()`. Its constraint `c_dst` keeps a packet on an enabled route. Part 3 adds the rest. `router_cfg` still reads `+N`, `+ROUTES` and `+SHOW`, but not Lab 02's `+DSTS` or `+LEN`, because the constraints now choose the DST and the length. |
    | `generator.svh` | randomizes `rand_packet`s, where Lab 02's generator called `$urandom` |
    | `tracker.svh` | new: follows output 0's level and decides each packet's fate |
    | `coverage.svh` | empty: Part 2 fills it in |
@@ -81,10 +81,10 @@ What does the starting testbench check, and does it catch this lab's two bugs?
    cycle's input handshake before its output handshake, so the level a header sees counts only
    earlier cycles, as the Routing section defines it. From the routing table and that level it
    decides each packet's fate: NOROUTE, FULL, or forwarded to output 0 or 1. Nothing watches
-   output 1, and its sink is always ready, so the tracker takes output 1's level as 0. It counts
-   the drops it predicts, and `env.check_drops()` reads `DROP_CNT` over APB and reports a `$error`
-   if the two disagree. Lab 02's scoreboard checks the packets that come out; the `DROP_CNT` check
-   is the only one that looks at the router's counters.
+   output 1, and its sink is always ready, so its level never comes near 8 and the tracker takes it
+   as 0. It counts the drops it predicts, and `env.check_drops()` reads `DROP_CNT` over APB and
+   reports a `$error` if the two disagree. Lab 02's scoreboard checks the packets that come out;
+   the `DROP_CNT` check is the only one that looks at the router's counters.
 
    `router_rand_test` sets `CTRL.EN` and runs four phases. Each phase writes a random routing table
    with at least one disabled route and an enabled route to each output, sends 200 random packets
@@ -589,9 +589,9 @@ What stimulus reaches B07's and B08's bins, and does the testbench catch the bug
    surfer build/runs/router_fill_test-s1-B08/waves.fst &
    ```
 
-   From `dut`, add `in_valid`, `in_data`, `in_last`, `out0_valid`, `out0_ready`, `out0_data` and
-   `level0`, and look at 200 to 460 ns. `level0` is the router's own count of the beats in output
-   0, the value `LEVEL` reads, and Surfer shows it in hex.
+   Add `clk` from `router_tb_top` and, from `dut`, `in_valid`, `in_data`, `in_last`, `out0_valid`,
+   `out0_ready`, `out0_data` and `level0`, and look at 200 to 460 ns. `level0` is the router's own
+   count of the beats in output 0, the value `LEVEL` reads, and Surfer shows it in hex.
 
    ![router_fill_test on the golden router, 200 to 460 ns, in Surfer](../assets/img/lab-03-fill-golden.png)
 
@@ -638,9 +638,9 @@ Questions:
 
    That the checks never had anything to check in the places the bugs were. A pass says the
    router agreed with the scoreboard and the tracker on everything the stimulus did; the empty
-   bins said the stimulus never had an output above 2 beats when a header arrived and never made a
-   NOROUTE or FULL drop. B07 and B08 sat in two of those empty bins, and once the stimulus reached
-   them, the existing checks caught both.
+   bins said that no header ever arrived while its output held 8 beats or more, and that the
+   stimulus never made a NOROUTE or FULL drop. B07 and B08 sat in two of those empty bins, and
+   once the stimulus reached them, the existing checks caught both.
 
    </details>
 
