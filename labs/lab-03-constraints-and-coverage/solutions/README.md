@@ -9,7 +9,8 @@ stuck on a part.
 | `packet.svh` | `tb/packet.svh` | in `rand_packet`: `len` made `rand`, weights `w_one`, `w_mid`, `w_max` of 25/50/25 in a `dist` on `kind` written with numbers, and `c_len`, which solves `len` from `kind` (Part 3) |
 | `router_test_pkg.sv` | `tb/router_test_pkg.sv` | `fill_plan` and `close_holes()` (Part 4) |
 
-Everything else in `tb/` is the same as the starter. Compare a file with yours with, for example:
+Everything else in `tb/` is the same as the starter. To compare one of these files with yours,
+run, for example:
 
 ```bash
 diff tb/packet.svh solutions/packet.svh
@@ -52,8 +53,9 @@ So 29 bins are reachable, and the solution's `router_rand_test` and `router_fill
 
 ## `close_holes()`
 
-On output 0 only. `ROUTE0` enabled to output 0 and `ROUTE1` to `ROUTE3` disabled with `PORT` 0
-(`write_routes("0---")`), output 0's sink stalled, two cycles' wait, and then:
+`close_holes()` works on output 0 only. It enables `ROUTE0` to output 0 and disables `ROUTE1` to
+`ROUTE3` with `PORT` 0 (`write_routes("0---")`), stalls output 0's sink, waits two cycles, and
+then sends:
 
 | Packets | Fate in the golden router | Bin |
 |---|---|---|
@@ -63,16 +65,17 @@ On output 0 only. `ROUTE0` enabled to output 0 and `ROUTE1` to `ROUTE3` disabled
 
 Then the sink is released and the outputs drain, and `router_rand_test` reads `DROP_CNT`, which
 should be `00000001`. Nothing goes to output 1, and nothing more goes to output 0 while it holds
-more than 8 beats. A third packet for DST 0 there is dropped as FULL by the golden router; the
-tracker predicts that, but Lab 02's scoreboard expects the packet on output 0 and fails the golden
+more than 8 beats. One more packet for DST 0 at that point is dropped as FULL by the golden
+router; the tracker predicts that, but Lab 02's scoreboard expects the packet on output 0 and fails the golden
 run (`out0 never delivered dst 0, 7 beats: 05 97 b0 de 57 f7 62, which went in at 335 ns`, measured
 with that packet added to `router_fill_test`).
 
 ## The `DROP_CNT` read that later labs keep
 
 B07 changes no packet. It adds 1 to `FULL_CNT` (and sets `STATUS.FULL`) for a packet dropped as
-NOROUTE while its output holds more than 8 beats, so only a read of `DROP_CNT` can see it. In this
-lab that is `env.check_drops()` after `close_holes()`. Every later lab's graded test has to keep a
+NOROUTE while its output holds more than 8 beats, so no packet that comes out shows it. In this
+lab the only check that sees it is the `DROP_CNT` read in `env.check_drops()` after
+`close_holes()`. Every later lab's graded test has to keep a
 `DROP_CNT` read after its fill step, checked against the expected count. The later labs'
 `BUG_LIST`s don't include B07, so their graders wouldn't show the loss.
 
@@ -109,5 +112,6 @@ B05 and B09 read `100 assertions` and no `UVM_ERROR` count: the scoreboard repor
 mismatches in 800 packets, and the run stops at the 100th `$error` (the Makefile's
 `+verilator+error+limit+100`), before the test's summary. The grader still counts the run as
 caught. B10 was caught with 4, 5 and 3 assertions on seeds 1 to 3. It is Lab 05's bug, caught here
-because `close_holes()` stalls output 0 while it holds more than one beat; Lab 03's page doesn't
-mention it, and Lab 05 reframes it.
+because `close_holes()` stalls output 0 while it holds more than one beat. Lab 03's page doesn't
+mention it. Lab 05 starts from a testbench that already catches it, and has you write the
+assertions that show the cycle in which the router goes wrong.
