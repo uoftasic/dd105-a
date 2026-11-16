@@ -12,9 +12,9 @@ in `labs/lab-07-capstone/REPORT-template.md` for the router, and you'll start it
 Part 4.
 
 The reader of a report like this is someone who has to rely on the design without having run your
-tests: whoever builds it into a chip, or reviews it before that happens. They will believe exactly
-what they can check. So everything in the report is either a line a tool printed, next to the
-command that printed it, or a statement with its limits written beside it.
+tests: whoever builds it into a chip, or reviews it before that happens. They can rely only on what
+they can check, so everything in the report is either a line a tool printed, next to the command
+that printed it, or a statement with its limits written beside it.
 
 ## A short report for the counter
 
@@ -81,19 +81,18 @@ the counter's environment is one test, and its plan is three rows.
 ## Numbers and the commands behind them
 
 Every number in that report comes from the output of a command the report names, and the lines in
-the indented blocks are pasted character for character. That's what makes a report checkable, and
-it's easy to lose by summarising.
-"The regression passed" could mean any number of tests on any seeds, with or without a run that
-crashed. `10 ok  (10 runs)` under the command that printed it says how many runs there were, that
-all ten passed, and that none was BROKEN, and a reader can run the same command and compare one
-line.
+the indented blocks are pasted character for character, so a reader can check each one. A summary
+loses that. "The regression passed" could mean any number of tests on any seeds, with or without a
+run that crashed. `10 ok  (10 runs)` under the command that printed it says how many runs there
+were, that all ten passed, and that none was BROKEN, and a reader can run the same command and
+compare one line.
 
 The template's comment says the same thing, and Lab 07 helps you keep to it: Parts 6 and 7 send the
 regression and the three `make check-all` runs through `tee` into `results/`, and Part 8 copies that
 folder into your repository with the report. The "Environment" line at the top of the template
 asks for the commit your report describes, because a seed reproduces a run only with the same code
 (Regressions and seeds shows how little it takes to change every random choice). Part 8's last step
-is the test of all of this: open the repository on GitHub and check that a reader who has only that
+checks all of this: you open the repository on GitHub and check that a reader who has only that
 page could find the command behind every number.
 
 ## The sign-off sentence
@@ -109,7 +108,8 @@ decide whether those conditions are good enough for what they need.
 
 "What this doesn't show" is the section people leave short, and it's the one a reader who has to
 rely on your claim needs most, because it's the only place they can find out where your evidence
-stops. In the counter's report it holds the fact that half the seeds never tested the rule the bug
+stops. A claim with no stated limits is one they have to take on trust or check from scratch. In
+the counter's report it holds the fact that half the seeds never tested the rule the bug
 breaks. For the router, the list comes from your own work:
 
 - the rows of your plan with no checker, or with a checker that no sequence ever exercises, which
@@ -122,21 +122,17 @@ breaks. For the router, the list comes from your own work:
 - what the planted bugs prove: that your environment catches those fifteen, and nothing about a bug
   unlike all of them.
 
-A reader can work with a limited claim whose limits are written down. A claim with no stated
-limits, they have to either take on trust or check from scratch.
-
 ## The hunt table
 
 Section 6 has a table with one row for each mystery bug you were dealt in Part 4, and its columns
 are in the order you fill them: the first check that fired, copied from `make hunt`; your diagnosis,
 which is the rule the router broke and the file in `labs/common/rtl/` you'd look in; and only then
 the verdict, with the bug's name, from `make verdict`. You write the diagnosis before you see the
-answer because it records how well a failure message from your environment leads to the fault,
-which is what an environment is for, and it's a habit you'll need when there is no `make verdict`
-to ask.
+answer because it records how well a failure message from your environment leads you to the fault,
+and because it's a habit you'll need when there is no `make verdict` to ask.
 
-A hunt that comes back `quiet` gets a row too. It says that nothing `router_test` drives tells that design from a correct one, and the row should say which
-rows of your plan could be hiding it. In our runs, B15 came back quiet on the starter environment,
+A hunt that comes back `quiet` gets a row too. It says that nothing `router_test` drives tells that
+design from a correct one, and the row should say which rows of your plan could be hiding it. In our runs, B15 came back quiet on the starter environment,
 which is where Lab 07's reset work comes from.
 
 ## Check yourself
