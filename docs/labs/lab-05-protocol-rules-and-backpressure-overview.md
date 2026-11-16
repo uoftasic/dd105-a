@@ -161,7 +161,9 @@ Which rule did B10 break, and in which cycle?
    - `a_O6`: a beat taken when `beats` is 7 has `out_last` = 1. This one is about the cycle of the
      handshake itself, so it uses `|->` (the same cycle).
 
-   Count each one's failures in its own counter (`n_O1`, `n_O2`, `n_O6`), as `a_I1` does.
+   Count each one's failures in its own counter (`n_O1`, `n_O2`, `n_O6`) and give each one an
+   `$error` message, as `a_I1` does. The outputs on this page show our messages for O1 and O2,
+   which are the messages of `a_I1` and `a_I2` with `out_` in place of `in_`.
 
 3. Open `tb/router_sva_bind.sv`. Why does the testbench attach the assertions with `bind` instead
    of instantiating `router_sva` in `router_tb_top`?
@@ -205,10 +207,10 @@ Which rule did B10 break, and in which cycle?
    ------------------------------------------------------------------------
    ```
 
-   The line number is wherever your `a_O2` is. The time is in picoseconds: 9925 ns. The clock's
-   period is 10 ns and its first rising edge is at 5 ns, so the edge that ends cycle $n$ is at
-   $10n - 5$ ns, and this failure was sampled at the edge that ends cycle 993. Compare it with your
-   prediction from Part 1.
+   The line number is the line of the `$error` call in your `a_O2`, so yours may differ, here
+   and in Part 3. The time is in picoseconds: 9925 ns. The clock's period is 10 ns and its first
+   rising edge is at 5 ns, so the edge that ends cycle $n$ is at $10n - 5$ ns, and this failure
+   was sampled at the edge that ends cycle 993. Compare it with your prediction from Part 1.
 
    Verilator's default error limit is 1, so the first failing assertion ends the run with exit
    status 1, and nothing after it is checked. That's why the Makefile raises the limit. With the
@@ -372,10 +374,10 @@ How do you make the configuration, the traffic and the backpressure change toget
 place?
 
 1. Read `router_vsequencer` in `tb/router_env_pkg.sv`, then `router_base_vseq` and
-   `router_lab04_vseq` in `tb/router_seq_pkg.sv`. The helpers you'll use are `route(n, en, port)`,
-   `ctrl(en)`, `sink(p, mode, stall)`, `burst(dst, n, len, tag0)`, `send_rand(n, mask, gap_pct,
-   w_over)`, `cycles(n)`, `drain()` and `rd(A_...)`. Why does the virtual sequencer hold each
-   sink's configuration object, and not only its sequencer?
+   `router_lab04_vseq` in `tb/router_seq_pkg.sv`. The helpers you'll use are `reset(n)`,
+   `route(n, en, port)`, `ctrl(en)`, `sink(p, mode, stall)`, `burst(dst, n, len, tag0)`,
+   `send_rand(n, mask, gap_pct, w_over)`, `cycles(n)`, `drain()` and `rd(A_...)`. Why does the
+   virtual sequencer hold each sink's configuration object, and not only its sequencer?
 
    <details>
    <summary>Answer</summary>
@@ -510,10 +512,11 @@ Questions:
    <details>
    <summary>Answer</summary>
 
-   O1 and O2 on output 1, and the scoreboard. O7 says what an output does not depend on, and the
-   specification points out that no single trace can show that. You can only see its
-   consequences, when the two `out_ready` signals differ and output 1 then does something that
-   O1, O2 or the scoreboard's model forbids. That's why your sink has to make them differ.
+   O1, O2 and O6 on output 1, and the scoreboard. On seed 1 ours counted 4, 30 and 3 failures.
+   O7 says what an output does not depend on, and the specification points out that no single
+   trace can show that. You can only see its consequences, when the two `out_ready` signals
+   differ and output 1 then does something that O1, O2, O6 or the scoreboard's model forbids.
+   That's why your sink has to make them differ.
 
    </details>
 
