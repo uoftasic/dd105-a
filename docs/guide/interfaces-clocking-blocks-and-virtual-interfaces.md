@@ -88,13 +88,13 @@ if (!uvm_config_db#(virtual rtr_pins_if)::get(this, "", "pins_vif", vif))
 d = new(vif);
 ```
 
-Lab 02's `router_class_test` does exactly this for its six interfaces and hands them to
+Lab 02's `router_class_test` does this for each of its six interfaces and hands them to
 `env::new()`, which passes each one to the class that uses it. In Lab 01 the UVM driver and monitor
 fetch their own, in `build_phase`.
 
 ### A typedef of a virtual interface type
 
-On Verilator 5.050 there's one way of writing the type that you have to avoid. The example's
+On Verilator 5.050 you have to avoid giving the type a name with `typedef`. The example's
 `typedef_test` brings the router out of reset and sets `CTRL.EN`, while two monitor classes in the
 same package print what their clocking block sampled at each rising edge. One declares its handle
 as `virtual rtr_mon_if`, and the other as `rtr_mon_vif_t`, after
@@ -163,8 +163,8 @@ clocking cb @(posedge clk);
   `vif.cb.in_ready` is the value in the cycle that the edge ends, whatever the flip-flops do at
   the edge itself.
 - `output #1` makes every drive through the block land 1 ns after the edge. The class wrote
-  `vif.cb.in_valid <= 1` right after the edge at 75 ns, and the pin changed at 76 ns. Nothing the
-  testbench drives changes at the moment anything is sampled.
+  `vif.cb.in_valid <= 1` right after the edge at 75 ns, and the pin changed at 76 ns. So nothing
+  the testbench drives through the block changes at the moment the block samples its inputs.
 
 Here is the same run in Surfer, from 60 ns to 120 ns:
 

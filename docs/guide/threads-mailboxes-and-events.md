@@ -107,9 +107,9 @@ method of a class, and as [Classes for testbenches](../guide/classes-for-testben
 method's local variables are automatic, so each pass through the body makes a new `j`, and each
 thread keeps the one made in its own pass.
 
-Outside a class, the same loop doesn't work. In a module's `initial` block, variables are static
-unless you declare them `automatic`, so `int j = i;` there is one variable, set once before the
-simulation starts:
+The same loop doesn't work in a module's `initial` block, where variables are static unless you
+declare them `automatic`. There, `int j = i;` is one variable, set once before the simulation
+starts:
 
 ```text
 0 ns: in a module's initial block, int j = i
@@ -198,10 +198,11 @@ that triggers.
 
 ## Stopping threads
 
-`disable fork` ends every thread that the current thread has forked, and every thread those have
-forked, that is still running. Its
-common use is a wait with a time limit: fork the thing you're waiting for and a timer, `join_any`,
-and kill whichever is left. The trap is the word *every*. `disable_test` starts a monitor, a
+`disable fork` ends every still-running thread that the current thread has forked, along with any
+threads those have forked. It's often used for a wait with a time limit: fork the thing you're
+waiting for and a timer, `join_any`, and kill whichever is left. Because it ends *every* such
+thread, it also ends threads that the same thread forked earlier for some other job.
+`disable_test` starts a monitor, a
 `forever` loop that counts 10 ns ticks, with `join_none`, and then waits with a time limit:
 
 ```systemverilog
