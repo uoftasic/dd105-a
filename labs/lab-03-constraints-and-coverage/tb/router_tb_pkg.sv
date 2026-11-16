@@ -1,39 +1,30 @@
-// DD105-A Lab 03: the router's class testbench.
+// DD105-A Lab 03: the class testbench, as one package of plain SystemVerilog
+// classes. Nothing in it uses UVM.
 //
-// A testbench built from plain SystemVerilog classes, as in Lab 02: drivers
-// and monitors that reach the pins through virtual interfaces, mailboxes
-// between them, a reference model and a scoreboard. The only parts of UVM it
-// uses are the test class that starts it (router_test_pkg) and the reporting
-// macros, `uvm_info and `uvm_error, which give every run UVM's report summary
-// and let the graders count errors.
+//   packet.svh      packet; router_cfg, the test's knobs; rand_packet     (Part 3)
+//   generator.svh   generator: randomizes the packets
+//   driver.svh      driver (input stream), sink (outputs), apb_master
+//   monitor.svh     monitor: turns a stream's handshakes into packets
+//   scoreboard.svh  scoreboard: predicts output 0 and checks it
+//   tracker.svh     tracker: output 0's level, each packet's fate, the drops
+//   coverage.svh    router_coverage: the covergroup                     (Part 2)
+//   env.svh         env: builds the pieces, connects them, runs the steps
 //
-// The pieces, one file each, in the order they're compiled:
+// Lab 02's package with three new files: tracker.svh, coverage.svh, and the
+// rand_packet in packet.svh. The monitor and the scoreboard are Lab 02's
+// solution, unchanged; if yours passed Lab 02's `make check-all`, you can use
+// yours instead.
 //
-//   packet.svh      the input packet, and how it's randomized      (Part 3)
-//   items.svh       what the monitors report: beats, APB transfers, one
-//                   sample per cycle, and one record per packet
-//   drivers.svh     the APB master, the source and the two sinks
-//   monitors.svh    a monitor for each stream, the APB bus and reset/irq
-//   model.svh       the router as the specification describes it
-//   coverage.svh    functional coverage                            (Part 2)
-//   scoreboard.svh  runs the model on what the monitors saw, cycle by cycle
-//   env.svh         creates the pieces and starts them
-//
-// The virtual interface types are written out in full (`virtual apb_if`),
-// never through a typedef: on this simulator (5.050) a class in a package
-// that reaches an interface through a typedef'd virtual interface type reads
-// 0 from every clocking-block input, with no warning (labs/ref/README.md).
+// The classes talk through mailboxes, and each one that runs for the whole
+// test has a run() task that env.start() starts in a fork.
 
 package router_tb_pkg;
-  import uvm_pkg::*;
-  `include "uvm_macros.svh"
-
   `include "packet.svh"
-  `include "items.svh"
-  `include "drivers.svh"
-  `include "monitors.svh"
-  `include "model.svh"
-  `include "coverage.svh"
+  `include "generator.svh"
+  `include "driver.svh"
+  `include "monitor.svh"
   `include "scoreboard.svh"
+  `include "tracker.svh"
+  `include "coverage.svh"
   `include "env.svh"
 endpackage
