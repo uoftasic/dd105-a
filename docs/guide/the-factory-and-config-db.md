@@ -30,7 +30,7 @@ req = alu_item::type_id::create("req");
 
 Without overrides, that returns an `alu_item`, exactly as `new()` would. The difference is that a
 test can tell the factory to return something else, a subclass of `alu_item`, to everyone who asks
-for an `alu_item`. The code that asks never finds out.
+for an `alu_item`, and the code that asks doesn't have to change.
 
 `fac_equal_test` uses that to make every vector have equal operands. The subclass replaces one
 constraint of `alu_item`:
@@ -82,17 +82,19 @@ catches none of them:
 ```
 
 That's the DD104 lesson about symmetric operands again: with equal operands, `A - B` and `B - A`
-are both 0, and `~(A & B)` and `~(A | B)` are both `~A`. Here it shows how far an override reaches.
-One line in the test changed every item the sequence made, and the coverage collector, which
-counted the vectors, reported only 65% of its bins hit, because no vector had unequal operands.
+are both 0, and `~(A & B)` and `~(A | B)` are both `~A`. It also shows how far an override
+reaches: one line in the test changed every item the sequence made, and the coverage collector,
+which counted the vectors, reported only 65% of its bins hit, because no vector had unequal
+operands.
 
-An override changes every object the factory makes of that type, and that can include objects
-you meant to leave alone. Lab 04's `close_holes()` needs two packets exactly as `router_pkt`
-defines them, so it makes them with `new()`, which doesn't go through the factory. When we made them through the factory, `router_inject_test`'s override turned them into
-`router_noroute_pkt`s too, and `randomize()` failed on 4 of 5 seeds (Lab 04, Part 4, step 3).
+An override changes every object the factory makes of that type, and that can include objects you
+meant to leave alone. Lab 04's `close_holes()` needs two packets exactly as `router_pkt` defines
+them, so it makes them with `new()`, which doesn't go through the factory. When we made them
+through the factory, `router_inject_test`'s override turned them into `router_noroute_pkt`s too,
+and `randomize()` failed on 4 of 5 seeds (Lab 04, Part 4, step 3).
 
-An override doesn't even need a test class. UVM reads overrides from the command line, so the
-same swap can be made on `mon_rand_test`, which knows nothing about `alu_equal_item`, with
+You don't need a test class to set an override, either. UVM reads overrides from the command line,
+so the same swap can be made on `mon_rand_test`, which knows nothing about `alu_equal_item`, with
 `+uvm_set_type_override=alu_item,alu_equal_item`. On the ALU with bug A01:
 
 ```text
@@ -136,7 +138,7 @@ sets it, and catches all three bugs:
 ```
 
 `fac_typo_test` sets the same value for `"env.scoreboard"`, a component that doesn't exist. No
-error appears anywhere: the `get` finds nothing, the scoreboard keeps its default, and A03 goes
+error appears in the run: the `get` finds nothing, the scoreboard keeps its default, and A03 goes
 uncaught again. The way to see it is `+UVM_CONFIG_DB_TRACE`, which logs every `set` and `get`:
 
 ```text
@@ -144,10 +146,11 @@ UVM_INFO third_party/uvm/src/base/uvm_config_db_implementation.svh(485) @ 0: rep
 UVM_INFO third_party/uvm/src/base/uvm_config_db_implementation.svh(485) @ 0: reporter [CFGDB/GET] Configuration scope='uvm_test_top.env.sb' name='check_flags' (type PARAMTYPEDTYPE 'T') read accessor=uvm_test_top.env.sb = null (failed lookup)
 ```
 
-Comparing the two scopes shows the mistake. A knob with a sensible default can be read the way
-`check_flags` is, with `void'(...)`, but a component that can't work without a value should stop
-the run when the `get` fails. Every driver and monitor in Lab 04 does that for its virtual
-interface and its `out_cfg`, with `` `uvm_fatal("NOVIF", ...) `` and `` `uvm_fatal("NOCFG", ...) ``.
+The `set` was for `uvm_test_top.env.scoreboard`, and the `get` looked in `uvm_test_top.env.sb`.
+A knob with a sensible default can be read the way `check_flags` is, with `void'(...)`, but a
+component that can't work without a value should stop the run when the `get` fails. Every driver
+and monitor in Lab 04 does that for its virtual interface and its `out_cfg`, with
+`` `uvm_fatal("NOVIF", ...) `` and `` `uvm_fatal("NOCFG", ...) ``.
 
 Two components can set the same value for the same component. In `fac_prec_test` the
 environment is overridden by a subclass that sets a default of 0 for its scoreboard, after the
@@ -173,10 +176,10 @@ the same class, and the only things that differ between them are the virtual int
 `ocfg[p].ready_pct` in the middle of a run, and each `out_ready_driver`, which reads `ready_pct`
 again every cycle, follows it at the next clock edge.
 
-One measured caution for virtual interfaces: write their types out in full, as
-`virtual stream_src_if`. On Verilator 5.050 a class in a package that reached an interface
-through a `typedef` of the virtual interface read 0 from every clocking-block input, with no
-warning (`labs/ref/README.md` has the probe), so the labs' packages don't use one.
+Write the types of virtual interfaces out in full, as `virtual stream_src_if`. On Verilator
+5.050 a class in a package that reached an interface through a `typedef` of the virtual interface
+read 0 from every clocking-block input, with no warning (`labs/ref/README.md` has the probe), so
+the labs' packages don't use one.
 
 ## Check yourself
 

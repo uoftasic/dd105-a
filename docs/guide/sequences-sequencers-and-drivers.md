@@ -40,9 +40,10 @@ port, `seq_item_port`, which the agent connects to the sequencer in `connect_pha
 drv.seq_item_port.connect(sqr.seq_item_export);
 ```
 
-Notice the direction of the connection. The driver asks for items when it's ready for one, and
-nothing is pushed at it. That's what lets the driver set the pace: it takes the next item only
-when the pins can take it, and the sequence waits until then.
+The driver's port connects to the sequencer, and not the other way round, because the driver
+asks for an item whenever it's ready for one; the sequencer never pushes one at it. That lets the
+driver set the pace: it takes the next item only when the pins can take it, and the sequence
+waits until then.
 
 ## One item through the handshake
 
@@ -69,8 +70,9 @@ forever begin
 end
 ```
 
-(The real files also print a line at each step, and tag each item with its sequence's name.) `sq_timeline_test` runs it for three items, with
-a 10 ns clock whose first rising edge is at 5 ns:
+(The real files also print a line at each step, and tag each item with its sequence's name.)
+`sq_timeline_test` runs it for three items, with a 10 ns clock whose first rising edge is at
+5 ns:
 
 ```text
 0    ns  [drv]    get_next_item: waiting for an item
@@ -109,8 +111,8 @@ cycle, and `ALUout` shows the ALU's answer (`b2`, `24`, `ff`). The cycle with `v
 them is the driver's `valid <= 0` before it asks for the next item.*
 
 The sequence randomizes the item after `start_item()` returns, so the item gets its values at
-the moment the driver is ready for it rather than when the sequence made it. Anything the
-sequence sets before that, the constraints can use. Lab 04's `router_rand_seq` gives each packet
+the moment the driver is ready for it rather than when the sequence made it. The constraints can
+use anything the sequence sets before that. Lab 04's `router_rand_seq` gives each packet
 the enable bits of the routing table the test wrote for the phase (`route_en`) before it
 randomizes the packet, and the packet's `c_dst` constraint uses them to keep it on an enabled
 route.
@@ -146,8 +148,8 @@ already there, which is why Lab 05's virtual sequence steers each sink's backpre
 
 A sequence's `body()` can start other sequences on the same sequencer with
 `child.start(m_sequencer, this)`, where `m_sequencer` is the sequencer the parent is running on.
-That lets you build larger sequences out of small ones that each do one thing. `sq_nested_test` runs a sequence that sends two random vectors and then two directed
-SUBs:
+That lets you build larger sequences out of small ones that each do one thing.
+`sq_nested_test` runs a sequence that sends two random vectors and then two directed SUBs:
 
 ```text
 35   ns  [seq r]  finish_item returned: r: SHR A=db B=14 is done
@@ -184,13 +186,13 @@ That works because the APB driver fills in `rdata` before it calls `item_done()`
 
 Lab 04's drivers wait for a clock edge before their first drive of an item, as the example's does
 with `@(vif.drv_cb)` straight after `get_next_item()`. The reason is a timing
-detail of this simulator, which the course's reference testbench found
+detail of this simulator that the course's reference testbench found
 ([`labs/ref/README.md`](https://github.com/uoftasic/dd105-a/tree/main/labs/ref), "A
 clocking-block drive issued after an NBA-region wait lands a cycle late"). `try_next_item()`
 doesn't return until the nonblocking assignments of its time step have been made, and a
 clocking-block drive issued after that, in the same time step as a clock edge, takes effect at the
-next edge instead of this one. Lab 04's drivers met the same thing with items the sequencer
-handed over in the time step of an edge. Waiting for an edge after getting the item puts every
+next edge instead of this one. Lab 04's drivers ran into the same delay with items that the
+sequencer handed over in the time step of an edge. Waiting for an edge after getting the item puts every
 drive at the start of a time step. Lab 01's driver gets the same result the other way round: it
 calls `try_next_item()` before it waits for the edge.
 
