@@ -35,7 +35,7 @@ Add `--dry-run` to see what it would change without writing anything.
 - [x] `scripts/init-template.py` run with the three values above
 - [x] The template's sample lab removed (`docs/labs/lab-01-overview.md`, `labs/lab-01/`, `scripts/hello.py`)
 - [x] Home page filled in: who the course is for, the prerequisites, the total time, and the 14 course path rows
-- [ ] The Read rows' times and the total time on the home page (marked `READTIME` in `docs/index.md`), so the rows add up to the total
+- [x] The Read rows' times and the total time on the home page (marked `READTIME` in `docs/index.md`), so the rows add up to the total
 - [x] Sidebar in `docs/_quarto.yml` and chapters in `docs/_quarto-pdf.yml` in course path order: Home, then seven sections, each a Read row's guide pages and its lab (Getting started to Lab 07: Capstone), then the reference pages
 - [x] Math and figures render: the formulas and the block diagram on The router in one page, and the waveforms on the lab pages
 - [ ] Repo created under `uoftasic`, named `dd105-a`, and pushed to `main`
