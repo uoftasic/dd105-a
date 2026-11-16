@@ -1,7 +1,4 @@
 # Notebooks
 
-Exploratory or assignment notebooks for DD105-A — Testbenches with UVM.
-
-- Strip heavy outputs before you commit (or gitignore the checkpoints).
-- When students should see a rendered notebook, link to it on nbviewer or Colab from the docs.
-- Fixed lab packages belong under `labs/<id>/` instead.
+DD105-A — Testbenches with UVM has no notebooks; the folder is left from the course template.
+Everything a student runs is in a lab package under `labs/`, and runs with `make`.

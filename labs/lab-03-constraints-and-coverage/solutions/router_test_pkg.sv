@@ -91,18 +91,18 @@ package router_test_pkg;
       e.write_routes("0---");
       e.snk0.stall = 1;
       e.cycles(2);
-      if (!plan.randomize()) `uvm_fatal("RAND", "fill_plan randomize() failed")
+      if (plan.randomize() == 0) `uvm_fatal("RAND", "fill_plan randomize() failed")
       foreach (plan.lens[i])
         if (plan.lens[i] != 0) begin
           pkts.push_back(rand_packet::make(2'd0, plan.lens[i]));
           lens = {lens, $sformatf(" %0d", plan.lens[i])};
         end
       p = e.gen.new_packet();
-      if (!p.randomize() with { hdr_dst == 0; }) `uvm_fatal("RAND", "rand_packet randomize() failed")
+      if ((p.randomize() with { hdr_dst == 0; }) == 0) `uvm_fatal("RAND", "rand_packet randomize() failed")
       pkts.push_back(p);
       p = e.gen.new_packet();
       p.c_dst.constraint_mode(0);
-      if (!p.randomize() with { hdr_dst == 1; }) `uvm_fatal("RAND", "rand_packet randomize() failed")
+      if ((p.randomize() with { hdr_dst == 1; }) == 0) `uvm_fatal("RAND", "rand_packet randomize() failed")
       pkts.push_back(p);
       $display("[HOLES] output 0 stalled and filled to 8 by packets of%s beats, then %0d beats for DST 0 and %0d for DST 1",
                lens, pkts[pkts.size() - 2].len, p.len);
@@ -177,7 +177,7 @@ package router_test_pkg;
     endtask
   endclass
 
-  // Lab 02's test, unchanged in what it does.
+  // Lab 02's test; env.run() now also checks DROP_CNT (check_drops()).
   class router_class_test extends router_base_test;
     `uvm_component_utils(router_class_test)
 

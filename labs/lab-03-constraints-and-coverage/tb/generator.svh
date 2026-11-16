@@ -31,7 +31,7 @@ class generator;
     rand_packet p;
     repeat (n) begin
       p = new_packet();
-      if (!p.randomize())
+      if (p.randomize() == 0)
         $fatal(1, "generator: rand_packet randomize() failed with routes %s", cfg.routes);
       put(p);
     end
