@@ -26,10 +26,14 @@ it at time 0 from the simulator's command line:
     +BUG=B08      switch on B08
     no +BUG       switch on nothing: the design behaves exactly like rtl/
     +BUG=none     the same as no +BUG
+    +BUG_ECHO     also print, at time 0, which bug (if any) is switched on
 
-Any other value stops the simulation with $fatal at time 0, so a typo can't
-quietly run the golden design. The testbench needs no changes: it compiles
-the files in DIR/router.f instead of rtl/router.f and passes the plusarg.
+Any other value of +BUG stops the simulation with $fatal at time 0, so a typo
+can't quietly run the golden design. Without +BUG_ECHO the switch prints
+nothing at all, so the log of a run doesn't say which bug it ran, and a run
+of the golden design can't be told from a run of a mystery bug except by what
+the testbench itself reports. The testbench needs no changes: it compiles the
+files in DIR/router.f instead of rtl/router.f and passes the plusargs.
 
 THE ANCHOR CHECK
 
@@ -152,7 +156,8 @@ def switch_block():
   // ---- Added by labs/common/inject.py: the bug switch -----------------------
   // Reads +BUG=Bnn once, at time 0, and switches that bug on. With no +BUG,
   // or +BUG=none, every bug stays off. Anything else is a fatal error, so a
-  // typo can't quietly run the golden design.
+  // typo can't quietly run the golden design. It prints which bug is on only
+  // when +BUG_ECHO is given too, so that a log doesn't give the bug away.
   initial begin : bug_switch
     string arg;
     int    id;
@@ -168,8 +173,10 @@ def switch_block():
         $fatal(1, "router: +BUG=%s is not a bug in this build ({first} to {last}, or none)", arg);
     end
     router_bug_pkg::bug_id = id;
-    if (id != 0) $display("router: faulty build, bug B%02d switched on", id);
-    else         $display("router: faulty build, no bug switched on");
+    if ($test$plusargs("BUG_ECHO")) begin
+      if (id != 0) $display("router: faulty build, bug B%02d switched on", id);
+      else         $display("router: faulty build, no bug switched on");
+    end
   end
 """
 

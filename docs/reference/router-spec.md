@@ -689,8 +689,9 @@ clock.
 | `router.sv` | The top module, `router`, which connects the four |
 
 The labs also use a **faulty build** of the router, made by `labs/common/inject.py --all --out DIR`.
-It compiles from `DIR/router.f` in exactly the same way and has the same ports. On its own it
-behaves exactly like the RTL above, and it prints one line at time 0 saying which bug, if any, is
-switched on. With `+BUG=Bnn` on the simulator's command line, it switches on one of the course's
-planted bugs at time 0, so you can change `+BUG` without rebuilding. An unknown value stops the
-simulation with a fatal error.
+It compiles from `DIR/router.f` in exactly the same way and has the same ports, and on its own it
+behaves exactly like the RTL above. With `+BUG=Bnn` on the simulator's command line, it switches on
+one of the course's planted bugs at time 0, so you can change `+BUG` without rebuilding. An unknown
+value stops the simulation with a fatal error. The faulty build prints nothing about which bug is
+on, so a log can't give it away. Add `+BUG_ECHO` and it prints one line at time 0 that names the
+bug, or says that none is on.
