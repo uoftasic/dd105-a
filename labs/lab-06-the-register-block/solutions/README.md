@@ -26,10 +26,10 @@ make check-all
 cp mine/* tb/
 ```
 
-On 2 CPUs, in the course image, the starter built cold in 130 s (Verilator 128.696 s,
-`Hits: 0 / 38`). Filling in each part's `TODO`s in place, as the writeup asks, rebuilt in 111 s
-(Part 2), 104 s and 112 s (Part 3, before and after the predictor), 57 s (Part 4), and 111 s and
-28 s (Part 5).
+On 2 CPUs, in the course image, the starter built cold in 127 s (Verilator 126.831 s,
+`Hits: 0 / 38`). Filling in each part's `TODO`s in place, as the writeup asks, rebuilt in 107 s
+(Part 2), 108 s and 113 s (Part 3, before and after the predictor), 35 s (Part 4), and 105 s and
+107 s (Part 5).
 
 ## What changed
 

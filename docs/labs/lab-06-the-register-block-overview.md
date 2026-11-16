@@ -35,8 +35,8 @@ for you:
 | `tb/router_regs.vlt` | the five register signals the back door reaches (Part 6) |
 
 Time: about 2 h. You'll build the simulator seven times. On the course's 2 CPUs our first build
-took 130 s, and the rebuilds after each part's edits took 111 s (Part 2), 104 s and 112 s (Part 3),
-57 s (Part 4), and 111 s and 28 s (Part 5), about 11 minutes in all. Each `make check-all` runs six
+took 127 s, and the rebuilds after each part's edits took 107 s (Part 2), 108 s and 113 s (Part 3),
+35 s (Part 4), and 105 s and 107 s (Part 5), about 12 minutes in all. Each `make check-all` runs six
 simulations of about 5 s or less each.
 
 ## Part 1: The Lab 05 testbench against the registers
@@ -50,12 +50,12 @@ What does your Lab 05 testbench check about the registers?
    make build
    ```
 
-   Ours took 130 s. Near the end it prints Verilator's report:
+   Ours took 127 s. Near the end it prints Verilator's report:
 
    ```text
    - V e r i l a t i o n   R e p o r t: Verilator 5.050 2026-07-01 rev v5.050
-   - Verilator: Built from 63.624 MB sources in 449 modules, into 29.574 MB in 3440 C++ files needing 213.292 MB
-   - Verilator: Walltime 128.696 s (elab=0.942, cvt=3.295, bld=122.850); cpu 6.222 s on 2 threads; allocated 369.230 MB
+   - Verilator: Built from 63.624 MB sources in 449 modules, into 29.574 MB in 3440 C++ files needing 213.243 MB
+   - Verilator: Walltime 126.831 s (elab=0.857, cvt=3.307, bld=121.710); cpu 5.400 s on 2 threads; allocated 369.230 MB
    ```
 
 2. Run the graded test, `router_test`, and pull the scoreboard's summary out of the log:
@@ -158,7 +158,7 @@ What does UVM need to know about each register, and what does the reset sequence
    `uvm_reg_hw_reset_seq`, set its `model` to `regs`, and start it with `start(null, this)`. It
    reads every register it can check, through the model and so through your adapter, and compares
    each with its reset value. Run `make lint`, which takes seconds and prints any syntax error
-   with its line; ours printed `0 warnings`. Then run `make build` (111 s for us).
+   with its line; ours printed `0 warnings`. Then run `make build` (107 s for us).
 
 5. Write down which of the ten registers you expect the reset sequence to read. Then run the test
    and list the ones it did:
@@ -241,7 +241,7 @@ sequence test?
 
 3. The predictor isn't connected yet, and the model's auto-predict is off
    (`set_auto_predict(0)` in `router_env::connect_phase`). Predict what `router_test` does on the
-   golden router, then build (104 s for us) and run it:
+   golden router, then build (108 s for us) and run it:
 
    ```bash
    make build
@@ -279,7 +279,7 @@ sequence test?
    monitor is the usual place for a predictor, because it sees every transfer on the bus, and the
    scoreboard listens there too.
 
-5. Build (112 s for us) and run:
+5. Build (113 s for us) and run:
 
    ```bash
    make build
@@ -343,7 +343,7 @@ Which part of the bus can the register model never test?
    scoreboard already checks `PSLVERR` and the data of every bad read.
 
 2. Write down what the golden router should return for a read of `0x01`, and what `pslverr`
-   should be. Then build (57 s for us), run `make check-all`, and look at the scoreboard's summary
+   should be. Then build (35 s for us), run `make check-all`, and look at the scoreboard's summary
    in the golden run, whose log `make check-all` keeps in `build/grade/golden/`:
 
    ```bash
@@ -435,7 +435,7 @@ Does `irq` follow `STATUS` and `INT_EN` in every cycle?
    reset cycle `irq` must be 0, and in every other cycle it must equal `irq()`.
 
 2. You haven't written any stimulus for `irq`. Write down which of B01 and B02 the check will
-   catch with the stimulus you already have, then build (111 s for us), run `make check-all` and
+   catch with the stimulus you already have, then build (105 s for us), run `make check-all` and
    look at B02's error:
 
    ```bash
@@ -484,7 +484,7 @@ Does `irq` follow `STATUS` and `INT_EN` in every cycle?
    Write the registers with `wr_reg()` and read them with `rd_reg()`. The model doesn't check
    `STATUS` when it reads it, since it's volatile, but the scoreboard does.
 
-4. Build (28 s for us) and run `make check-all`. You should see:
+4. Build (107 s for us) and run `make check-all`. You should see:
 
    ```text
          ok  the golden design                        0 UVM_ERROR, 0 UVM_FATAL        4.8s
