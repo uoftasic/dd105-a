@@ -107,7 +107,7 @@ What does the cocotb test cost to build and run, and what does it report on each
    | Bug | What's wrong | DD104 name |
    |---|---|---|
    | A01 | `SUB` computes `B - A` instead of `A - B` | `B01_sub_operands_swapped` |
-   | A02 | `NAND` computes `~(A \| B)`, which is NOR | `B02_nand_is_nor` |
+   | A02 | `NAND` computes NOR instead of NAND | `B02_nand_is_nor` |
    | A03 | `Z` looks only at `ALUout[3:0]` | `B03_zero_flag_low_nibble` |
 
    With no `+BUG` you get the correct ALU, and with `+BUG=A03` you get A03. Every lab in this course
@@ -405,7 +405,7 @@ Which bugs does the UVM testbench catch, and why?
    UVM_ERROR labs/lab-01-one-alu-two-testbenches/tb/alu_pkg.sv(260) @ 75000: uvm_test_top.env.sb [VALUE] SUB A=cd B=d7 -> ALUout=0a N=0 Z=0, expected ALUout=f6
    ```
 
-   and the end of the log is:
+   and near the end of the log:
 
    ```text
    UVM_INFO labs/lab-01-one-alu-two-testbenches/tb/alu_pkg.sv(284) @ 20025000: uvm_test_top.env.sb [SB] 2000 vectors checked: 282 value mismatches (SUB 282)
@@ -528,8 +528,9 @@ What does it take to make the UVM scoreboard catch A03, and what does the change
    make check-all
    ```
 
-   You should see `3 of 3 caught`, with 564, 394 and 131 `UVM_ERROR`s for A01, A02 and A03. Your
-   A01 and A02 counts went up from 282 and 255. Why is A01's exactly double, when A02's isn't?
+   You should see `3 of 3 caught`. With the reference solution, which reports one `[FLAGS]` error
+   for each vector whose flags are wrong, the counts are 564, 394 and 131 `UVM_ERROR`s for A01, A02
+   and A03, so A01 and A02 went up from 282 and 255. Why is A01's exactly double, when A02's isn't?
 
    <details>
    <summary>Answer</summary>
