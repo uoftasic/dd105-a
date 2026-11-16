@@ -27,7 +27,8 @@ cp my_router_tests_pkg.sv tb/router_tests_pkg.sv
 ```
 
 A swap rebuilds whatever your files and the solution don't share. Done one part at a time on 2
-CPUs, the edits rebuilt in 24 s and 26 s (Part 2), 102 s and 33 s (Part 3) and 111 s (Part 4).
+CPUs, the edits rebuilt in 24 to 32 s and 26 to 36 s (Part 2), 102 s and 33 s (Part 3) and 111 s
+(Part 4).
 
 ## What changed
 
