@@ -3,9 +3,10 @@
 This page answers: *I can write a cocotb test. What changes when the testbench is written in
 SystemVerilog instead?*
 
-A cocotb test and a SystemVerilog class testbench do the same three jobs, drive, observe and
-decide, and most of the Python you wrote in DD104 has a direct SystemVerilog counterpart. The differences that matter are where the testbench runs, the fact that every value
-has a fixed width, and the way a failed check is reported. This page goes through them with one
+A cocotb test and a SystemVerilog class testbench do the same three jobs (drive, observe and
+decide), and most of the Python you wrote in DD104 has a direct SystemVerilog counterpart. The
+main differences are where the testbench runs, the fact that every value has a fixed width, and
+the way a failed check is reported. This page goes through them with one
 example, DD104's `t01` translated line by line. You'll read a full UVM testbench written in
 SystemVerilog classes in [Lab 01](../labs/lab-01-one-alu-two-testbenches-overview.md), Part 3, and
 write your own classes from Lab 02 on.
@@ -153,11 +154,11 @@ With bug A01 switched on, where `SUB` computes `B - A`, it stops at the second v
 Aborting...
 ```
 
-The message is the cocotb test's message, with three differences worth knowing about before you
-read your first SystemVerilog log:
+The message is the cocotb test's message, with three differences you should know about before
+you read your first SystemVerilog log:
 
-- `[2000]` is the simulated time, in the simulation's precision of 1 ps, so this is 2 ns: the
-  second vector, one nanosecond each. The file, line and enclosing routine come before your text.
+- `[2000]` is the simulated time, in the simulation's precision of 1 ps, so this is 2 ns, which
+  is the second vector, because each vector takes 1 ns. The file, line and enclosing routine come before your text.
 - The hex digits are lower case. In Python `X` asks for upper-case digits, but SystemVerilog's
   `%X` means the same as `%x`, and Verilator printed lower case.
 - The run stopped. A failed `assert` in cocotb ends that test, and cocotb moves on to the next one.

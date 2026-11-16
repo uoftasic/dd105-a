@@ -106,9 +106,9 @@ copy doesn't run the constructor, so `c` kept `a`'s `id` of 0 and `n_made` staye
 had a member that was itself a handle, the copy would get the handle and the two objects would share
 whatever it pointed at.
 
-You won't often copy objects in the labs, but you'll pass handles around all the time, and each
-place that keeps one keeps the same object. That makes the next example the class bug you're most
-likely to write in Lab 02.
+You won't often copy objects in the labs, but you'll pass handles around all the time, and every
+place that keeps one of them shares the object with every other place that kept it. The next
+example comes from that, and it's the class bug you're most likely to write in Lab 02.
 
 ## The same object kept three times
 
