@@ -89,9 +89,9 @@ What does your Lab 05 testbench check about the registers?
    That thread goes on to pick Lab 04's routing tables and to start the sequences that randomize
    its packets, so their random choices change, even though `router_lab06_vseq` does nothing.
    Lab 05's `router_test` made and started its own sequence after Lab 04's steps for this reason.
-   We checked the other half too: with `router_lab06_vseq` left out, this lab's `router_test`
-   printed Lab 05's two lines number for number, so nothing else this lab added changes the
-   stimulus. The checks are the same either way.
+   We also ran this lab's `router_test` with `router_lab06_vseq` left out, and it printed Lab 05's
+   two lines number for number, so nothing else this lab added changes the stimulus. The checks
+   are the same either way.
 
    </details>
 
@@ -276,8 +276,8 @@ sequence test?
 4. Write the Part 3 `TODO` in `router_env::connect_phase`: give the predictor the map and the
    adapter, connect the APB monitor's analysis port, `apb.mon.ap`, to its `bus_in`, and turn on
    the map's check-on-read, so the predictor compares every read it sees with the mirror. The
-   monitor is the usual place for a predictor, because it sees every transfer on the bus, and the
-   scoreboard listens there too.
+   monitor is the usual place to connect a predictor, because it sees every transfer on the bus,
+   and the scoreboard listens there too.
 
 5. Build (113 s for us) and run:
 
@@ -323,9 +323,8 @@ sequence test?
 
    It came back in bit 1, `PORT`: `ROUTE3` reads back with its two fields swapped. The route itself
    works, because B03 is in the read path only, so every packet still went where `ROUTE3` sent it.
-   Lab 04's steps and your Lab 05 sequence never read a `ROUTEn`, and a bug in a read path is
-   invisible to a test that doesn't read. The bit bash reads after every write, with one bit
-   different each time.
+   Lab 04's steps and your Lab 05 sequence never read a `ROUTEn`, so no read ever came back with
+   the fields swapped. The bit bash reads after every write, with one bit different each time.
 
    </details>
 
@@ -376,7 +375,7 @@ Which part of the bus can the register model never test?
    <summary>Answer</summary>
 
    The registers are 4 bytes apart, so the router finds the register from `paddr[7:2]`, and for
-   `0x01` that's 0, the word `ID` lives at. B04 drops the second half of the bad-address test, that
+   `0x01` that's 0, the word where `ID` lives. B04 drops the second half of the bad-address test, that
    `paddr[1:0]` must be `00`, so a misaligned address reaches the register below it, reads and
    writes alike.
 
@@ -463,9 +462,9 @@ Does `irq` follow `STATUS` and `INT_EN` in every cycle?
    write it, and the bit bash puts each bit back the way it found it. So `irq` must stay 0, and
    B02, which ignores `INT_EN`, raises it at the first NOROUTE drop; every phase of
    `router_inject_test` disables a route and sends packets to it (the first phase uses `010-`).
-   Nothing clears `STATUS`, so `irq` stays wrong and the check reports it once. B01 shows only when
-   a write to `STATUS` clears one bit while another stays set, and the only writes to `STATUS` so
-   far are the bit bash's, right after reset, when every bit is 0.
+   Nothing after that drop clears `STATUS`, so `irq` stays wrong and the check reports it once.
+   B01 shows only when a write to `STATUS` clears one bit while another stays set, and the only
+   writes to `STATUS` so far are the bit bash's, right after reset, when every bit is 0.
 
    </details>
 
@@ -534,7 +533,8 @@ Does `irq` follow `STATUS` and `INT_EN` in every cycle?
    the new value from the next cycle. The scoreboard checks `irq` for a cycle at the same edge, so it
    would get the old or the new `INT_EN` depending on which monitor the simulator woke first,
    the same race your Lab 05 scoreboard avoided with cycle stamps on route writes. A scoreboard
-   that is exact to the cycle has to follow the registers the way the router does.
+   that is exact to the cycle has to follow the registers the way the router does, so this one
+   keeps its own copy of both.
 
    </details>
 
@@ -626,9 +626,9 @@ What do peek and poke do on this router?
    The scoreboard learns register values only from the transfers it sees on the bus, and a poke
    isn't one. It has seen one NOROUTE drop and no write to `DROP_CNT`, so as far as it knows
    `DROP_CNT` holds `00000001`. A testbench that sets registers through the back door has to tell
-   every model that keeps its own copy. Reading through it has no such cost, which makes `peek`
-   the safer half: it shows you `STATUS` and `DROP_CNT` without a bus transfer and without
-   disturbing anything.
+   every model that keeps its own copy. Reading through the back door has no such cost, which
+   makes `peek` the safer of the two: it shows you `STATUS` and `DROP_CNT` without a bus transfer
+   and without disturbing anything.
 
    </details>
 
