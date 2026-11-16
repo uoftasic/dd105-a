@@ -11,8 +11,8 @@
 // A beat moves from the RAM into the output register when the RAM is not
 // empty and the register is either empty or being emptied in this cycle
 // (out_valid && out_ready). So a stream that is never stalled moves one beat
-// per cycle, and a beat written into an empty buffer reaches the output pins
-// two cycles after its write.
+// per cycle, and a beat pushed into an empty buffer in cycle n is on the
+// output pins from cycle n + 2.
 //
 // `level` counts every beat in the buffer, RAM and output register together.
 // It goes up by one for each push and down by one for each handshake on the

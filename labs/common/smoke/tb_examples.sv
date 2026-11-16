@@ -12,7 +12,7 @@
 // wires. Rows marked (reg) are register values inside the router: what a
 // read starting in that cycle would return.
 //
-//   make TB_SRC=../solutions/tb_examples.sv          (from labs/common/smoke)
+//   make TB_SRC=tb_examples.sv          (from labs/common/smoke)
 
 `default_nettype none
 
@@ -114,7 +114,7 @@ module tb_examples;
       val[n_cyc][S_PWRITE] = 32'(pwrite);         care[n_cyc][S_PWRITE] = psel;
       val[n_cyc][S_PADDR] = 32'(paddr);           care[n_cyc][S_PADDR] = psel;
       val[n_cyc][S_PWDATA] = pwdata;              care[n_cyc][S_PWDATA] = psel && pwrite;
-      val[n_cyc][S_PREADY] = 32'(pready);         care[n_cyc][S_PREADY] = psel && penable;
+      val[n_cyc][S_PREADY] = 32'(pready);         care[n_cyc][S_PREADY] = 1;
       val[n_cyc][S_PRDATA] = prdata;              care[n_cyc][S_PRDATA] = rd_done;
       val[n_cyc][S_PSLVERR] = 32'(pslverr);       care[n_cyc][S_PSLVERR] = 1;
       val[n_cyc][S_IN_VALID] = 32'(in_valid);     care[n_cyc][S_IN_VALID] = 1;
@@ -238,7 +238,7 @@ module tb_examples;
     apb_read(8'h18, d);
     idle(1);
     stop_rec();
-    print_table("E1: a write to CTRL, a read of ID, a read of 0x18", '{
+    print_table("E1: a write, a read and a bad read", '{
       S_PSEL, S_PENABLE, S_PWRITE, S_PADDR, S_PWDATA, S_PREADY, S_PRDATA, S_PSLVERR,
       S_CTRL, S_IN_READY});
 
@@ -274,7 +274,7 @@ module tb_examples;
     join
     idle(4);
     stop_rec();
-    print_table("E3: the same packet, with out0_ready low in cycles 5 to 7 and 9", '{
+    print_table("E3: a stalling sink", '{
       S_IN_VALID, S_IN_READY, S_IN_DATA, S_IN_LAST, S_LEVEL0,
       S_O0_VALID, S_O0_READY, S_O0_DATA, S_O0_LAST});
 
@@ -290,9 +290,9 @@ module tb_examples;
     apb_write(8'h08, 32'h1);           // clear STATUS.NOROUTE
     idle(1);
     stop_rec();
-    print_table("E4: a packet for disabled route 1, then a W1C write to STATUS", '{
+    print_table("E4: a NOROUTE drop and a write that clears it", '{
       S_IN_VALID, S_IN_READY, S_IN_DATA, S_IN_LAST, S_O0_VALID, S_O1_VALID,
-      S_STATUS, S_NR_CNT, S_IRQ, S_PSEL, S_PENABLE, S_PADDR, S_PWDATA});
+      S_STATUS, S_NR_CNT, S_IRQ, S_PSEL, S_PENABLE, S_PWRITE, S_PADDR, S_PWDATA, S_PREADY});
 
     // E5: output 0 stalled, holding 9 beats: the next packet for it is dropped.
     do_reset();
@@ -308,7 +308,7 @@ module tb_examples;
     out0_ready = 1'b1;
     idle(3);
     stop_rec();
-    print_table("E5: output 0 holds 9 beats; a packet for it is dropped, then the sink drains", '{
+    print_table("E5: a FULL drop", '{
       S_IN_VALID, S_IN_READY, S_IN_DATA, S_IN_LAST, S_LEVEL0,
       S_O0_VALID, S_O0_READY, S_O0_DATA, S_STATUS, S_FULL_CNT});
 
@@ -322,9 +322,9 @@ module tb_examples;
     send('{8'h00, 8'h01, 8'h02, 8'h03, 8'h04, 8'h05, 8'h06, 8'h07, 8'h08, 8'h09});
     idle(2);
     stop_rec();
-    print_table("E6: a ten-beat packet is cut to eight", '{
+    print_table("E6: a ten-beat packet", '{
       S_IN_VALID, S_IN_READY, S_IN_DATA, S_IN_LAST,
-      S_O0_VALID, S_O0_DATA, S_O0_LAST, S_STATUS});
+      S_O0_VALID, S_O0_READY, S_O0_DATA, S_O0_LAST, S_STATUS});
 
     // E7: CTRL.EN cleared while a packet is half sent.
     do_reset();
@@ -348,8 +348,8 @@ module tb_examples;
     disable fork;
     psel = 1'b0; penable = 1'b0; in_valid = 1'b0; in_last = 1'b0;
     print_table("E7: CTRL.EN cleared in the middle of a packet", '{
-      S_PSEL, S_PENABLE, S_PWRITE, S_PADDR, S_PWDATA, S_CTRL,
-      S_IN_VALID, S_IN_READY, S_IN_DATA, S_IN_LAST, S_O0_VALID, S_O0_DATA});
+      S_PSEL, S_PENABLE, S_PWRITE, S_PADDR, S_PWDATA, S_PREADY, S_CTRL,
+      S_IN_VALID, S_IN_READY, S_IN_DATA, S_IN_LAST, S_O0_VALID, S_O0_READY, S_O0_DATA});
 
     // E8: reset with a beat waiting on output 0 and a packet half sent.
     do_reset();
@@ -375,7 +375,7 @@ module tb_examples;
     out0_ready = 1'b1;
     idle(2);
     stop_rec();
-    print_table("E8: rst_n low in cycles 3 and 4, with a beat waiting on output 0", '{
+    print_table("E8: reset with a beat waiting on output 0", '{
       S_RST, S_IN_VALID, S_IN_READY, S_IN_DATA, S_IN_LAST, S_LEVEL0,
       S_O0_VALID, S_O0_READY, S_O0_DATA, S_CTRL});
 
@@ -393,8 +393,8 @@ module tb_examples;
     psel = 1'b0; penable = 1'b0; in_valid = 1'b0; in_last = 1'b0;
     idle(2);
     stop_rec();
-    print_table("E9: a write to DROP_CNT completes in the same cycle as a NOROUTE drop", '{
-      S_PSEL, S_PENABLE, S_PWRITE, S_PADDR, S_PREADY,
+    print_table("E9: a write to DROP_CNT in the same cycle as a drop", '{
+      S_PSEL, S_PENABLE, S_PWRITE, S_PADDR, S_PWDATA, S_PREADY,
       S_IN_VALID, S_IN_READY, S_IN_DATA, S_IN_LAST, S_NR_CNT, S_STATUS});
 
     $display("");

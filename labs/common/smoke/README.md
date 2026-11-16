@@ -24,4 +24,5 @@ with `vcd2fst`.
 | File | What it is |
 |---|---|
 | `tb_smoke.sv` | The shipped test |
+| `tb_examples.sv` | Runs each timing example in the spec and prints it as a table: `make TB_SRC=tb_examples.sv` |
 | `Makefile` | The targets above |
