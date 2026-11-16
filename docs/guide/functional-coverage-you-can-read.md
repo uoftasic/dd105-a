@@ -60,7 +60,7 @@ read a member of the class, `coverpoint v.op`, and call `sample()` with no argum
 ```
 
 It ignores the whole covergroup. The course's build turns every warning it hasn't been told to
-allow into an error, so the build stopped there after 5 s, and you find out from the build
+allow into an error, so the build stopped there after 4 s, and you find out from the build
 rather than from a coverage report with no bins in it. You meet this warning on purpose in
 Lab 03, Part 2, and Lab 04's coverage subscriber uses the `with function sample` form for the
 same reason.

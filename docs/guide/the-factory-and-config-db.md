@@ -21,8 +21,8 @@ environment.
 ## The factory
 
 Every UVM class registers itself with the factory through its utils macro,
-`` `uvm_object_utils(alu_item) `` or `` `uvm_component_utils(alu_env) ``, and everything in the
-testbench is made by asking the factory for it:
+`` `uvm_object_utils(alu_item) `` or `` `uvm_component_utils(alu_env) ``, and the labs make almost
+everything by asking the factory for it:
 
 ```systemverilog
 req = alu_item::type_id::create("req");
@@ -87,9 +87,8 @@ One line in the test changed every item the sequence made, and the coverage coll
 counted the vectors, reported only 65% of its bins hit, because no vector had unequal operands.
 
 An override changes every object the factory makes of that type, and that can include objects
-you meant to leave alone. Lab 04's `close_holes()` needs two packets
-exactly as `router_pkt` defines them, so it makes them with `new()`, which doesn't go through the
-factory. When we made them through the factory, `router_inject_test`'s override turned them into
+you meant to leave alone. Lab 04's `close_holes()` needs two packets exactly as `router_pkt`
+defines them, so it makes them with `new()`, which doesn't go through the factory. When we made them through the factory, `router_inject_test`'s override turned them into
 `router_noroute_pkt`s too, and `randomize()` failed on 4 of 5 seeds (Lab 04, Part 4, step 3).
 
 An override doesn't even need a test class. UVM reads overrides from the command line, so the
@@ -150,34 +149,34 @@ Comparing the two scopes shows the mistake. A knob with a sensible default can b
 the run when the `get` fails. Every driver and monitor in Lab 04 does that for its virtual
 interface and its `out_cfg`, with `` `uvm_fatal("NOVIF", ...) `` and `` `uvm_fatal("NOCFG", ...) ``.
 
-When two components set the same value for the same component during the build phase, the one
-higher in the tree wins, even if it set its value first. In `fac_prec_test` the environment is
-overridden by a subclass that sets a default of 0 for its scoreboard, after the test has already
-set 1:
+Two components can set the same value for the same component. In `fac_prec_test` the
+environment is overridden by a subclass that sets a default of 0 for its scoreboard, after the
+test has already set 1:
 
 ```text
 [TEST] uvm_test_top set check_flags = 1 for "env.sb"
 [ENV] uvm_test_top.env set check_flags = 0 for "sb"
 ```
 
-and the scoreboard ended up checking the flags, `200 vectors checked with N and Z: 0 wrong`. That
-rule is what lets an environment give its components defaults that any test can override.
+and the scoreboard ended up checking the flags, `200 vectors checked with N and Z: 0 wrong`. In
+the build phase the set from higher in the tree, the test's, beat the later one from lower down,
+which is what lets an environment give its components defaults that any test can override.
 
 ### Objects by handle
 
 `config_db` can hold an object as well as a number, and then what it stores is the handle, so the
-component that gets it shares the object with the one that set it.
-Lab 04 uses that for the output agents. `router_base_test` makes an `out_cfg` for each output,
-sets output 0's for `"env.out0*"` and output 1's for `"env.out1*"`, and keeps the two handles.
-Both output agents are the same class, and the only things that differ between them are the
-virtual interface and the `out_cfg` each one gets. Because the test kept the handles, your Part 3 stall test changes
+component that gets it shares the object with the one that set it. Lab 04 uses that for the
+output agents. `router_base_test` makes an `out_cfg` for each output, sets output 0's for
+`"env.out0*"` and output 1's for `"env.out1*"`, and keeps the two handles. Both output agents are
+the same class, and the only things that differ between them are the virtual interface and the
+`out_cfg` each one gets. Because the test kept the handles, your Part 3 stall test can change
 `ocfg[p].ready_pct` in the middle of a run, and each `out_ready_driver`, which reads `ready_pct`
 again every cycle, follows it at the next clock edge.
 
 One measured caution for virtual interfaces: write their types out in full, as
 `virtual stream_src_if`. On Verilator 5.050 a class in a package that reached an interface
 through a `typedef` of the virtual interface read 0 from every clocking-block input, with no
-warning (`labs/ref/README.md` has the probe), so none of the course's packages use one.
+warning (`labs/ref/README.md` has the probe), so the labs' packages don't use one.
 
 ## Check yourself
 

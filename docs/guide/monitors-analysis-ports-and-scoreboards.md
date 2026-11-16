@@ -27,23 +27,31 @@ clocking block that only has inputs, so it sees each signal as it was just befor
 which is the value in that cycle:
 
 ```systemverilog
+virtual function alu_item next_item();
+  return alu_item::type_id::create("seen");     // a new item every time
+endfunction
+
 task run_phase(uvm_phase phase);
   alu_item t;
   forever begin
     @(vif.mon_cb);
     if (vif.mon_cb.valid) begin
-      t        = alu_item::type_id::create("seen");   // a new item every time
+      t        = next_item();
       t.op     = alu_op_e'(vif.mon_cb.ALUop);
       t.A      = vif.mon_cb.A;
       t.B      = vif.mon_cb.B;
       t.ALUout = vif.mon_cb.ALUout;
       t.N      = vif.mon_cb.N;
       t.Z      = vif.mon_cb.Z;
+      n_seen++;
       ap.write(t);
     end
   end
 endtask
 ```
+
+(`next_item()` is a function of its own only so that a test can swap in a monitor that gets its
+items another way, as `mon_alias_test` does under "One object per write" below.)
 
 Lab 04's monitors do the same for a stream (one `stream_beat` per handshake, stamped with its
 cycle number) and for APB (one `apb_item` per completed transfer).

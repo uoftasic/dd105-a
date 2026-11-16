@@ -4,8 +4,9 @@ The SystemVerilog examples that the guide pages under `docs/guide/` quote. Each 
 one page and is named after it. Every folder builds with the course's
 [`labs/common/uvm.mk`](../labs/common/README.md), like the labs: Verilator 5.050 and the vendored
 UVM library in `third_party/uvm`, in the course image. Every output a page quotes came from
-these commands, run in a folder with no `build/` (the cold builds took 85 to 129 s on 2 CPUs;
-the run commands take under a second each).
+these commands, run in a folder with no `build/`. On 2 CPUs the first builds, with little in the
+ccache, took 85 to 129 s; after `make clean`, with the ccache warm, they took 13 to 32 s. Each
+`make run` takes under two seconds.
 
 Run the commands from the example's folder, and finish with `make clean`.
 
