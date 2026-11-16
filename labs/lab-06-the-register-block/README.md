@@ -2,10 +2,10 @@
 
 Writeup: [`docs/labs/lab-06-the-register-block-overview.md`](../../docs/labs/lab-06-the-register-block-overview.md)
 
-Our solution to Lab 05, with this lab's pieces added: a register model of the router's ten
-registers with its adapter and predictor, a monitor that reports `rst_n` and `irq` every cycle,
-and scoreboard checks on `STATUS` reads, on `PSLVERR` and on reads of bad addresses. Five pieces
-are left for you, marked `TODO (Part n)`: the fields of four registers, the adapter, the
+This package is our solution to Lab 05, with this lab's pieces added: a register model of the
+router's ten registers with its adapter and predictor, a monitor that reports `rst_n` and `irq`
+every cycle, and scoreboard checks on `STATUS` reads, on `PSLVERR` and on reads of bad addresses.
+Five pieces are left for you, marked `TODO (Part n)`: the fields of four registers, the adapter, the
 predictor's connections, the `irq` check, and this lab's virtual sequence. The router and its
 planted bugs come from [`../common`](../common/README.md).
 
