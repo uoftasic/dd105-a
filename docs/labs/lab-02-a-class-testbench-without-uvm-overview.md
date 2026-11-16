@@ -201,9 +201,9 @@ What goes into the router, and what comes out of output 0, packet by packet?
    Verilator generates: the ccache could reuse only 10 of the 36 compiled files.
 
 5. `+SHOW=5` makes each monitor print the first 5 packets it sees, with the time of the edge at
-   which each packet's last beat moved. Using the routing table `0110` and rule O8 of the
-   specification, write down which input packets you expect to see again on output 0, and how
-   many ns after its `[in]` line each `[out0]` line should come. Then run it:
+   which each packet's last beat moved. The clock period is 10 ns. Using the routing table `0110`
+   and rule O8 of the specification, write down which input packets you expect to see again on
+   output 0, and how many ns after its `[in]` line each `[out0]` line should come. Then run it:
 
    ```bash
    make run PLUSARGS="+SHOW=5"
@@ -269,6 +269,10 @@ Which packets should come out of output 0, and did they?
    n_errors++;
    $error("out0 delivered %s at %0d ns; expected %s", got.sprint(), got.t_last, want.sprint());
    ```
+
+   Lab 01's `` `uvm_error `` won't work here, because this package doesn't import UVM. We tried
+   it, and `make lint` stopped with two `Can't find definition of task/function` errors, one for
+   `uvm_get_report_object` and one for `uvm_report_error`.
 
 3. Run `make lint` and `make build`. With the reference scoreboard the build took 86 s. Later,
    smaller edits are cheaper: changing the text of one `$error` afterwards rebuilt in 21 s.
