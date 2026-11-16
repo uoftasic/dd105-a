@@ -9,12 +9,12 @@ operands? have I taken a backward branch?) and answered with a `for` loop and a 
 simulator counts how often the stimulus produced each one, and the counts go into a file that
 tools can merge and report. In
 [Lab 03, Part 2](../labs/lab-03-constraints-and-coverage-overview.md#part-2-a-covergroup-you-can-read)
-you write one for the router's packets, and it shows you two holes that a passing test was
-hiding.
+you write one for the router's packets, and it shows you two holes in the stimulus of a test that
+passes.
 
 On Verilator 5.050 the counts are right, and almost everything built from them, the percentage
 included, works differently from the standard. This page shows how to write a covergroup that
-this simulator keeps, where its numbers go, and how to read them. The example,
+this simulator doesn't throw away, where its numbers go, and how to read them. The example,
 [`guide-examples/functional-coverage-you-can-read/`](https://github.com/uoftasic/dd105-a/tree/main/guide-examples/functional-coverage-you-can-read),
 samples random ALU vectors.
 
@@ -59,8 +59,8 @@ read a member of the class, `coverpoint v.op`, and call `sample()` with no argum
 %Error: Exiting due to 1 warning(s)
 ```
 
-It ignores the whole covergroup. The course's build turns every warning it hasn't been told to
-allow into an error, so the build stopped there after 4 s, and you find out from the build
+Verilator ignores the whole covergroup. The course's build turns every warning it hasn't been
+told to allow into an error, so the build stopped there after 4 s, and you find out from the build
 rather than from a coverage report with no bins in it. You meet this warning on purpose in
 Lab 03, Part 2, and Lab 04's coverage subscriber uses the `with function sample` form for the
 same reason.
@@ -112,7 +112,7 @@ cross:
 *The 12 bins of `x_op_eq`, one run each. With uniform operands, the `equal` row has a 1 for `sub`
 and `nand_op` and nothing else. With one vector in eight made equal, every bin is hit.*
 
-That's what the list of empty bins is for: each one names a question your stimulus never asked.
+The list of empty bins that `make cov` prints is how you find holes like these.
 
 ## The percentage
 
@@ -153,10 +153,11 @@ endgroup
   bin of its own, `unused`, and `verilator_coverage` counts 6 of 9. `get_inst_coverage()` gave a
   third answer, 75.00, which is 6 of 8.
 
-None of this changes a single count. Every bin's count in `coverage.dat` is right, and that's what
-`make cov` is built to show you. Lab 03, Part 2 works the same sums for the router's covergroup,
-46.3% by Verilator's formula and 61% by the standard's, and comes to the same advice: to see
-which bins matter, read the list.
+These differences change which bins there are and how the percentage is worked out, but not the
+counts: every bin's count in `coverage.dat` is right, and the counts are what `make cov` is built
+to show you. Lab 03, Part 2 works the same sums for the router's covergroup, 46.3% by Verilator's
+formula and 61% by the standard's, and comes to the same advice: to see which bins matter, read
+the list.
 
 ## Three kinds of empty bin
 
@@ -167,7 +168,7 @@ Some can be hit, but not by this testbench, because of how it was built: Lab 03'
 output 1's level as 0, so `out1_x_low` stays empty until Lab 04 fixes that. And some are holes in
 the stimulus, like the `equal` bins above, and those are the ones worth your time, because a bug
 can sit in them. Lab 03 Part 2 asks you to sort the router's 41 bins into these three groups, and
-the two planted bugs turn out to be in the third.
+both planted bugs are in the third.
 
 ## Check yourself
 

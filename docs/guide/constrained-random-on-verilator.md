@@ -12,9 +12,9 @@ where a test can change them. It also means the values now depend on how the sim
 chooses among the values your constraints allow, and Verilator 5.050 doesn't always choose the
 way the SystemVerilog standard says it should.
 
-This page explains what `randomize()` promises, how this simulator keeps those promises and
-where it doesn't, and why you count what came out instead of trusting the constraints. The
-examples are small classes built on SimProc's ALU operations, in
+This page explains what the standard says `randomize()` does, where Verilator 5.050 does the
+same and where it doesn't, and why you count what came out instead of trusting the constraints.
+The examples are small classes built on SimProc's ALU operations, in
 [`guide-examples/constrained-random-on-verilator/`](https://github.com/uoftasic/dd105-a/tree/main/guide-examples/constrained-random-on-verilator),
 and they build with the course's `uvm.mk` like every lab. You'll run the same kind of experiment
 on the router's packet in
@@ -100,16 +100,15 @@ UVM_INFO @ 0: reporter [RNTST] Running test cr_item_test...
 UVM_FATAL labs/common/uvm/dd105_pkg.sv(51) @ 0: reporter [SOLVER] a constrained randomize() failed, so this run cannot randomize anything. Verilator needs VERILATOR_SOLVER="yices-smt2 --incremental" in the environment. Run the test with make, which sets it, or export it before running the simulator by hand.
 ```
 
-How the solver's answer becomes a random one matters for everything that follows. Verilator's
-runtime (`verilated_random.cpp` in the image) picks a random target value for every bit of
-every `rand` variable and asks the solver for a solution that matches all of those bits. If the
-targets break a constraint, it gives up one bit's target and asks again, until the constraints
-can be met. A target that lands on an allowed value comes out as it is. A target that lands on a
-forbidden value comes out as an allowed value a bit or two away from it, so the allowed values
-next to forbidden ones come out more often than the others. (A class with an array in it goes
-through a different method in the same file.) `alu_op_e` has six names in three bits, so two of
-its eight codes, `110` and `111`, are forbidden. With `op inside {[ADD:SHR]}` and 1,000 draws
-(`cr_enum_test`):
+Verilator's runtime (`verilated_random.cpp` in the image) turns the solver's answer into a random
+one like this. It picks a random target value for every bit of every `rand` variable and asks the
+solver for a solution that matches all of those bits. If the targets break a constraint, it gives
+up one bit's target and asks again, until the constraints can be met. A target that lands on an
+allowed value comes out as it is. A target that lands on a forbidden value comes out as an allowed
+value a bit or two away from it, so the allowed values next to forbidden ones come out more often
+than the others. (A class with an array in it goes through a different method in the same file.)
+`alu_op_e` has six names in three bits, so two of its eight codes, `110` and `111`, are forbidden.
+With `op inside {[ADD:SHR]}` and 1,000 draws (`cr_enum_test`):
 
 ```text
 [ENUM] op inside {[ADD:SHR]}:             ADD  127  SUB  109  OR  148  NAND  124  SHL  234  SHR  258
@@ -151,9 +150,9 @@ and equal weights, which is how Lab 01's `alu_item` writes it:
 [ENUM] op dist {[ADD:SHR] := 1}:          ADD  161  SUB  166  OR  163  NAND  173  SHL  176  SHR  161
 ```
 
-One more line from the same test is worth knowing about, though no lab writes this shape. When
-the enum's type is a parameter of the class (`class free_param #(type T = e3_t); rand T v;`),
-the three-name enum took the unused code 3 in 256 draws of 1,000:
+The same test printed one more line, for a shape that no lab writes. When the enum's type is a
+parameter of the class (`class free_param #(type T = e3_t); rand T v;`), the three-name enum
+took the unused code 3 in 256 draws of 1,000:
 
 ```text
 [ENUM] 3 names, in a parameterized class:     235  247  262   and 256 values that aren't names
@@ -163,8 +162,8 @@ the three-name enum took the unused code 3 in 256 draws of 1,000:
 
 ### A dist written with enum names
 
-A `dist` gives each value or range a weight. The standard doesn't care whether you write the
-values as enum names or as numbers, but this simulator does:
+A `dist` gives each value or range a weight. Under the standard it makes no difference whether
+you write the values as enum names or as numbers, but on this simulator it does:
 
 ```text
 [DIST] weights 10/20/30/40 by name:    K_ZERO  229  K_ONES  256  K_SAME  267  K_ANY  248
@@ -243,7 +242,7 @@ simulator. If you want `is_shift` half the time, say so with a `dist`, which it 
 ```
 
 The operations within each half still aren't even (`SHR` 443 against `SHL` 59), for the reason
-in the previous section, so if that matters, give `op` its own `dist` too.
+given under "The solver" above, so if that matters, give `op` its own `dist` too.
 
 ### unique and sum() on arrays
 
