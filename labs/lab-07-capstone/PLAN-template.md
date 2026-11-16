@@ -19,8 +19,8 @@ anything below the router's pins, timing, or behaviour the specification doesn't
 ## How the environment checks
 
 _One line for each checker, in your own words: what it compares, against what, and when it
-fires. There are three: the scoreboard and its reference model, the register model's mirror,
-and the bound assertions._
+fires. There are three: the scoreboard, the register model's mirror, and the bound
+assertions._
 
 | Checker | What it compares | Where |
 |---|---|---|
@@ -34,19 +34,21 @@ One row per rule. The `I`, `O` and `A` ids are the specification's own; the othe
 plan's labels for rules the specification states in prose.
 
 - **Checked by**: the check that fires if the router breaks the rule: an assertion (`a_O2`),
-  a scoreboard check (say which), the register model's mirror, or "nothing".
+  a scoreboard check (say which `write_` function), the register model's mirror, or
+  "nothing".
 - **Made to happen by**: the sequence, and the step in it, that makes the situation occur. A rule
   nothing ever exercises is checked by nobody, however good its checker is.
-- **Seen in coverage**: the coverage bin or scoreboard corner that shows it happened, or "no bin".
+- **Seen in coverage**: the coverage bin that shows it happened (`cg_pkt`, `cg_wait` or
+  `cg_corner`), or "no bin".
 - **Status**: `done`, `open` (you mean to close it), or `gap` (you won't, and say why).
 
-The first rows are filled in as examples.
+Three rows, O1, RT1 and A7, are filled in as examples.
 
 ### Input stream
 
 | Id | The rule | Checked by | Made to happen by | Seen in coverage | Status |
 |---|---|---|---|---|---|
-| I1, I2 | (source) `in_valid` holds until the handshake; `in_data` and `in_last` hold while it waits | `a_I1`, `a_I2`, which check the source driver, not the router | a beat waits only when `in_ready` is 0, which is between packets with `CTRL.EN` = 0: `router_ctrl_vseq` offers headers then | no bin: `cg_wait` samples the outputs only | done |
+| I1, I2 | (source) `in_valid` holds until the handshake; `in_data` and `in_last` hold while it waits | | | | |
 | I3 | (source) after a reset the first beat offered is a header | | | | |
 | I4 | `in_ready` doesn't depend on `in_valid`, `in_data` or `in_last` in the same cycle | | | | |
 | I5 | between packets, `in_ready` equals `CTRL.EN` | | | | |
@@ -57,7 +59,7 @@ The first rows are filled in as examples.
 
 | Id | The rule | Checked by | Made to happen by | Seen in coverage | Status |
 |---|---|---|---|---|---|
-| O1 | `out_valid` holds until the handshake | `a_O1` on each output | every stalled or slow sink | `cg_wait.x_port_wait`: `long_wait` and `stalled` on both outputs | done |
+| O1 | `out_valid` holds until the handshake | `a_O1` on each output | every stalled or slow sink: `router_inject_test`'s phases, and `backpressure()` in `router_lab05_vseq` | `cg_wait.x_port_wait`: `long_wait` and `stalled` on both outputs | done |
 | O2 | `out_data` and `out_last` hold while the beat waits | | | | |
 | O3 | the outputs don't depend on `out_ready` or any other input in the same cycle | | | | |
 | O4 | `out_valid` is 0 during reset, and stays 0 until a beat accepted after it arrives | | | | |
@@ -70,7 +72,7 @@ The first rows are filled in as examples.
 
 | Id | The rule | Checked by | Made to happen by | Seen in coverage | Status |
 |---|---|---|---|---|---|
-| RT1 | the decision table: `EN` = 0 is NOROUTE, a level of 9 to 16 is FULL, 0 to 8 is written to output `PORT` | the scoreboard's model decides every packet's fate, then checks every output beat and every `DROP_CNT` and `STATUS` read against it | `router_smoke_vseq`, `router_full_vseq`, the random phases | `cg_pkt.x_dst_act`, all 16 bins | done |
+| RT1 | the decision table: `EN` = 0 is NOROUTE, a level of 9 to 16 is FULL, 0 to 8 is written to output `PORT` | the scoreboard: `write_in` decides each packet's fate at its header, and `write_out`, `write_apb` and `write_sys` check the beats, the `DROP_CNT` and `STATUS` reads and `irq` against it | `router_inject_test`'s phases: random routing tables, packets to disabled routes, one output stalled | `cg_pkt.x_fate_level`: every fate at every level the specification allows | done |
 | RT2 | the threshold itself: admitted at exactly 8, dropped at exactly 9 | | | | |
 | RT3 | a disabled route is NOROUTE whatever its `PORT`'s level, never FULL | | | | |
 | RT4 | a `ROUTE` or `CTRL` write affects headers from the cycle after it completes | | | | |
@@ -88,7 +90,7 @@ The first rows are filled in as examples.
 | A1, A2, A3 | (master) setup then access; address and data hold; `penable` is 0 after a transfer | | | | |
 | A4 | (master) `psel` is 0 during reset; a transfer cut by reset has no effect | | | | |
 | A5, A6 | a write's first access cycle has `pready` 1; a read's has `pready` 0, then 1; nowhere else is it 0 | | | | |
-| A7 | `pslverr` is 1 exactly when a transfer to a bad address completes | | | | |
+| A7 | `pslverr` is 1 exactly when a transfer to a bad address completes | the scoreboard: `write_apb` compares `pslverr` with the address at every completion; nothing looks at `pslverr` in the other cycles | `router_lab06_vseq`, Part 4: every bad address read and written | no bin | done for the completions; open for the other cycles |
 | A8 | a read returns the value in its first access cycle; `prdata` changes only then | | | | |
 | A9 | each write takes effect by its field's access type; a bad write changes nothing | | | | |
 | RG1 | every register's reset value | | | | |

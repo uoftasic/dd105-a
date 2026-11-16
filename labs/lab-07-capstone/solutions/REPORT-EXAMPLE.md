@@ -1,9 +1,10 @@
 # Verification report: the packet router
 
 An example of the report Part 8 asks for, written for the reference solution. Every number in it
-comes from the runs in `solutions/README.md`. The hunt rows are three deals from those runs; the
-second was dealt with `make new BUGPICK=B15`, once on the starter and once on the finished
-environment, which is what keeping it sealed through Parts 5 and 6 would have given.
+comes from the runs in `solutions/README.md`. The hunt rows are three deals from those runs. The
+first was dealt on the starter; the second was dealt with `make new BUGPICK=B15`, once on the
+starter and once on the finished environment, which is what keeping it sealed through Parts 5 and
+6 would have given; the third was a random deal on the finished environment.
 
 Design: the packet router, `labs/common/rtl/`  
 Specification: `docs/reference/router-spec.md`  
@@ -13,57 +14,64 @@ Environment: `labs/lab-07-capstone/` with `solutions/tb/`
 ## 1. Summary
 
 The router was verified against the 39 rows of `PLAN.md` with a UVM environment that checks it
-three ways: a cycle-exact scoreboard, the register model's mirror, and assertions bound into the
-design. All 11 tests pass on seeds 1 to 10, every one of the 145 coverage bins is hit, and the
-graded test catches all 15 planted bugs on seeds 1 to 5. That meets every sign-off criterion in
-the plan. Two rows (I4 and O3) are checked only through the model's predictions, and one (RT3) has
-no coverage bin.
+three ways: a scoreboard, the register model's mirror, and assertions bound into the design. All
+13 tests pass on seeds 1 to 10, 53 of the 60 coverage bins are hit and the other seven are ones
+the specification rules out, and the graded test catches all 15 planted bugs on seeds 1 to 5.
+That meets every sign-off criterion in the plan. The plan's open items are the larger part of
+this report, though: 10 of its rows have no checker at all in this environment, and section 7
+lists them.
 
 ## 2. The environment
 
 | Component | What it does | File | Written in this lab? |
 |---|---|---|---|
-| APB agent | drives transfers, back to back when asked; its monitor reports each completed transfer | `tb/apb_pkg.sv` | no |
-| Source agent | drives packets with idle cycles; drops its packet at reset (rule I3) | `tb/stream_pkg.sv` | no |
-| Sink agents, one per output | reactive: fast, slow, random or stalled, set while the test runs | `tb/stream_pkg.sv` | no |
-| Reset/irq agent | drives `rst_n`; samples `rst_n` and `irq` every cycle | `tb/router_env_pkg.sv` | no |
-| Register model | the ten registers, with an adapter and an explicit predictor; checks reads of the non-volatile ones | `tb/router_ral_pkg.sv` | no |
-| Scoreboard | runs a cycle-by-cycle model of the specification and checks every port against it | `tb/router_env_pkg.sv` | no |
-| Coverage | packets, APB transfers, output waits, and 17 corners the scoreboard sees | `tb/router_env_pkg.sv` | no |
-| Assertions | one per interface rule, with a failure counter each | `tb/router_sva.sv` | the reset rules: I7, O4, A4, the reset values |
-| Sequences | one per section of the specification, a random one, and `router_all_vseq` | `tb/router_seq_pkg.sv` | `router_reset_vseq`, `router_saturate_vseq`, the random resets |
-| Tests | one per sequence; `router_all_test` is the graded one | `tb/router_test_pkg.sv` | no |
+| Source agent | drives packets with idle cycles; abandons its packet at a reset (rule I3) | `tb/router_agents_pkg.sv` | no |
+| Output agents, one per output | a reactive sink: always ready, slow, random or stalled, set while the test runs | `tb/router_agents_pkg.sv` | no |
+| APB agent | drives one transfer at a time; keeps `psel` at 0 during a reset and starts an interrupted transfer again (rule A4); its monitor reports each completed transfer | `tb/router_agents_pkg.sv` | no |
+| Sys agent | drives the reset; its monitor reports `rst_n` and `irq` every cycle | `tb/router_agents_pkg.sv` | no |
+| Register model | the ten registers, with an adapter and a predictor on the APB monitor; checks reads of the non-volatile ones | `tb/router_ral_pkg.sv` | no |
+| Scoreboard | predicts each packet's fate and checks every output beat in order; models `STATUS` and `INT_EN` cycle by cycle and checks `irq`, `STATUS` and `DROP_CNT` reads, `pslverr`, and bad reads; starts again from the reset values at a reset | `tb/router_env_pkg.sv` | no |
+| Coverage | packets by length, `DST`, fate and level; how long output beats wait; four corners the scoreboard counts | `tb/router_env_pkg.sv` | no |
+| Assertions | I1, I2, O1, O2, O6, and the rules about reset | `tb/router_sva.sv` | the reset rules: I7, O4, A4, the reset values |
+| Sequences | Lab 05's and Lab 06's, `router_reset_vseq`, `router_saturate_vseq`, and `router_lab07_vseq`'s random phases | `tb/router_vseq_pkg.sv` | `router_reset_vseq`, `router_saturate_vseq`, the resets in the random phases |
+| Tests | `router_test` is the graded one; one test per sequence, and Labs 02 to 04's tests | `tb/router_tests_pkg.sv` | no |
 
 ## 3. The plan's status
 
-The plan has 39 rows. All are `done`. Two are done only partly: I4 and O3 say that a signal doesn't
-depend on an input in the same cycle, and they are checked only because the scoreboard predicts
-those signals from earlier cycles; no check looks at them between rising edges. Row RT3 (a
-disabled route is never FULL) has a check and a directed step but no bin, so only that step's
-comment says the situation happened. Rows I1, I2, I4, I7, O3, A4, RG1, RG5 and RS1 have no bin
-either; for each of them the plan names the sequence that makes it happen instead.
+The plan has 39 rows. 22 are `done`. Six are done in part: RT4 (route writes are followed, `CTRL`
+isn't), A7 and A8 (the value at each completion is checked, the other cycles aren't), RG1 (every
+register but `LEVEL`), and RG2 and RG3 (the clears are checked, the same-cycle cases aren't).
+Ten rows have no checker: I4, I5, I6, O3, O8, RT5, EN1, A1 to A3, A5 and A6, and RG4. OV2 has a
+checker but no sign that it was ever made to happen. Each of these is an open item in the plan.
+Of the rows that are done, I1, I2, I7, A4, A9, RG5, IRQ1 and RS1 have no coverage bin; for each,
+the plan names the sequence that makes it happen instead.
 
 ## 4. Regression
 
-`make regress` in `solutions/`: 11 tests on seeds 1 to 10, 2 min 43 s of wall clock.
+`make regress` in `solutions/`: 13 tests on seeds 1 to 10, 4 min 26 s of wall clock.
 
 ```text
-  110 ok  (110 runs)
+  130 ok  (130 runs)
 ```
 
-The simulator it used was built in 31 s with a warm ccache; the first build of the lab, with an
-empty one, took 135 s.
+The simulator it used was built in 143 s with an empty ccache; the lab folder's first build, also
+with an empty one, took 130 s.
 
 ## 5. Coverage
 
 ```text
- verilator_coverage: covergroup : 100.0% (145/145)
+ verilator_coverage: covergroup : 88.3% (53/60)
 ```
 
-Before this lab's work the same regression, with 9 tests, hit 141 of the 145. The four it missed
-were all in `cg_corner`: `C_NOROUTE_SATURATED` and `C_FULL_SATURATED`, now hit by
-`router_saturate_vseq` (13 and 15 times on seed 1), and `C_RESET_WITH_BEATS` and
-`C_RESET_MID_PACKET`, now hit by `router_reset_vseq` (3 and 2 times on seed 1).
+The seven bins never hit are `full_x_at_8`, `full_x_empty`, `full_x_low`, `out0_x_at_9`,
+`out0_x_high`, `out1_x_at_9` and `out1_x_high` in `cg_pkt.x_fate_level`. The specification rules
+all seven out: a packet is FULL only at a level of 9 or more, and written to an output only at 8
+or less.
+
+Before this lab's work, the same regression with 11 tests hit 49 of the 60. The four it missed
+were the bins of `cg_corner`: `noroute_saturated` and `full_saturated`, now hit by
+`router_saturate_vseq` (5 times each on seed 1), and `reset_with_beats` and `reset_mid_packet`,
+now hit by `router_reset_vseq` (3 times and once in `router_reset_test` on seed 1).
 
 Coverage numbers from Verilator 5.050 don't follow the standard's formula (type-level
 `get_coverage()` returns 0, `ignore_bins` stay in the denominator, `option.weight` is ignored),
@@ -75,9 +83,9 @@ so this report counts bins from `coverage.dat`, whose per-bin counts are right.
 
 | Deal | The first check that fired (copied) | Diagnosis | Verdict | Which sequence made it show |
 |---|---|---|---|---|
-| 1 | `UVM_ERROR [SB] irq is 1 from cycle 4436, but STATUS = 001 and INT_EN = 010 make it 0` | IRQ1: `irq` is raised by a `STATUS` bit whose enable is 0, so the mask is missing; `router_regs.sv` | B02_irq_ignores_int_en | `router_full_vseq`, which enables only the FULL interrupt |
-| 2 | none on the starter, where `make hunt` printed `quiet` and `0 UVM_ERROR, 0 UVM_FATAL`. On the finished environment: `UVM_ERROR [SB] output 0 delivered 01 (offered from cycle 6988, taken in cycle 6989), but no beat was waiting for it there` | quiet while the plan's rows RS2, RS3 and DR2 had no stimulus and I7, O4 and A4 no assertion; on the finished environment, a beat from before a reset delivered after it: RS2 and O4, `router_fifo.sv` | B15_output_valid_survives_reset | `router_reset_vseq`, example E8 |
-| 3 | `UVM_ERROR [SB] output 0 delivered 25 with out_last = 0 in cycle 347; it should be e4 with out_last = 0 (accepted in cycle 322)` | a packet the model admitted to output 0 never came out, so the router dropped it or sent it elsewhere: RT1 or RT2, the admission decision, `router_ingress.sv` | B08_admission_off_by_one | `router_smoke_vseq` |
+| 1 | `UVM_ERROR [IRQ] irq is 1 from cycle 5909, but STATUS = 001 and INT_EN = 000 make it 0` | IRQ1: `irq` is raised by a `STATUS` bit whose enable is 0, so the mask is missing; `router_regs.sv` | B02_irq_ignores_int_en | `router_lab06_vseq`, its `STATUS` step, which drops a packet while `INT_EN` is 0 |
+| 2 | none on the starter, where `make hunt` printed `quiet` and `0 UVM_ERROR, 0 UVM_FATAL`. On the finished environment: `UVM_ERROR [OUT] output 0: got 00 in cycle 14873, and no beat was expected` | quiet while the plan's rows RS2, RS3 and DR2 had no stimulus and I7, O4 and A4 no assertion; on the finished environment, a beat from before a reset delivered after it: RS2 and O4, `router_fifo.sv` | B15_output_valid_survives_reset | `router_reset_vseq`, example E8 |
+| 3 | `UVM_ERROR [STATUS] a read of 08, completing in cycle 5947 returned 00000005; it should return 00000007, STATUS in cycle 5946`; in the log (`make hunt VERBOSE=1`), `a_O2` had failed first, at 59285000 ps: `O2: out_data or out_last changed while the beat waited` | O2: a beat on a stalled output changed before it was taken, so beats were lost and the levels behind the FULL decisions went wrong; `router_fifo.sv` | B10_output_reloads_while_stalled | `router_lab06_vseq`, its `STATUS` step, which stalls output 0 |
 
 ### The catalogue
 
@@ -85,50 +93,53 @@ so this report counts bins from `coverage.dat`, whose per-bin counts are right.
 Seed 1:
 
 ```text
-      ok  the golden design                        0 UVM_ERROR, 0 UVM_FATAL        6.2s
+      ok  the golden design                        0 UVM_ERROR, 0 UVM_FATAL        7.8s
 ------------------------------------------------------------------------
-  caught  tier 1  B01_status_write_clears_all      17 UVM_ERROR                    6.3s
-  caught  tier 1  B02_irq_ignores_int_en           22 UVM_ERROR                    6.2s
-  caught  tier 1  B03_route3_readback_swapped      20 UVM_ERROR                    6.2s
-  caught  tier 1  B04_misaligned_address_accepted  50 UVM_ERROR, 40 assertions     0.8s
-  caught  tier 2  B05_dst_field_off_by_one         50 UVM_ERROR                    0.2s
-  caught  tier 2  B06_disabled_route_forwards      50 UVM_ERROR                    0.3s
-  caught  tier 2  B07_full_counted_on_disabled_route 33 UVM_ERROR                    6.3s
-  caught  tier 3  B08_admission_off_by_one         50 UVM_ERROR                    5.1s
-  caught  tier 3  B09_write_pointer_power_of_two   50 UVM_ERROR                    0.2s
-  caught  tier 4  B10_output_reloads_while_stalled 50 UVM_ERROR, 35 assertions     0.2s
-  caught  tier 4  B11_cut_packet_has_no_last       38 UVM_ERROR, 30 assertions     6.3s
-  caught  tier 5  B12_out1_uses_out0_ready         50 UVM_ERROR, 28 assertions     3.0s
-  caught  tier 5  B13_admission_checks_other_output 50 UVM_ERROR, 1 assertion       5.0s
-  caught  tier 6  B14_enable_resets_to_one         25 UVM_ERROR, 1793 assertions    6.3s
-  caught  tier 6  B15_output_valid_survives_reset  46 UVM_ERROR, 49 assertions     6.4s
+  caught  tier 6  B15_output_valid_survives_reset  50 UVM_ERROR, 45 assertions     6.8s
+  caught  tier 1  B01_status_write_clears_all      3 UVM_ERROR                     7.8s
+  caught  tier 1  B02_irq_ignores_int_en           6 UVM_ERROR                     7.8s
+  caught  tier 1  B03_route3_readback_swapped      5 UVM_ERROR                     7.8s
+  caught  tier 1  B04_misaligned_address_accepted  50 UVM_ERROR                    1.3s
+  caught  tier 2  B05_dst_field_off_by_one         50 UVM_ERROR                    1.7s
+  caught  tier 2  B06_disabled_route_forwards      50 UVM_ERROR                    1.9s
+  caught  tier 2  B07_full_counted_on_disabled_route 6 UVM_ERROR                     7.9s
+  caught  tier 3  B08_admission_off_by_one         50 UVM_ERROR                    1.9s
+  caught  tier 3  B09_write_pointer_power_of_two   50 UVM_ERROR                    1.7s
+  caught  tier 4  B10_output_reloads_while_stalled 50 UVM_ERROR, 256 assertions    1.9s
+  caught  tier 4  B11_cut_packet_has_no_last       48 UVM_ERROR, 45 assertions     7.8s
+  caught  tier 5  B12_out1_uses_out0_ready         50 UVM_ERROR, 3 assertions      1.6s
+  caught  tier 5  B13_admission_checks_other_output 50 UVM_ERROR, 1 assertion       1.8s
+  caught  tier 6  B14_enable_resets_to_one         4 UVM_ERROR, 23 assertions      7.8s
 ------------------------------------------------------------------------
  15 of 15 caught.
 ```
 
 ## 7. What this doesn't show
 
-- I4 and O3 are checked only through the model, as section 3 says. A router whose `in_ready` or
-  `out_valid` depended on an input within a cycle would be caught only if the dependence changed
-  a value at a sampling point.
+- Ten rows have no checker (section 3). A router whose `in_ready` ignored `CTRL.EN` between
+  packets, whose beats came out a cycle late, or whose `LEVEL` read wrong would pass every test
+  here, unless the fault happened to change something a check does look at.
+- The scoreboard checks a `DROP_CNT` read correctly only while no packet is coming in, so the
+  tests read `DROP_CNT` only between bursts, and example E9, a clear in the cycle of a drop, is
+  never tried.
 - The simulator has two states, so nothing here says anything about X: an uninitialized register
   starts at 0 on Verilator, and the specification says not to rely on it.
 - The regression ran seeds 1 to 10 and the catalogue seeds 1 to 5. B15 was caught on every one of
-  those five, but with as few as 4 UVM_ERRORs on seeds 2, 4 and 5, so a weaker reset sequence
-  could miss it on some seeds.
+  those five, with as few as 5 UVM_ERRORs and 23 assertion failures (seed 3), all from the same
+  directed E8 step, so a reset sequence without that step could miss it.
 - Catching the 15 planted bugs shows the environment finds those 15. A bug unlike all of them, in
-  a rule whose row says "no bin", would be found only if its checker happened to be shown it.
-- Every register access in these tests goes through the APB port. The register model's back door
-  isn't used, because on Verilator 5.050 a back-door write doesn't stick (back-door reads work).
+  a rule the plan has no checker for, would go unseen.
+- `router_test` never uses the register model's back door. Lab 06 measured that a poke of
+  `CTRL`, `INT_EN` or `DROP_CNT` sticks on this router, but no check here depends on it.
 
 ## 8. Sign-off
 
-This router follows its specification at its pins in every situation the 39 rows of the plan
-describe, on seeds 1 to 10 of 11 tests, except that rules I4 and O3 are checked only through a
-model's predictions. To check it:
+This router follows its specification at its pins in every situation the plan's rows describe and
+has a checker for, on seeds 1 to 10 of 13 tests; the rows without a checker are listed in the
+plan's open items and in section 7. To check it:
 
 ```bash
 cd labs/lab-07-capstone/solutions
-make regress          # 110 ok  (110 runs), covergroup : 100.0% (145/145)
+make regress          # 130 ok  (130 runs), covergroup : 88.3% (53/60)
 make check-all        # 15 of 15 caught.  (and SEED=2 to SEED=5)
 ```
