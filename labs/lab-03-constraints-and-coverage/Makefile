@@ -1,9 +1,10 @@
 # DD105-A Lab 03: Constraints and coverage.
 #
-# The class testbench from Lab 02 on the router, with the planted bugs behind
-# a run-time switch, built once:
+# A class testbench for the router, built from plain classes like Lab 02's but
+# with a cycle-by-cycle model of the whole router. The planted bugs are behind
+# a run-time switch, so one build serves every run:
 #
-#   make build                 build the simulator (the first build takes about 2 minutes)
+#   make build                 build the simulator (the first build took 93 to 100 s on 2 CPUs)
 #   make run                   run router_rand_test on the golden router
 #   make cov                   merge every coverage.dat under build/runs and list the bins
 #   make check-all             router_rand_test on the golden router, B07 and B08

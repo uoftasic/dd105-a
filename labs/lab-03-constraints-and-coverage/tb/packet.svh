@@ -1,6 +1,6 @@
 // The input packet: a header and up to 11 more beats.
 //
-// From Lab 02, where nothing looked at what randomize() produced: the solver
+// As shipped, no constraint says what randomize() should produce: the solver
 // picks a length kind, and post_randomize() turns the kind into a length.
 // Part 2 measures what that gives, and Part 3 replaces it with constraints.
 

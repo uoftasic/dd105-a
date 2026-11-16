@@ -2,9 +2,10 @@
 
 Writeup: [`docs/labs/lab-03-constraints-and-coverage-overview.md`](../../docs/labs/lab-03-constraints-and-coverage-overview.md)
 
-The class testbench from Lab 02 on the packet router, with the router's planted bugs behind a
-run-time switch. You give it a covergroup, constrain its packet, and write the stimulus that
-reaches two coverage holes.
+A class testbench for the packet router. It's built from plain classes like Lab 02's, but it
+models the whole router cycle by cycle, and its sinks can stall. The router's planted bugs are
+behind a run-time switch. You give it a covergroup, constrain its packet, and write the stimulus
+that reaches two coverage holes.
 
 Run it in the course image, from this folder:
 

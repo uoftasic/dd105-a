@@ -9,9 +9,12 @@ Package: [`labs/lab-03-constraints-and-coverage/`](https://github.com/uoftasic/d
 
 ## Before you start
 
-- Finish Lab 02. The testbench in this lab is a class testbench of the kind you built there:
-  drivers and monitors that reach the pins through virtual interfaces, mailboxes, a reference model
-  and a scoreboard. The package ships our version of it, with three files for you to finish.
+- Finish [Lab 02](lab-02-a-class-testbench-without-uvm-overview.md). This lab's testbench is built
+  from plain classes in the same way as Lab 02's, with drivers and monitors that reach the pins
+  through virtual interfaces and mailboxes between them. Where Lab 02's scoreboard predicts
+  output 0, this one runs a model of the whole router cycle by cycle, both outputs, `irq` and the
+  registers included, and each output's sink can stall. The package ships it finished, except for
+  the three files you'll write in this lab.
 - Read [Constrained random on Verilator](../guide/constrained-random-on-verilator.md) and
   [Functional coverage you can read](../guide/functional-coverage-you-can-read.md).
 - Keep the [router specification](../reference/router-spec.md) open, and read its
