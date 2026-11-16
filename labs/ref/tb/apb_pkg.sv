@@ -45,8 +45,8 @@ package apb_pkg;
     endfunction
 
     virtual function string convert2string();
-      return $sformatf("%s %02h data %08h%s (cycles %0d-%0d)", write ? "WRITE" : "READ ",
-                       addr, write ? wdata : rdata, slverr ? " PSLVERR" : "",
+      return $sformatf("%s %02h data %08h%s (cycles %0d-%0d)", write ? string'("WRITE") : string'("READ "),
+                       addr, write ? wdata : rdata, slverr ? string'(" PSLVERR") : string'(""),
                        setup_cycle, end_cycle);
     endfunction
   endclass
@@ -119,7 +119,7 @@ package apb_pkg;
             now = IDLE;
           end else if (waited >= cfg.max_wait) begin
             `uvm_error("APB", $sformatf("no pready after %0d access cycles of %s at %02h",
-                       waited, t.write ? "a write" : "a read", t.addr))
+                       waited, t.write ? string'("a write") : string'("a read"), t.addr))
             t.rdata  = 32'h0;
             t.slverr = 1'b1;
             seq_item_port.item_done();

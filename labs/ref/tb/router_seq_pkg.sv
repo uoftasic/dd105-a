@@ -248,6 +248,23 @@ package router_seq_pkg;
       join
       drain();
 
+      // A disabled route whose PORT names a full output: NOROUTE, never FULL.
+      // ROUTE1 is disabled with PORT = 0 while output 0 holds 9 beats, and
+      // a FULL drop for DST 0 follows each one.
+      route(1, 0, 0);
+      wr(regs.drop_cnt, 0);
+      wr(regs.status, 3'b111);
+      stall(0, 1);
+      burst(0, 9, 1, 40);
+      for (int k = 0; k < 4; k++) begin
+        burst(1, 1, 3, 50 + k);
+        burst(0, 1, 1, 60 + k);
+      end
+      rd_(regs.drop_cnt);
+      rd_(regs.status);
+      route(1, 1, 1);
+      drain();
+
       // The same threshold on output 1, with random gaps and backpressure.
       sink(1, SNK_SLOW);
       send_rand(30, 4'b1010, 10, 0);
@@ -782,7 +799,7 @@ package router_seq_pkg;
       for (int ph = 0; ph < n_phases; ph++) begin
         bit do_reset = resets && ph > 0 && $urandom_range(99) < 35;
         `uvm_info("VSEQ", $sformatf("random phase %0d of %0d: %0d packets%s", ph + 1, n_phases, per,
-                  do_reset ? ", with a reset" : ""), UVM_LOW)
+                  do_reset ? string'(", with a reset") : string'("")), UVM_LOW)
         traffic_done = 0;
         fork
           begin

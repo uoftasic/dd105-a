@@ -25,9 +25,10 @@ package stream_pkg;
   // kind is drawn with randcase in pre_randomize(), from weights the
   // sequence can set; the solver then picks len from the kind's range. The
   // weighted choice isn't left to a dist constraint because this simulator's
-  // solver got the distribution wrong: with weights 20/50/20/10 on the kind,
-  // 1,000 draws of this class gave 90/534/365/11, and with an enum as the
-  // kind every one of 2,000 draws came out as the last value.
+  // solver gets it wrong when the selector's values are named: for weights
+  // 20/50/20/10, 1,000 draws gave 73/557/356/14 with the values as package
+  // localparams and 0/0/0/1000 with them as an enum. Literal values gave
+  // 206/492/201/101 and randcase 182/526/184/108 (labs/ref/probes/dist_weights.sv).
   localparam bit [1:0] LEN_ONE = 2'd0, LEN_MID = 2'd1, LEN_EIGHT = 2'd2, LEN_OVER = 2'd3;
 
   class stream_pkt extends uvm_sequence_item;
@@ -145,7 +146,7 @@ package stream_pkg;
     endfunction
     virtual function string convert2string();
       return $sformatf("%02h%s (offered from cycle %0d, taken in cycle %0d)", data,
-                       last ? " last" : "", first_cycle, cycle);
+                       last ? string'(" last") : string'(""), first_cycle, cycle);
     endfunction
   endclass
 
