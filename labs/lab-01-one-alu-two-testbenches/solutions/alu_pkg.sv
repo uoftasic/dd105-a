@@ -59,8 +59,10 @@ package alu_pkg;
       super.new(name);
     endfunction
 
+    // A plain %s for the name: on Verilator 5.050, a %-4s here made every
+    // %02h after it drop its leading zero.
     function string convert2string();
-      return $sformatf("%-4s A=%02h B=%02h -> ALUout=%02h N=%0b Z=%0b",
+      return $sformatf("%s A=%02h B=%02h -> ALUout=%02h N=%0b Z=%0b",
                        op.name(), A, B, ALUout, N, Z);
     endfunction
   endclass
