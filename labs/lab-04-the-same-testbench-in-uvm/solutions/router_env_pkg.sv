@@ -1,8 +1,8 @@
 // DD105-A Lab 04: the scoreboard, the coverage and the environment.
 //
 //   pkt_fate           what happened to one input packet, for the coverage
-//   router_scoreboard  Lab 03's scoreboard, fed by analysis ports
-//   router_coverage    Lab 03's covergroup, as a subscriber
+//   router_scoreboard  the scoreboard, fed by analysis ports
+//   router_coverage    the covergroup, as a subscriber
 //   router_env         makes the agents, the scoreboard and the coverage,
 //                      and connects them
 //
@@ -37,9 +37,9 @@ package router_env_pkg;
   `uvm_analysis_imp_decl(_apb)
 
   // ── the scoreboard ────────────────────────────────────────────────────────
-  // Lab 03's scoreboard. It used to take beats out of three mailboxes in a
-  // loop of its own; here each monitor calls one of the write_*() functions
-  // below as each beat moves, and the scoreboard has no thread at all.
+  // Lab 02's scoreboard took packets out of its mailboxes in a run() loop of
+  // its own; here each monitor calls one of the write_*() functions below as
+  // each beat moves, and the scoreboard has no thread at all.
   //
   // For every packet that comes in, it decides at the header what the router
   // must do with it (spec, Routing), using the routing table it has seen
@@ -206,7 +206,7 @@ package router_env_pkg;
   endclass
 
   // ── the coverage ──────────────────────────────────────────────────────────
-  // Lab 03's covergroup, as a subscriber to the scoreboard's fate_ap. It's
+  // Lab 03's coverage, as a subscriber to the scoreboard's fate_ap. It's
   // written `with function sample`, because this simulator drops a class's
   // covergroup that reads class members (Lab 03). `make cov` lists the bins.
   class router_coverage extends uvm_subscriber #(pkt_fate);

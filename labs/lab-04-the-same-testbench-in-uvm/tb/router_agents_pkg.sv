@@ -29,9 +29,9 @@ package router_agents_pkg;
   `include "uvm_macros.svh"
 
   // ── the packet ────────────────────────────────────────────────────────────
-  // Lab 03's packet as a sequence item. Its length kind is drawn with randcase
-  // in pre_randomize() rather than with a dist constraint, which this
-  // simulator's solver gets wrong (Lab 03); the solver then picks len from the
+  // The packet as a sequence item. Its length kind is drawn with randcase in
+  // pre_randomize(), as labs/ref does, because a dist on this simulator is
+  // right only with literal values; the solver then picks len from the
   // kind's range. Packets are 1 to 8 beats: nothing here is oversize.
   class router_pkt extends uvm_sequence_item;
     `uvm_object_utils(router_pkt)
@@ -49,7 +49,7 @@ package router_agents_pkg;
                         (kind == 2) -> len == 8; }
     constraint c_idle { idle inside {[0:3]}; }
     // Only to enabled routes. A packet for a disabled route is dropped, and
-    // Lab 03's random traffic never sent one.
+    // the random traffic before this lab never sent one.
     constraint c_dst  { ((route_en >> dst) & 4'h1) == 4'h1; }
 
     function new(string name = "router_pkt");
@@ -142,8 +142,8 @@ package router_agents_pkg;
   endclass
 
   // Lab 02's monitor, as a uvm_monitor: it writes each beat to an analysis
-  // port instead of putting it in a mailbox, so any number of subscribers
-  // can have it, and the monitor doesn't know who they are.
+  // port instead of putting packets in a mailbox, so any number of
+  // subscribers can have it, and the monitor doesn't know who they are.
   class src_monitor extends uvm_monitor;
     `uvm_component_utils(src_monitor)
     uvm_analysis_port #(stream_beat) ap;
@@ -295,7 +295,7 @@ package router_agents_pkg;
   endclass
 
   // ── the APB port ──────────────────────────────────────────────────────────
-  // Lab 02's register tasks, apb_write() and apb_read(), as an agent.
+  // Lab 02's apb_master, as an agent that can read as well as write.
   class apb_item extends uvm_sequence_item;
     `uvm_object_utils(apb_item)
     bit        write;
@@ -409,7 +409,7 @@ package router_agents_pkg;
   endclass
 
   // ── sequences ─────────────────────────────────────────────────────────────
-  // Lab 03's generator. Each packet is made through the factory
+  // Lab 02's generator. Each packet is made through the factory
   // (router_pkt::type_id::create), so a test can swap in a subclass of
   // router_pkt without touching this sequence.
   class router_rand_seq extends uvm_sequence #(router_pkt);

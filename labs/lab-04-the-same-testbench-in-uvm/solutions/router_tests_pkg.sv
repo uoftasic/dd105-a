@@ -23,10 +23,10 @@ package router_tests_pkg;
   `include "uvm_macros.svh"
 
   // ── the base test ─────────────────────────────────────────────────────────
-  // Lab 02's test module did three things in an initial block: build the
-  // environment, run the stimulus, and say whether it passed. Here
-  // build_phase builds, run_phase runs, and dd105_base_test turns any
-  // UVM_ERROR into a failing exit status.
+  // Lab 02's router_class_test did everything in run_phase: fetch the
+  // interfaces, build the environment and call env.run(). Here build_phase
+  // builds, run_phase runs, and dd105_base_test turns any UVM_ERROR into a
+  // failing exit status.
   class router_base_test extends dd105_base_test;
     `uvm_component_utils(router_base_test)
 
@@ -74,7 +74,7 @@ package router_tests_pkg;
     virtual task body();
     endtask
 
-    // Lab 02's apb_write() and apb_read(), as one-item sequences on the APB agent.
+    // Lab 02's apb_master.write(), and a read, as one-item sequences on the APB agent.
     task write_reg(bit [7:0] addr, bit [31:0] data);
       apb_rw_seq s = apb_rw_seq::type_id::create("wr");
       s.write = 1;
@@ -182,7 +182,7 @@ package router_tests_pkg;
       write_routes(en, port);
     endtask
 
-    // How ready each output is in phase k. In Lab 03 both always were.
+    // How ready each output is in phase k. Before this lab both always were.
     virtual function void set_sinks(int k);
       ocfg[0].ready_pct = 100;
       ocfg[1].ready_pct = 100;
