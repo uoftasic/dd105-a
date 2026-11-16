@@ -69,7 +69,7 @@ What does the starting testbench check, and does it catch this lab's two bugs?
    |---|---|
    | `stream_if.sv`, `apb_if.sv`, `router_tb_top.sv` | Lab 02's interfaces and top module, with the same code |
    | `monitor.svh`, `scoreboard.svh` | Lab 02's monitor and scoreboard: our solution, or yours |
-   | `driver.svh` | Lab 02's driver, sink and APB master, with two additions: `sink.stall`, which holds `out_ready` at 0 from the next rising edge while it's 1, and `apb_master.read()` |
+   | `driver.svh` | Lab 02's driver, sink and APB master, with two additions: `sink.stall`, which holds `out_ready` at 0, from the next rising edge on, for as long as `stall` is 1, and `apb_master.read()` |
    | `packet.svh` | Lab 02's `packet` and `router_cfg`, and a new `rand_packet`, whose DST (`hdr_dst`) and length kind (`kind`) come from `randomize()`. Its constraint `c_dst` keeps a packet on an enabled route. Part 3 adds the rest. `router_cfg` still reads `+N`, `+ROUTES` and `+SHOW`, but not Lab 02's `+DSTS` or `+LEN`, because the constraints now choose the DST and the length. |
    | `generator.svh` | randomizes `rand_packet`s, where Lab 02's generator called `$urandom` |
    | `tracker.svh` | new: follows output 0's level and decides each packet's fate |
@@ -304,9 +304,10 @@ What does `router_rand_test` actually send the router, and where does it never g
    `out1_x_at_8`. And three could be hit on the router, but no test in this lab makes a FULL drop
    (Part 4 says why): `cp_fate.full`, `full_x_at_9` and `full_x_high`. That leaves 29 of 41.
 
-   That's also why you read the bins rather than the percentage. Verilator's 46.3% is hit bins
-   over all bins, crosses included. The standard's formula averages the five items instead (100,
-   100, 50, 40 and 15%), which gives 61%. To see which bins matter, read the list.
+   Bins that this lab can't hit still count in the percentage, which is why you read the list of
+   bins rather than the percentage. Verilator's 46.3% is hit bins over all bins, crosses
+   included. The standard's formula averages the five items instead (100, 100, 50, 40 and 15%),
+   which gives 61%.
 
    </details>
 
@@ -432,8 +433,8 @@ it?
 
    The standard makes each of the six equally likely, about 68 each. This simulator's solver
    favours some of them, as line 4 of the experiments also showed. A constraint says which values
-   are allowed, and on this simulator it doesn't promise how often each one comes, so you count
-   them in the coverage.
+   are allowed, but on this simulator you can't rely on it for how often each one comes, so you
+   count them in the coverage.
 
    </details>
 
