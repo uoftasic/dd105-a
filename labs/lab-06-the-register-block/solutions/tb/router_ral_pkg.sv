@@ -17,8 +17,8 @@
 //
 // The adapter turns register operations into apb_items and back; PSLVERR
 // becomes UVM_NOT_OK. Prediction is explicit: a uvm_reg_predictor (in the
-// environment) updates the model from every transfer the APB monitor sees,
-// whoever started it.
+// environment) updates the model from every transfer the APB driver finishes
+// (its done_ap), whoever started it.
 //
 // CTRL, STATUS, INT_EN and DROP_CNT also have HDL paths, for the back door:
 // router_backdoor_test reads and writes them through uvm_hdl, which reaches
