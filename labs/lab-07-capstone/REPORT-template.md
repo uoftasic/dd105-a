@@ -1,10 +1,10 @@
 # Verification report: the packet router
 
 <!--
-  DD105-A Lab 07. Copy this file to REPORT.md and fill it in; Part 8 of the
-  lab says how. Every number in it comes from a run you did: paste the line
-  the tool printed, not your summary of it. Delete these comments when
-  you're done.
+  DD105-A Lab 07. Part 4 of the lab copies this file to REPORT.md and fills
+  in the hunt table; Part 8 fills in the rest. Every number in it comes from
+  a run you did: paste the line the tool printed, not your summary of it.
+  Delete these comments when you're done.
 -->
 
 Author: _your name_  

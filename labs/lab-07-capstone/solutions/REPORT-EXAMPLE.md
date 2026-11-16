@@ -52,7 +52,7 @@ either; for each of them the plan names the sequence that makes it happen instea
 ```
 
 The simulator it used was built in 31 s with a warm ccache; the first build of the lab, with an
-empty one, took 142 s.
+empty one, took 135 s.
 
 ## 5. Coverage
 

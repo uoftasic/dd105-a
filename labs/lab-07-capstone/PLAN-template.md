@@ -57,7 +57,7 @@ The first rows are filled in as examples.
 
 | Id | The rule | Checked by | Made to happen by | Seen in coverage | Status |
 |---|---|---|---|---|---|
-| O1 | `out_valid` holds until the handshake | | | | |
+| O1 | `out_valid` holds until the handshake | `a_O1` on each output | every stalled or slow sink | `cg_wait.x_port_wait`: `long_wait` and `stalled` on both outputs | done |
 | O2 | `out_data` and `out_last` hold while the beat waits | | | | |
 | O3 | the outputs don't depend on `out_ready` or any other input in the same cycle | | | | |
 | O4 | `out_valid` is 0 during reset, and stays 0 until a beat accepted after it arrives | | | | |
