@@ -40,8 +40,8 @@ random choice in every thread comes out the same, so a run that failed can be re
 
 ## One more random call
 
-"The same simulator" in that paragraph means the same build of the same code, and it matters more
-than it looks. Each of these runs adds one thing to thread A before it draws, on seed 1:
+"The same simulator" in that paragraph means the same build of the same code. To see why, each of
+these runs adds one thing to thread A before it draws, all on seed 1:
 
 | Plusarg | What thread A does first | Thread A's values | Thread B's values |
 |---|---|---|---|
@@ -63,10 +63,10 @@ So on this simulator, one more random call, or one more sequence, anywhere in a 
 random choices made after it everywhere else, in other threads as well as its own.
 
 In Lab 06, Part 1 you'll see this happen to `router_test`, and be asked why. Lab 07 puts its new
-sequence at the end of `router_test` for this reason, and checked that everything before it then
-ran number for number as in Lab 06.
+sequence at the end of `router_test` for this reason, and we checked that with that sequence left
+out, Lab 07's `router_test` printed Lab 06's lines number for number.
 
-Three habits follow from it:
+Three habits follow from this:
 
 - Compare two runs on the same seed only when the code is the same. A seed is a name for a run of
   one build, not for a set of values.
@@ -145,15 +145,16 @@ and listed eleven coverage bins never hit, four of which a correct router can re
 beats in a buffer, a reset in the middle of an input packet, and a drop while each counter is at 255.
 No test in that package resets the router after time 0, so no number of seeds would hit the two
 reset bins, and nothing in it sets out to drive a counter to 255 (every phase of
-`router_inject_test` clears the counters). A hundred and ten passes say that no check fired in 110 runs. They say nothing about situations none
-of those runs produced, and one of the fifteen planted bugs lives in exactly such a situation.
+`router_inject_test` clears the counters). A hundred and ten passes say that no check fired in 110
+runs. They say nothing about situations that none of those runs produced, and one of the fifteen
+planted bugs shows only in such a situation.
 [Verification plans and sign-off](verification-plans-and-sign-off.md) is about finding those
 situations before a regression tells you everything is fine.
 
-A regression is only as cheap as one build. The 110 runs all used the simulator that `make build`
-made once, and on 2 CPUs the whole regression took 3 min 52 s, about two seconds a run, against a
-build of about two minutes. That's why the course picks tests, seeds and bugs with plusargs at run
-time rather than with anything that needs a rebuild.
+The 110 runs all used the simulator that `make build` made once. On 2 CPUs the whole regression
+took 3 min 52 s, about two seconds a run, against about two minutes for the build, which is why the
+course picks tests, seeds and bugs with plusargs at run time rather than with anything that needs a
+rebuild.
 
 ## Check yourself
 
