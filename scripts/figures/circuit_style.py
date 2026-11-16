@@ -1,18 +1,21 @@
-"""Shared look for the course's circuit drawings (schemdraw, textbook style).
+"""Shared look for the course's drawings (schemdraw, textbook style). From DD104.
 
 Every figure script imports this, draws with schemdraw, and calls save(), which
 writes an SVG into docs/assets/img/ with a white background, so the drawing reads
 the same on the light and dark site themes and in the PDFs.
 
-The course image has the versions in requirements.txt (schemdraw 0.23 and
-matplotlib 3.11.1), so run the scripts there, from the top of the clone:
-
+    pip install -r scripts/figures/requirements.txt
     python3 scripts/figures/<figure>.py
 
-With those versions, rerunning a script reproduces its committed SVG byte for
-byte: save() fixes the SVG id salt and leaves out the date matplotlib would
-otherwise stamp in. (Another matplotlib version draws the same figure with
-slightly different SVG.) Elsewhere, pip install -r scripts/figures/requirements.txt.
+FIG_PREVIEW=<folder> also writes a PNG of each figure there, to look at
+while you work on it; the PNGs aren't used by the site.
+
+With the versions pinned in requirements.txt, rerunning a script reproduces its
+committed SVG byte for byte: save() fixes the SVG id salt and leaves out the date
+matplotlib would otherwise stamp in. (Another matplotlib version draws the same
+figure with slightly different SVG.) router_block.py is the exception: its SVG
+was drawn in the course image, which has matplotlib 3.11.1, so rerun that one
+in the image, from the top of the clone, to reproduce it.
 Labels may contain "&" (for example "P&R"); schemdraw 0.23 would otherwise fail
 to measure them.
 """
@@ -52,4 +55,9 @@ def save(d, name):
     fig.fig.savefig(path, format="svg", transparent=False, dpi=150, bbox_inches="tight",
                     bbox_extra_artists=fig.ax.get_default_bbox_extra_artists(), pad_inches=0,
                     metadata={"Date": None})
+    preview = os.environ.get("FIG_PREVIEW")
+    if preview:
+        fig.fig.savefig(os.path.join(preview, name + ".png"), format="png", transparent=False,
+                        dpi=110, bbox_inches="tight",
+                        bbox_extra_artists=fig.ax.get_default_bbox_extra_artists(), pad_inches=0)
     return path
