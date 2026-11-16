@@ -375,8 +375,11 @@ it?
       failures.
    4. With `solve big before len`, the standard decides `big` first, at 50/50, so about 500.
       Without it, each of the 8 solutions is equally likely and `big` is 1 in 8, about 125. Here
-      they gave 33 and 41: `solve...before` is ignored, and the solver doesn't choose evenly among
-      the solutions either.
+      they gave 33 and 41, so in this experiment `solve...before` didn't move `big` toward 500, and
+      the solver doesn't choose evenly among the solutions either.
+      [Constrained random on Verilator](../guide/constrained-random-on-verilator.md) tries a
+      different shape, in which `solve...before` did change how often the variable it names first
+      came out, though not to the standard's numbers.
    5. Both should work. `sum()` on a dynamic array can't be solved here and fails every time; on a
       fixed-size array it works.
    6. Neither should repeat a value. `unique` on an array isn't enforced: 315 of 1000 is about the
