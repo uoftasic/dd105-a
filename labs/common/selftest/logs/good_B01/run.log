@@ -1,0 +1,45 @@
+DD105-BUG: B01 enabled
+UVM_INFO third_party/uvm/src/base/uvm_root.svh(457) @ 0: reporter [UVM/RELNOTES] 
+  ***********       IMPORTANT RELEASE NOTES         ************
+
+  This implementation of the UVM Library deviates from the 1800.2-2020
+  standard.  See the DEVIATIONS.md file contained in the release
+  for more details.
+
+----------------------------------------------------------------
+Accellera:1800.2:UVM:2020.3.2
+
+All copyright owners for this kit are listed in NOTICE.txt
+All Rights Reserved Worldwide
+----------------------------------------------------------------
+
+      (Specify +UVM_NO_RELNOTES to turn off this notice)
+
+UVM_INFO @ 0: reporter [RNTST] Running test st_good_test...
+UVM_ERROR labs/common/selftest/alu/tb/st_pkg.sv(136) @ 155: uvm_test_top.env.sb [SB] MISMATCH SUB a=e2 b=e2 -> r=00 c=1, expected r=00 c=0
+UVM_ERROR labs/common/selftest/alu/tb/st_pkg.sv(136) @ 605: uvm_test_top.env.sb [SB] MISMATCH SUB a=5b b=5b -> r=00 c=1, expected r=00 c=0
+UVM_ERROR labs/common/selftest/alu/tb/st_pkg.sv(136) @ 1085: uvm_test_top.env.sb [SB] MISMATCH SUB a=ff b=ff -> r=00 c=1, expected r=00 c=0
+UVM_ERROR labs/common/selftest/alu/tb/st_pkg.sv(136) @ 1875: uvm_test_top.env.sb [SB] MISMATCH SUB a=c3 b=c3 -> r=00 c=1, expected r=00 c=0
+UVM_ERROR labs/common/selftest/alu/tb/st_pkg.sv(136) @ 2035: uvm_test_top.env.sb [SB] MISMATCH SUB a=8d b=8d -> r=00 c=1, expected r=00 c=0
+UVM_ERROR labs/common/selftest/alu/tb/st_pkg.sv(136) @ 2435: uvm_test_top.env.sb [SB] MISMATCH SUB a=64 b=64 -> r=00 c=1, expected r=00 c=0
+UVM_ERROR labs/common/selftest/alu/tb/st_pkg.sv(136) @ 2525: uvm_test_top.env.sb [SB] MISMATCH SUB a=13 b=13 -> r=00 c=1, expected r=00 c=0
+UVM_ERROR labs/common/selftest/alu/tb/st_pkg.sv(136) @ 2905: uvm_test_top.env.sb [SB] MISMATCH SUB a=57 b=57 -> r=00 c=1, expected r=00 c=0
+UVM_ERROR labs/common/selftest/alu/tb/st_pkg.sv(136) @ 3055: uvm_test_top.env.sb [SB] MISMATCH SUB a=c0 b=c0 -> r=00 c=1, expected r=00 c=0
+UVM_INFO labs/common/selftest/alu/tb/st_pkg.sv(140) @ 3065: uvm_test_top.env.sb [SB] checked 300 transactions: 291 ok, 9 mismatches
+UVM_INFO third_party/uvm/src/base/uvm_report_server.svh(1009) @ 3065: reporter [UVM/REPORT/SERVER] 
+--- UVM Report Summary ---
+
+** Report counts by severity
+UVM_INFO :    3
+UVM_WARNING :    0
+UVM_ERROR :    9
+UVM_FATAL :    0
+** Report counts by id
+[RNTST]     1
+[SB]    10
+[UVM/RELNOTES]     1
+
+DD105: TEST FAILED (9 UVM_ERROR, 0 UVM_FATAL)
+[3065] %Fatal: dd105_pkg.sv:89: Assertion failed in dd105_pkg.dd105_base_test.m_end_of_test: DD105: UVM counted errors, so the exit status is nonzero
+%Error: labs/common/uvm/dd105_pkg.sv:89: Verilog $stop
+Aborting...
