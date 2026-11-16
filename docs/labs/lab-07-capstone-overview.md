@@ -78,8 +78,9 @@ is writing: the plan, two sequences, eight assertions and the report.
    stays here in the course clone while you work on it, because it builds only from inside
    `labs/`, and Part 8 copies it across.
 
-4. When the build has finished, run the default test, `router_all_test`. It runs every directed
-   sequence in turn and then four phases of random traffic:
+4. When the build has finished, run the default test, `router_all_test`. It runs the directed
+   sequences that `router_all_vseq` lists, one after another, and then four phases of random
+   traffic:
 
    ```bash
    make run
@@ -130,7 +131,8 @@ happen?
    grep "expected beats are lost" build/runs/router_all_test-s1/run.log
    ```
 
-   You should see eight lines, which start:
+   You should see eight lines, one for each reset after the one at time 0, which has no line
+   because the scoreboard starts out in reset. They start:
 
    ```text
    UVM_INFO labs/lab-07-capstone/tb/router_env_pkg.sv(549) @ 4925000: uvm_test_top.env.sb [SB] reset from cycle 492: 0 expected beats are lost
@@ -234,7 +236,8 @@ Can you tell which rule a design breaks from your environment's log alone?
    ```
 
    `make new` seals one of the fifteen bugs in `.hunt` without telling you which, and `make hunt`
-   runs the graded test with that bug switched on, which takes about 6 s. On one of our deals, the
+   runs the graded test with that bug switched on, which takes about 6 s, or less for a bug that
+   piles up 50 UVM_ERRORs early, because UVM stops a run at its 50th. On one of our deals, the
    hunt printed:
 
    ```text
@@ -244,10 +247,15 @@ Can you tell which rule a design breaks from your environment's log alone?
            UVM_ERROR [SB] irq is 1 from cycle 5539, but STATUS = 001 and INT_EN = 000 make it 0
    ```
 
-2. Copy `REPORT-template.md` into your repository as `REPORT.md`. Before you ask for a verdict,
-   fill in the first three columns of its hunt table: the first check that fired, copied from the
-   hunt, and your diagnosis, which is the rule the router broke and the file in
-   `labs/common/rtl/` you'd look in. The specification's
+2. Copy `REPORT-template.md` into your repository as `REPORT.md`:
+
+   ```bash
+   cp REPORT-template.md /foss/designs/projects/dd105-capstone/REPORT.md
+   ```
+
+   Before you ask for a verdict, fill in the first three columns of its hunt table: the first
+   check that fired, copied from the hunt, and your diagnosis, which is the rule the router broke
+   and the file in `labs/common/rtl/` you'd look in. The specification's
    [Building the router](../reference/router-spec.md#building-the-router) section says what each
    file holds, and in the log from `make hunt VERBOSE=1` the `[VSEQ] starting ...` lines say which
    sequence was running when the first error came. What would you write for the hunt above?
@@ -283,6 +291,7 @@ Can you tell which rule a design breaks from your environment's log alone?
     VERDICT: PASS
       The bug was B02_irq_ignores_int_en.
       It hides behind: turning on every interrupt enable before looking at irq
+      It teaches: an enable is a mask, and a mask has to be tested off as well as on
    ```
 
    Fill in the last two columns of the row.
@@ -500,8 +509,9 @@ add?
    surfer build/runs/router_reset_test-s1-B15/waves.fst &
    ```
 
-   Add `rst_n` from `sys`, `valid`, `ready` and `data` from `in_s` and `out0`, `level0` from
-   `dut`, and `n_O4_rst` and `n_O4_after` from `dut.u_sva.u_out0`, and look at 240 to 380 ns:
+   Add `clk` from `router_tb_top`, `rst_n` from `sys`, `valid`, `ready` and `data` from `in_s` and
+   `out0`, `level0` from `dut`, and `n_O4_rst` and `n_O4_after` from `dut.u_sva.u_out0`, and look
+   at 240 to 380 ns:
 
    ![The E8 reset on the golden router, in Surfer](../assets/img/lab-07-e8-reset-golden.png)
 
@@ -542,10 +552,11 @@ Can someone else check your claim without redoing your work?
    cp Makefile $R/ && cp tb/*.sv $R/tb/ && cp results/*.txt $R/results/
    cd $R
    git add -A && git commit -m "The capstone environment, its results and the report" && git push
+   cd -
    ```
 
-   The copy is safe to repeat, so run it again whenever you change a file and want the
-   repository to have it.
+   The last line takes you back to the lab folder. The copy is safe to repeat from there, so run
+   the block again whenever you change a file and want the repository to have it.
 
 3. Open the repository on GitHub, and check that a reader who has only that page could find the
    command behind every number in your report.
