@@ -8,8 +8,8 @@ that lab's bugs, B10, but the first thing it prints is
 `[OUT] output 0: got 04 in cycle 56, expected 03`. That's the first wrong beat a sink *took*. The
 scoreboard sees only the beats that are taken, so it can't notice a beat going wrong while the
 beat waits on a stalled output, and Part 1 of the lab has you work out how many cycles earlier the
-router broke its rule. A check that watches the pins themselves fires in the cycle the rule breaks,
-and its message can say which rule it was. That check is a SystemVerilog **concurrent assertion**,
+router broke its rule. A check that watches the pins themselves fires in the cycle in which the
+rule is broken, and its message can say which rule it was. That check is a SystemVerilog **concurrent assertion**,
 and in [Lab 05, Part 2](../labs/lab-05-protocol-rules-and-backpressure-overview.md#part-2-assertions-for-the-output-rules)
 you'll write three of them for the router's outputs and bind them into the router.
 
@@ -72,7 +72,7 @@ of the first kind, because it's about the beat in the cycle of its own handshake
 `disable iff (!rst_n)` switches the property off while `rst_n` is 0, and abandons any attempt that
 was waiting for its next cycle when the reset came. The router specification explains why every
 rule about normal operation needs it: a reset ends a handshake without one, and the router lowers
-`out_valid` at once, which is exactly what S1 and O1 forbid. Rules about what happens *during* a
+`out_valid` at once, which is what S1 and O1 forbid. Rules about what happens *during* a
 reset are the other way round, and you'll write those without `disable iff` in Lab 07.
 
 ## Binding the checker into the design
@@ -143,8 +143,8 @@ Makefile passes 1000, so the same bug gives every failure:
 UVM_ERROR guide-examples/assertions-for-interface-rules/stage_tb.sv(79) @ 2025000: uvm_test_top [SVA] the bound assertions counted 4 failures
 ```
 
-The `-Info` line appears once, after the first failure. The limit you set is still a limit, so a run
-stops at the error that reaches it, again before UVM's summary, so the labs use a number no run
+The `-Info` line appears once, after the first failure. A raised limit still stops the run at the
+error that reaches it, again before UVM's summary, which is why the labs use a number that no run
 will reach.
 
 The `UVM_ERROR` on the last line is there because our test puts it there. UVM's report server
@@ -155,7 +155,7 @@ assertions needs something that turns their failures into a `UVM_ERROR` before t
 the labs, the top module passes `dut.u_sva.n_fail` to the scoreboard, which reports it as an
 `[SVA]` error at the end of the test if it isn't 0.
 
-## An assertion checks only what happens
+## When the antecedent never holds {#an-assertion-checks-only-what-happens}
 
 Here is the same buggy stage again, with the sink ready in every cycle
 (`+READY_PCT=100`):
@@ -189,8 +189,9 @@ in the labs the evidence that a rule was exercised comes from covergroups such a
 
 Rules about one or two cycles at a time are what assertions do best: I1, I2, O1, O2 and, as the
 specification says, most of its other rules each become a short property like S1. They name the
-rule, they fire in the cycle it breaks, and they need no model of the design, so they keep working
-in any testbench that binds the file. The specification's Valid/ready rules section points out the ones that need more:
+rule, they fire in the cycle in which it's broken, and they need no model of the design, so they
+keep working in any testbench that binds the file. The specification's Valid/ready rules section
+lists the rules that need more than a short property:
 
 - O5, O6 and O8 need state kept for each output (the order of the beats, how many beats the
   current packet has had, and when each beat went in). They belong in the scoreboard, or in an
