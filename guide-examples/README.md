@@ -18,6 +18,13 @@ On 2 CPUs, the first build of one of the six examples from `constrained-random-o
 `make clean` with the ccache warm. The first builds of the five from
 `assertions-for-interface-rules` on took 1.5 to 2 minutes. A run takes under two seconds.
 
+## Building every example
+
+`make -C guide-examples`, run from the top of the clone, runs `make build` in each of the fifteen
+folders in turn, in the order of the sections below, and `make -C guide-examples clean` runs
+`make clean` in each. The folders build one after another because each build already uses both
+CPUs.
+
 ## Getting started and What a framework buys you
 
 These two pages have no examples of their own. *What a framework buys you* quotes Lab 01's
