@@ -7,7 +7,6 @@ table below says which of its checks catches which bug. It is not part of any la
 |---|---|
 | `tb_directed.sv` | The thorough directed test: a reference model written from the spec, the valid/ready and APB rule checkers, and 19 directed checks. No classes, no UVM. |
 | `run_catalogue.py` | Checks the catalogue end to end and prints the table below. |
-| `tb_examples.sv` | Runs the timing examples in the spec and prints them as tables. |
 
 ## Running it
 
@@ -16,7 +15,6 @@ In the course image, from `labs/common/smoke`:
 ```bash
 make TB_SRC=../solutions/tb_directed.sv                  # golden RTL
 make TB_SRC=../solutions/tb_directed.sv faulty BUG=B07   # faulty build, bug B07
-make TB_SRC=../solutions/tb_examples.sv                  # the spec's timing tables
 python3 ../solutions/run_catalogue.py                    # everything below, about 47 s
 ```
 
@@ -31,7 +29,9 @@ on the faulty build, then requires all of this:
 ## The checks
 
 Every check starts with a reset. The model and the rule checkers run during all of them, so a check
-can fail on something it wasn't aimed at.
+can fail on something it wasn't aimed at. Every cycle, the model predicts `in_ready`, `irq`, `pready`,
+`pslverr`, `prdata`, and each output's `out_valid`, `out_data` and `out_last` from the timing rule O8
+in the spec, and compares them with the router.
 
 | Check | What it drives |
 |---|---|
@@ -66,14 +66,14 @@ prints with that bug switched on.
 | B02 | registers | C05, C06, C07, C08, C09, C10, C11, C12, C14, C15, C17 | C05: `irq is 1, expected 0 (STATUS 0x1, INT_EN 0x0)` |
 | B03 | registers | C02 | C02: `read of 0x2c returned 0x00000002, expected 0x00000001` |
 | B04 | registers | C03 | C03: `PSLVERR is 0 for a read to 0x01, expected 1` |
-| B05 | routing | C04, C05, C06, C08, C10, C11, C12, C13, C14, C15, C16, C17, C18 | C04: `output 1 delivered 0x22 last=1, expected 0x52 last=1` |
-| B06 | routing | C05, C06, C07, C08, C09, C12, C17 | C05: `output 1 delivered 0x4a last=0, and no beat was expected` |
+| B05 | routing | C04, C05, C06, C08, C10, C11, C12, C13, C14, C15, C16, C17, C18 | C04: `out0_valid is 0, expected 1` |
+| B06 | routing | C05, C06, C07, C08, C09, C12, C17 | C05: `out1_valid is 1, expected 0` |
 | B07 | routing | C11 | C11: `read of 0x10 returned 0x00000101, expected 0x00000001` |
-| B08 | buffer corners | C06, C08, C10, C11, C14, C15 | C06: `1 expected beats never came out of output 0` |
-| B09 | buffer corners | C04, C05, C10, C12, C13, C14, C15 | C04: `output 0 delivered 0x22 last=1, expected 0x31 last=1` |
-| B10 | protocol | C06, C08, C10, C11, C14, C15, C18 | C06: `output 0 changed from 0x07/1 to 0x26/1 while stalled` |
-| B11 | protocol | C08, C09, C12 | C08: `output 0 delivered 0xc5 last=0, expected 0xc5 last=1` |
-| B12 | backpressure | C10, C14, C15 | C10: `output 1 delivered 0x62 last=0, expected 0x10 last=0` |
+| B08 | buffer corners | C06, C08, C10, C11, C14, C15 | C06: `out0_valid is 0, expected 1` |
+| B09 | buffer corners | C04, C05, C10, C12, C13, C14, C15 | C04: `output 0 shows 0x22 last=1, expected 0x31 last=1` |
+| B10 | protocol | C06, C08, C10, C11, C14, C15, C18 | C06: `output 0 shows 0x26 last=1, expected 0x07 last=1` |
+| B11 | protocol | C08, C09, C12 | C08: `output 0 shows 0xc5 last=0, expected 0xc5 last=1` |
+| B12 | backpressure | C10, C14, C15 | C10: `output 1 shows 0x62 last=0, expected 0x10 last=0` |
 | B13 | backpressure | C06, C08, C10, C11, C14, C15 | C06: `read of 0x10 returned 0x00000000, expected 0x0000ff00` |
 | B14 | reset | every check, C01 to C19 | before C01: `in_ready is high while rst_n is low` |
 | B15 | reset | C18 | C18: `out0_valid is high while rst_n is low` |

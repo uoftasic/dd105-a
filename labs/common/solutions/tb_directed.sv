@@ -143,6 +143,9 @@ module tb_directed;
   int         m_beat;                  // beats of this packet accepted so far
   int         m_level[2];
   bit [8:0]   exp_q[2][$];             // {last, data} still to come out of each output
+  longint     exp_t[2][$];             // the cycle of each of those beats' input handshake
+  longint     h_prev[2];               // the cycle of the latest handshake on each output
+  logic [31:0] m_prdata;               // what prdata holds (rule A8)
 
   // APB transfer tracking.
   int         apb_n;                   // access-phase cycles already done in this transfer
@@ -200,6 +203,9 @@ module tb_directed;
     m_ren = 0; m_rport = 0; m_state = 0; m_port = 0; m_beat = 0;
     m_level[0] = 0; m_level[1] = 0;
     exp_q[0].delete(); exp_q[1].delete();
+    exp_t[0].delete(); exp_t[1].delete();
+    h_prev[0] = -100; h_prev[1] = -100;
+    m_prdata = 0;
     apb_n = 0;
   endtask
 
@@ -211,6 +217,8 @@ module tb_directed;
     bit [1:0] dst;
     bit       push[2], pop[2];
     int       next_state;
+    bit       exp_valid;
+    logic [31:0] prdata_next;
 
     cyc++;
 
@@ -233,11 +241,16 @@ module tb_directed;
       // ---- APB: A5 to A9 ---------------------------------------------------------
       access   = psel && penable;
       wr_good  = 0;
+      // A8, outside a completing read (that case is checked below).
+      if (!(access && pready && !pwrite) && prdata != m_prdata)
+        fail($sformatf("prdata is 0x%08h between reads, expected 0x%08h", prdata, m_prdata));
+      prdata_next = m_prdata;
       if (access) begin
         exp_pready = pwrite || (apb_n >= 1);
         if (!pwrite && apb_n == 0) begin
-          rd_exp     = m_read(paddr);
-          rd_exp_bad = m_bad(paddr);
+          rd_exp      = m_read(paddr);
+          rd_exp_bad  = m_bad(paddr);
+          prdata_next = rd_exp_bad ? 32'h0 : rd_exp;
         end
         if (pready != exp_pready)
           fail($sformatf("PREADY is %0b in access cycle %0d of a %s to 0x%02h, expected %0b",
@@ -308,7 +321,18 @@ module tb_directed;
       // ---- Output beats: O5 and O6, then O1 and O2 -----------------------------------
       for (int p = 0; p < 2; p++) begin
         if (o_valid[p] && !p_valid[p] && p_rst_n) t_rise[p] = cyc;
+        // O8: the oldest undelivered beat is on the output from cycle
+        // max(t_in + 2, h_prev + 1) until it is taken, and out_valid is 0
+        // in every other cycle.
+        exp_valid = exp_q[p].size() != 0 &&
+                    cyc >= ((exp_t[p][0] + 2 > h_prev[p] + 1) ? exp_t[p][0] + 2 : h_prev[p] + 1);
+        if (o_valid[p] != exp_valid)
+          fail($sformatf("out%0d_valid is %0b, expected %0b", p, o_valid[p], exp_valid));
+        else if (exp_valid && {o_last[p], o_data[p]} != exp_q[p][0])
+          fail($sformatf("output %0d shows 0x%02h last=%0b, expected 0x%02h last=%0b",
+                         p, o_data[p], o_last[p], exp_q[p][0][7:0], exp_q[p][0][8]));
         pop[p] = o_valid[p] && o_ready[p];
+        if (pop[p]) h_prev[p] = cyc;
         if (pop[p]) begin
           n_out[p]++;
           if (exp_q[p].size() == 0) begin
@@ -317,6 +341,7 @@ module tb_directed;
           end else begin
             bit [8:0] want;
             want = exp_q[p].pop_front();
+            void'(exp_t[p].pop_front());
             m_beats++;
             if ({o_last[p], o_data[p]} != want)
               fail($sformatf("output %0d delivered 0x%02h last=%0b, expected 0x%02h last=%0b",
@@ -342,7 +367,10 @@ module tb_directed;
       // The beat accepted at this edge joins its queue after the outputs are
       // checked: it can't leave at the edge it arrived.
       for (int p = 0; p < 2; p++) begin
-        if (push[p]) exp_q[p].push_back({last_out, in_data});
+        if (push[p]) begin
+          exp_q[p].push_back({last_out, in_data});
+          exp_t[p].push_back(cyc);
+        end
         m_level[p] += int'(push[p]) - int'(pop[p]);
       end
 
@@ -362,6 +390,7 @@ module tb_directed;
           default:    ;
         endcase
       end
+      m_prdata   = prdata_next;
       m_status   = (m_status & ~w1c) | ev;
       m_cnt_nr   = bump(m_cnt_nr,   ev[0], clr);
       m_cnt_full = bump(m_cnt_full, ev[1], clr);
