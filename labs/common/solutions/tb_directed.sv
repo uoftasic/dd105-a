@@ -10,8 +10,8 @@
 //   - a reference model, written from the spec, that predicts every beat on
 //     both outputs, every register read, in_ready, PREADY, PSLVERR and irq,
 //     cycle by cycle, and complains the moment the router disagrees;
-//   - protocol checkers for the valid/ready rules (spec rules S1 to S9) and
-//     the APB rules (A1 to A7);
+//   - checkers for the spec's valid/ready and APB rules (I5 to I7, O1, O2,
+//     O4 to O6 and A5 to A9), every cycle;
 //   - nineteen directed checks, C01 to C19. Each one starts from a reset,
 //     drives one feature, and also compares a few results with numbers
 //     written out by hand, so a mistake shared by the model and the RTL
@@ -214,7 +214,7 @@ module tb_directed;
 
     cyc++;
 
-    // ---- S8, A7: during reset -------------------------------------------------
+    // ---- I7, O4: during reset -------------------------------------------------
     if (!rst_n) begin
       model_reset();
       if (in_ready)   fail("in_ready is high while rst_n is low");
@@ -230,7 +230,7 @@ module tb_directed;
         fail($sformatf("irq is %0b, expected %0b (STATUS 0x%0h, INT_EN 0x%0h)",
                        irq, |(m_status & m_inten), m_status, m_inten));
 
-      // ---- APB: A1 to A6 ---------------------------------------------------------
+      // ---- APB: A5 to A9 ---------------------------------------------------------
       access   = psel && penable;
       wr_good  = 0;
       if (access) begin
@@ -305,7 +305,7 @@ module tb_directed;
       end
       m_state = next_state;
 
-      // ---- Output beats: compare, then S1 to S5 -----------------------------------
+      // ---- Output beats: O5 and O6, then O1 and O2 -----------------------------------
       for (int p = 0; p < 2; p++) begin
         if (o_valid[p] && !p_valid[p] && p_rst_n) t_rise[p] = cyc;
         pop[p] = o_valid[p] && o_ready[p];
@@ -329,7 +329,7 @@ module tb_directed;
             n_pkt_out[p]++;
           end
         end
-        // S1, S2: a stalled beat stays, unchanged, until it is taken.
+        // O1, O2: a stalled beat stays, unchanged, until it is taken.
         if (p_rst_n && p_valid[p] && !p_ready[p]) begin
           if (!o_valid[p])
             fail($sformatf("out%0d_valid fell without a handshake", p));
