@@ -158,8 +158,8 @@ What goes into the router, and what comes out of output 0, packet by packet?
    with `#1step`, so after `@(vif.cb)` returns at a rising edge, `vif.cb.valid` is the value
    `valid` had just before that edge: its value in the cycle that the edge ends. The type is
    written out in full, `virtual stream_mon_if`, and never through a `typedef`, because on
-   Verilator 5.050 a class in a package that reaches an interface through a typedef of its
-   virtual interface type reads 0 from every clocking-block input, with no warning.
+   Verilator 5.050, when a class in a package reaches an interface through a typedef of its
+   virtual interface type, the class reads 0 from every clocking-block input, with no warning.
 
 2. Here is the router taking one packet and delivering it on output 0, on the golden router:
 
@@ -260,8 +260,8 @@ Which packets should come out of output 0, and did they?
      calling `predict()`, the other taking packets from `from_out0` and calling `check()`.
    - `predict()`: push the packet onto `expected` if it will come out of output 0.
    - `check()`: compare what came out with the oldest packet in `expected`, using `packet::same()`.
-   - `report()`: whatever is still in `expected` never came out, and a test that checked no
-     packets checked nothing. Both are errors.
+   - `report()`: report an error for each packet still in `expected`, because it never came out,
+     and one more if the test checked no packets at all.
 
    Report each error with `$error`, which takes a format string like `$display`, and count it:
 
@@ -309,8 +309,8 @@ Which packets should come out of output 0, and did they?
    ```
 
    The grader counts each `$error` as an assertion, because Verilator prints the two the same
-   way, so the 50 and 46 are your scoreboard's errors. The one `UVM_ERROR` is the test's summary
-   of them. Your counts depend on how your scoreboard reports, so they may differ.
+   way, so the 50 and 46 are the reference scoreboard's errors. The one `UVM_ERROR` is the test's
+   summary of them. Your counts depend on how your scoreboard reports, so they may differ.
 
 7. Look at the first error on B05:
 
@@ -389,8 +389,8 @@ of these runs reuses the simulator you built.
 
    B05 changes which routing table entry the router reads. With all four entries the same,
    whichever entry it reads sends the packet to output 0, so every packet still comes out of
-   output 0 in the order it went in. Nothing at the pins depends on which entry was read. A field is tested only when each of its values, and each of its bits,
-   has an effect of its own.
+   output 0 in the order it went in. Nothing at the pins depends on which entry was read. A field
+   is tested only when each of its values, and each of its bits, has an effect of its own.
 
    </details>
 
@@ -422,8 +422,8 @@ of these runs reuses the simulator you built.
    packets 0 to 31 bits 7:5 are all 0, so bits 6:5 read `00`, the same as `DST`, and the bug has
    no effect. Packet 32's header is `20`, `0010_0000`, whose bits 6:5 are `01`, so the router uses
    `ROUTE1` and sends packets 32 to 63 to output 1. The error shows it: output 0 expected packet
-   32 (`20`) and next delivered packet 64, whose tag has wrapped to `00`. The tag's top bit gave
-   bit 5 an effect of its own, by accident.
+   32 (`20`) and next delivered packet 64, whose sequence number has wrapped to 0, so its header
+   is `00`. The sequence number's top bit gave bit 5 an effect of its own, by accident.
 
    </details>
 
