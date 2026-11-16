@@ -29,7 +29,8 @@ cp mine/* tb/
 On 2 CPUs, in the course image, the starter built cold in 106 s (Verilator 106.395 s,
 `Hits: 0 / 38`). Each part's file, copied in one after another, rebuilt in 103 s (Part 2), 107 s
 (Part 3) and 105 s (Part 4), and copying the three starter files back over the finished build took
-14 s.
+14 s. Editing the two Part 3 TODOs in place, as the writeup asks, rebuilt in 32 s instead of
+107 s, and the writeup quotes the 32 s.
 
 ## What changed
 
