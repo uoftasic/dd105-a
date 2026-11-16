@@ -29,13 +29,13 @@ lab adds to both. What we added for you:
 |---|---|
 | `tb/router_sva.sv`, `tb/router_sva_bind.sv` | the assertion module and the `bind` that puts it in the router; you write three of its assertions (Part 2) |
 | `tb/router_ifs.sv`, `tb/router_tb_top.sv` | `router_sva_if`, which carries the assertions' failure count to the scoreboard |
-| `tb/router_agents_pkg.sv` | an output agent whose driver can answer each beat from a sequence (you finish it in Part 3); an oversize length kind in `router_pkt`, switched off; each output beat's wait |
+| `tb/router_agents_pkg.sv` | an output agent whose driver can answer each beat from a sequence (you finish it in Part 3); an oversize length kind in `router_pkt`, switched off; each output beat's wait; the cycle in which each APB transfer completed; and `gap_pct` and `w_over` on `router_rand_seq`, which `send_rand` sets (Part 4) |
 | `tb/router_env_pkg.sv` | `cg_wait`, a virtual sequencer, and three scoreboard changes: it reports the assertion count, it follows route writes made while packets are coming in, and it fails a test that checked nothing |
 | `tb/router_vseq_pkg.sv` | the virtual sequences; you write `router_lab05_vseq` (Part 4) |
 | `tb/router_tests_pkg.sv` | `router_test` (Lab 04's `router_inject_test`, then your virtual sequence), `router_lab05_test` (the sequence alone) and `router_sink_test` (Part 3) |
 
 Time: about 2 h. On the course's 2 CPUs our first build took 106 s, and the rebuilds after
-each part's edits took 103 s, 107 s and 105 s.
+each part's edits took 103 s, 32 s and 105 s.
 
 ## Part 1: The Lab 04 testbench against this lab's bugs
 
@@ -49,8 +49,8 @@ the cycle where the router went wrong?
    make build
    ```
 
-   The banner says a cold build takes 1.5 to 2.5 minutes on 2 CPUs, and ours took 106 s. It ends
-   with:
+   The banner says a cold build takes 1.5 to 2.5 minutes on 2 CPUs, and ours took 106 s. Near the
+   end it prints Verilator's report:
 
    ```text
    - V e r i l a t i o n   R e p o r t: Verilator 5.050 2026-07-01 rev v5.050
@@ -417,7 +417,7 @@ cycle?
    grep -E "cg_wait.cp_wait" build/coverage/bins.txt
    ```
 
-   The rebuild took us 107 s. If your driver does what the TODOs say, you should see `ok` and:
+   The rebuild took us 32 s. If your driver does what the TODOs say, you should see `ok` and:
 
    ```text
    UVM_INFO labs/lab-05-protocol-rules-and-backpressure/tb/router_env_pkg.sv(257) @ 58285000: uvm_test_top.env.sb [SB] 805 packets in: 317 to output 0, 401 to output 1, 1 NOROUTE, 86 FULL; the highest level a header saw was 13
@@ -620,11 +620,14 @@ place?
 
    Step 2 of the sequence stalls output 1 while output 0 takes its beats. Under B12 output 1's
    buffer moves on `out0_ready`, so its beats leave while `out1_ready` is 0. None of them has a
-   handshake on output 1's pins, so its monitor reports nothing, and the scoreboard has nothing
-   to compare until output 1's sink takes a beat again, after the stall ends. O2 watches the pins,
-   so it fails in the first cycle the beat on output 1 changes while it waits. In `router_test`'s
-   phase 1 the readies differed the other way round, output 1 ready and output 0 stalled, and
-   then the scoreboard sees the extra beats at once.
+   handshake on output 1's pins, so its monitor reports nothing. By the time the stall ends, every
+   beat routed to output 1 has left its buffer, so output 1's sink has nothing to take either,
+   and `drain()` waits its full 300 cycles, because the scoreboard still expects those beats.
+   Output 1's first handshake of the run is in cycle 361, when the second half of step 2 sends it
+   new packets, and that is the scoreboard's first chance to compare a beat on output 1. O2
+   watches the pins, so it fails in the first cycle the beat on output 1 changes while it waits.
+   In `router_test`'s phase 1 the readies differed the other way round, output 1 ready and output
+   0 stalled, and then the scoreboard sees the extra beats at once.
 
    </details>
 
