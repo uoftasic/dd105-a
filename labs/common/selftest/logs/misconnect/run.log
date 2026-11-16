@@ -1,0 +1,37 @@
+UVM_INFO third_party/uvm/src/base/uvm_root.svh(457) @ 0: reporter [UVM/RELNOTES] 
+  ***********       IMPORTANT RELEASE NOTES         ************
+
+  This implementation of the UVM Library deviates from the 1800.2-2020
+  standard.  See the DEVIATIONS.md file contained in the release
+  for more details.
+
+----------------------------------------------------------------
+Accellera:1800.2:UVM:2020.3.2
+
+All copyright owners for this kit are listed in NOTICE.txt
+All Rights Reserved Worldwide
+----------------------------------------------------------------
+
+      (Specify +UVM_NO_RELNOTES to turn off this notice)
+
+UVM_INFO @ 0: reporter [RNTST] Running test st_misconnect_test...
+UVM_ERROR @ 0: uvm_test_top.env.sb.imp [Connection Error] Cannot call an imp port's connect method. An imp is connected only to the component passed in its constructor. (You attempted to bind this imp to uvm_test_top.env.agt.mon.ap)
+UVM_FATAL @ 0: reporter [BUILDERR] stopping due to build errors
+UVM_INFO third_party/uvm/src/base/uvm_report_server.svh(1009) @ 0: reporter [UVM/REPORT/SERVER] 
+--- UVM Report Summary ---
+
+** Report counts by severity
+UVM_INFO :    2
+UVM_WARNING :    0
+UVM_ERROR :    1
+UVM_FATAL :    1
+** Report counts by id
+[BUILDERR]     1
+[Connection Error]     1
+[RNTST]     1
+[UVM/RELNOTES]     1
+
+DD105: TEST FAILED (1 UVM_ERROR, 1 UVM_FATAL)
+[0] %Fatal: dd105_pkg.sv:89: Assertion failed in dd105_pkg.dd105_base_test.m_end_of_test: DD105: UVM counted errors, so the exit status is nonzero
+%Error: labs/common/uvm/dd105_pkg.sv:89: Verilog $stop
+Aborting...

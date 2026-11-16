@@ -1,0 +1,3 @@
+[0] %Fatal: st_alu.sv:38: Assertion failed in st_top.u_alu.unnamedblk1: DD105-BUG: unknown bug id 'B99'
+%Error: labs/common/selftest/alu/rtl/st_alu.sv:38: Verilog $stop
+Aborting...
