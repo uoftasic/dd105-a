@@ -59,8 +59,8 @@ find it. Lab 01, Part 1 has you check the first five.
 
 Verilator translates the whole UVM library into C++ along with your testbench every time it builds
 a lab's simulator, and g++ then compiles all of it, so the builds are the slow part of this course
-and the runs are quick. These are the times we measured for Lab 01 in the course image, on 2
-CPUs:
+and the runs are quick. These are the times we measured for Lab 01 in the course image, on 2 CPUs
+of a shared machine:
 
 | Job | Wall time |
 |---|---|
@@ -85,6 +85,10 @@ We ran it with the course folder mounted at `/w`, so on the workbench your paths
 `/foss/designs/modules/dd105-a` instead. While it builds, the terminal shows a `compiling` line for
 each file g++ compiles.
 
+Build times move with the machine and with whatever else it's doing. Lab 01's own writeup records a
+first build of 102 s, and rebuilds of 26 s and 93 s for the same two kinds of change, so treat the
+table as a guide to how long to wait rather than a number to match.
+
 The two rebuild times differ because of what changed. A change inside a function body leaves most
 of the generated C++ as it was, and the compiler cache supplies the rest. A new member changes the
 class's layout, and most of the generated C++ changes with it.
@@ -95,8 +99,8 @@ changing them never rebuilds anything. Every lab is written to make use of that.
 
 ## Where the builds go
 
-Each lab builds into its own `build/` folder. After a build, all that's left there is the
-simulator, `build/sim`, about 47 MB, and its log: the build deletes Verilator's generated C++,
+Each lab builds into its own `build/` folder. After a build, it holds mainly the simulator,
+`build/sim`, about 47 MB, and the build's log: the build deletes Verilator's generated C++,
 almost 900 MB of it, once the simulator is linked. Each run gets a folder of its own under
 `build/runs/`, named for the test, the seed and the bug. It holds `run.log` and, if you asked for
 them, the waves.
@@ -115,20 +119,17 @@ again from a cold build. It's capped at 2 GB, and after the Lab 01 builds in the
 Every lab README shows it, and it's worth running when you finish a lab. `make clean-cache`
 removes the cache as well, which makes the next build a cold one again.
 [`labs/common/README.md`](https://github.com/uoftasic/dd105-a/tree/main/labs/common) lists every
-make target the labs share; `make help` in any lab prints the same list.
+make target the labs share, and `make help` in a lab prints the targets that lab has.
 
 ## Reading a lab's output
 
-Every run starts with UVM's release notes, a box of text that begins
-`Accellera:1800.2:UVM:2020.3.2` and ends `(Specify +UVM_NO_RELNOTES to turn off this notice)`. You
-can ignore it. Then come your test's own lines, then one of two lines from the course's base test,
+Every run starts with UVM's release notes, a block of text headed `IMPORTANT RELEASE NOTES` that
+names the library, `Accellera:1800.2:UVM:2020.3.2`, and ends with
+`(Specify +UVM_NO_RELNOTES to turn off this notice)`. You can ignore it. Then come your test's own lines, and after them the end of the run, which comes in
+one of two orders.
 
-```text
-DD105: TEST PASSED
-```
-
-or a `DD105: TEST FAILED` line with the error counts, then UVM's report summary,
-and last, a one-line verdict from the labs' makefile:
+A run that passes prints `DD105: TEST PASSED`, a line from the course's base test, then UVM's
+report summary, and last, a one-line verdict from the labs' makefile:
 
 ```text
 ------------------------------------------------------------------------
@@ -136,10 +137,11 @@ and last, a one-line verdict from the labs' makefile:
 ------------------------------------------------------------------------
 ```
 
-A failed run ends with a `%Fatal` line from `dd105_base_test`, saying
-`DD105: UVM counted errors, so the exit status is nonzero`. That's on purpose: on Verilator 5.050 a
-UVM run that reports errors otherwise exits with status 0, and the course wants the exit status to
-mean something.
+A run that reports errors prints UVM's report summary first, then a `DD105: TEST FAILED` line with
+the error counts, then a `%Fatal` line from `dd105_base_test` saying
+`DD105: UVM counted errors, so the exit status is nonzero`. The `%Fatal` is on purpose: on
+Verilator 5.050 a UVM run that reports errors otherwise exits with status 0, and the course wants
+the exit status to mean something.
 
 The graders judge your testbench from both sides, as in DD104: it must pass on the correct design
 and fail on a broken one. `make check` and `make check-all` run your test against each and put
@@ -226,8 +228,8 @@ finding a better question to put to the design rather than for the answer.
    <summary>Answer</summary>
 
    No. Your test reported at least one `UVM_ERROR`, and `dd105_base_test` stopped the run with
-   `$fatal` so that its exit status is nonzero. The errors to read are earlier in the log, and
-   `DD105: TEST FAILED` above the summary gives their count.
+   `$fatal` so that its exit status is nonzero. The `DD105: TEST FAILED` line just above it gives
+   the count, and the errors themselves are earlier in the log, before UVM's report summary.
 
    </details>
 

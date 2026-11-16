@@ -96,9 +96,11 @@ fetch their own, in `build_phase`.
 
 On Verilator 5.050 there's one way of writing the type that you have to avoid. The example's
 `typedef_test` brings the router out of reset and sets `CTRL.EN`, while two monitor classes in the
-same package print what their clocking block sampled at each rising edge. They're identical except
-that one declares its handle as `virtual rtr_mon_if` and the other as `rtr_mon_vif_t`, after
-`typedef virtual rtr_mon_if rtr_mon_vif_t;`:
+same package print what their clocking block sampled at each rising edge. One declares its handle
+as `virtual rtr_mon_if`, and the other as `rtr_mon_vif_t`, after
+`typedef virtual rtr_mon_if rtr_mon_vif_t;`. The interface has two identical clocking blocks,
+`cb_a` and `cb_b`, and each class reads its own, so that each block is read one way only;
+otherwise the two classes are the same:
 
 ```text
 45 ns: virtual rtr_mon_if: rst_n 1 in_ready 0 out0_valid 0

@@ -92,7 +92,7 @@ because a new member changes the class's layout and most of the C++ that Verilat
 changes with it. So when you can, iterate on function bodies and on plusargs, which need no rebuild
 at all.
 
-**Speed.** The UVM testbench isn't faster per vector; it's about fifteen times slower. The run is
+**Speed.** The UVM testbench isn't faster per vector; it's more than ten times slower. The run is
 still quick, 1.17 s, because the test sends 2000 random vectors rather than sweeping all 393,216 as
 DD104's `t02` does.
 
