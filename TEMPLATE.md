@@ -49,7 +49,7 @@ seven labs are the worked examples of a lab writeup.
 
 ## Naming
 
-Use a course id the team already follows (`ic###`, `ad###`, `dd###`) or a clear kebab-case lab name. Keep the GitHub repo name equal to `dd105-a` so the Pages and clone URLs are predictable.
+Use a course id in a pattern the team already uses (`ic###`, `ad###`, `dd###`) or a clear kebab-case lab name. Keep the GitHub repo name equal to `dd105-a` so the Pages and clone URLs are predictable.
 
 ## Related
 

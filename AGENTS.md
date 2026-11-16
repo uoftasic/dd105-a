@@ -1,6 +1,6 @@
 # Agent guide: UofT ASIC course repos
 
-This is the repository of DD105-A — Testbenches with UVM, a course of the UofT ASIC Team (`uoftasic`) on building testbenches in SystemVerilog and UVM on Verilator. It was made from the team's course template, which holds teaching material for IC, RTL, FPGA and open-source ASIC flows. The site under `docs/` is built with Quarto and published on GitHub Pages by `.github/workflows/site.yml`. Everything students run lives outside `docs/`.
+This is the repository of DD105-A — Testbenches with UVM, a course of the UofT ASIC Team (`uoftasic`) on building testbenches in SystemVerilog and UVM on Verilator. It was made from the team's course template, which is for courses on IC, RTL, FPGA and open-source ASIC flows. The site under `docs/` is built with Quarto and published on GitHub Pages by `.github/workflows/site.yml`. Everything students run lives outside `docs/`.
 
 Write for a student working through the course, not for whoever maintains the template. Concrete labs and pages a student can follow from start to finish are worth more than meta documentation.
 
@@ -34,7 +34,7 @@ Three files wire up the site. `docs/_quarto.yml` holds the site settings, sideba
 
 ## Course structure
 
-Every course follows the same shape, so a student always knows whether they should be reading or doing, and what comes next. DD105-A's pages show it: `docs/index.md`, the guide pages in `docs/guide/` and the seven lab writeups in `docs/labs/`.
+Every course follows the same shape, so a student always knows whether they should be reading or doing, and what comes next. DD105-A's pages follow it: `docs/index.md`, the guide pages in `docs/guide/` and the seven lab writeups in `docs/labs/`.
 
 ### Home page
 
