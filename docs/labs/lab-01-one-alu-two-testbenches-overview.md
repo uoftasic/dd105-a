@@ -377,15 +377,15 @@ Which bugs does the UVM testbench catch, and why?
    make check-all
    ```
 
-   Each of the four runs takes about 1.2 s, because they all use the simulator you already built.
+   Each of the four runs takes about 1.1 s, because they all use the simulator you already built.
    You should see:
 
    ```text
-         ok  the golden design                        0 UVM_ERROR, 0 UVM_FATAL        1.2s
+         ok  the golden design                        0 UVM_ERROR, 0 UVM_FATAL        1.1s
    ------------------------------------------------------------------------
-     caught  tier 1  A01_sub_operands_swapped         282 UVM_ERROR                   1.2s
-     caught  tier 1  A02_nand_is_nor                  255 UVM_ERROR                   1.3s
-     MISSED  tier 1  A03_zero_flag_low_nibble         0 UVM_ERROR, 0 UVM_FATAL        1.3s
+     MISSED  tier 1  A03_zero_flag_low_nibble         0 UVM_ERROR, 0 UVM_FATAL        1.1s
+     caught  tier 1  A01_sub_operands_swapped         282 UVM_ERROR                   1.1s
+     caught  tier 1  A02_nand_is_nor                  255 UVM_ERROR                   1.1s
    ------------------------------------------------------------------------
     2 of 3 caught.
    ```
