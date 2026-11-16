@@ -167,6 +167,7 @@ package router_env_pkg;
     C_IRQ_RISE,
     C_IRQ_FALL,
     C_OVERSIZE_DROPPED,         // an oversize packet that was also dropped
+    C_APB_BACK_TO_BACK,         // a setup cycle right after a transfer completed (A3)
     C_NCORNERS
   } corner_e;
 
@@ -462,6 +463,7 @@ package router_env_pkg;
     bit          last_irq   = 0;
     bit          irq_bad    = 0;     // irq was wrong in the previous cycle
     int unsigned sva_fails  = 0;
+    int unsigned last_apb_end = 0;   // the cycle the previous APB transfer completed
 
     // Totals for the report.
     int unsigned n_in_beats, n_pkts, n_fwd, n_noroute, n_full, n_oversize;
@@ -491,6 +493,8 @@ package router_env_pkg;
       out1_at[b.cycle] = b;
     endfunction
     function void write_apb(apb_item a);
+      if (a.setup_cycle == last_apb_end + 1) corner(C_APB_BACK_TO_BACK);
+      last_apb_end = a.end_cycle;
       apb_at[a.end_cycle] = a;
     endfunction
     function void write_sys(router_sys_sample s);
@@ -589,7 +593,7 @@ package router_env_pkg;
         end else if (ib.first_cycle < t && last_rdy1 >= longint'(ib.first_cycle)) begin
           `uvm_error("SB", $sformatf("beat %02h was offered from cycle %0d and taken in cycle %0d, but in_ready should have been 1 in cycle %0d (%s)",
                      ib.data, ib.first_cycle, t, last_rdy1,
-                     m.in_pkt ? "inside a packet, rule I6" : "between packets with CTRL.EN = 1, rule I5"))
+                     m.in_pkt ? string'("inside a packet, rule I6") : string'("between packets with CTRL.EN = 1, rule I5")))
         end
         hdr = !m.in_pkt;
         if (hdr) begin
@@ -631,11 +635,11 @@ package router_env_pkg;
     function void check_apb(apb_item a, int unsigned t, stream_beat ib, bit hdr, bit [1:0] hdr_dst);
       bit bad = !router_model::good_addr(a.addr);
       string what = $sformatf("%s of %s (%02h), completing in cycle %0d",
-                              a.write ? "a write" : "a read", router_model::reg_name(a.addr), a.addr, t);
+                              a.write ? string'("a write") : string'("a read"), router_model::reg_name(a.addr), a.addr, t);
       if (bad) n_bad++;
       if (a.slverr != bad)
         `uvm_error("SB", $sformatf("%s: pslverr is %0d, but %02h is %s address", what, a.slverr, a.addr,
-                   bad ? "a bad" : "a good"))
+                   bad ? string'("a bad") : string'("a good")))
       if (!a.write) begin
         bit [31:0] exp = 32'h0;
         n_reads++;
@@ -650,7 +654,7 @@ package router_env_pkg;
         if (a.addr == 8'h14 && ib != null && a.access_cycle == t - 1) corner(C_LEVEL_READ_WITH_BEAT);
         if (a.rdata != exp)
           `uvm_error("SB", $sformatf("%s returned %08h; it should return %08h, %s", what, a.rdata, exp,
-                     bad ? "as every bad read does" :
+                     bad ? string'("as every bad read does") :
                      $sformatf("the value in cycle %0d (its first access cycle)", a.access_cycle)))
         return;
       end
