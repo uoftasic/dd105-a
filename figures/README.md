@@ -1,5 +1,9 @@
 # Figures (source)
 
-Source figures (SVG, draw.io, schematics) for DD105-A — Testbenches with UVM.
+DD105-A — Testbenches with UVM keeps no figure sources here; the folder is left from the course
+template. The figures on the site are made by scripts, so their sources are the scripts:
 
-When a figure appears on the site, export a small web-ready copy into `docs/assets/img/`.
+- `scripts/figures/` draws the diagrams in `docs/assets/img/` (such as `router-block.svg`) with
+  schemdraw;
+- `scripts/screenshots/` takes the waveform screenshots in `docs/assets/img/`
+  (`lab-NN-*.png`) from runs of the labs.

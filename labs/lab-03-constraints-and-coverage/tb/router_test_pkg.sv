@@ -131,7 +131,7 @@ package router_test_pkg;
     endtask
   endclass
 
-  // Lab 02's test, unchanged in what it does.
+  // Lab 02's test; env.run() now also checks DROP_CNT (check_drops()).
   class router_class_test extends router_base_test;
     `uvm_component_utils(router_class_test)
 

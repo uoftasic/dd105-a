@@ -1,38 +1,83 @@
 # DD105-A — Testbenches with UVM
 
-Build a UVM testbench in SystemVerilog on Verilator, and find out what the framework costs and buys.
+In this course you build a testbench as a structure rather than as one long test: first as plain
+SystemVerilog classes, then in UVM, the framework the verification industry uses, on the
+open-source tools you already have.
 
-<!--
-  Template: scripts/init-template.py fills in the {{...}} tokens (see
-  TEMPLATE.md). Replace the _italic_ placeholders below by hand, then replace
-  the course path rows with your own guide pages and labs. AGENTS.md describes
-  the course structure.
--->
+DD105-A is part of the UofT ASIC Team education materials, published at
+<https://uoftasic.com/dd105-a/>. The labs run in the workbench: the IIC-OSIC-TOOLS container you
+start from the `workspace` clone you set up in [IC101](https://uoftasic.com/ic101/). You get this
+course's files with the workbench's `mod` command (`mod add dd105-a`), and
+[Lab 01, Part 1](labs/lab-01-one-alu-two-testbenches-overview.md#part-1-load-the-course) walks you
+through it.
 
-- Who it's for: _one line on who should take this course._
-- Prerequisites: _earlier courses or background, with links._
-- Total time: _about N hours, the sum of the times in the course path._
+## Who this course is for
 
-This site holds the reading and the lab writeups, and the code that each lab runs is in the course's [GitHub repo](https://github.com/uoftasic/dd105-a), under `labs/`. You'll find the other UofT ASIC courses listed at [edu.uoftasic.com](https://edu.uoftasic.com/).
+You have finished [DD104](https://uoftasic.com/dd104/), so you know what a testbench has to catch:
+you wrote flat cocotb tests in Python that found all thirteen bugs planted in SimProc. This course
+is about what it takes to build a testbench that you can reuse and extend, with the stimulus kept
+apart from the checking and the test chosen when you run it, and about what that structure costs.
+You'll measure both on your own runs: the lines of code, the build times and what each testbench
+catches.
+
+The design you verify is a small packet router written for the course, about 730 lines of
+SystemVerilog: one input stream, two output streams with their own buffers, a routing table, drop
+counters and an interrupt behind an APB register port, and fifteen one-line bugs planted behind a
+switch you set when you run. Lab 01 starts on a design you already know, SimProc's ALU from DD104,
+with its three ALU bugs. From Lab 02 on you verify the router, first with a class testbench and no
+UVM, and finally with a full UVM environment that catches all fifteen bugs, a verification plan and
+a verification report.
+
+| | |
+|---|---|
+| Track | Digital |
+| Prerequisites | [DD104](https://uoftasic.com/dd104/), and through it [IC101](https://uoftasic.com/ic101/) and DD101 to DD103 |
+| Tools | Verilator 5.050, Yices 2.7.0 as its constraint solver, and Surfer for waveforms, all in the workbench image `hpretl/iic-osic-tools:2026.08`, and the UVM 2020-3.2 library, which ships in this course's repository. Lab 01 also runs cocotb 2.0.1 on Icarus Verilog 14.0. |
+| Machine | The workbench you already have. Every time on these pages was measured with 2 CPUs and 3 GB: a testbench's first build takes about 2 minutes, a rebuild after an edit from about 10 s to about 2 minutes, and a run a few seconds. The longest step, Lab 07's regression, takes about 4 minutes. |
+| Total time | About 15 h of labs, plus the reading in the Read rows below. <!-- READTIME: total = 15 h (the Do rows) + the Read rows; state it here and make the rows add up --> |
 
 ## Course path
 
-Work down the table in order. A Read row points you to one or more guide pages, which are for reading only, so there's nothing to run. A Do row is a lab, where you run things, make something of your own and check your results.
-
-<!--
-  Template: keep this table format in every course.
-  - Read and Do are plain text, and Read and Do rows alternate in the order
-    a student should work.
-  - A Do row names the lab as "Lab NN: Title", the same as the lab page's
-    header and the sidebar, and ends with one sentence on what you'll do.
-  - Separate several guide pages in one Read row with " · ".
-  - Give every row a time estimate. The row times add up to the total time
-    above. Leave optional lab parts out of them.
-  - Keep the sidebar in docs/_quarto.yml and the chapters in
-    docs/_quarto-pdf.yml in the same order.
--->
+Work down this table in order. A Read row is a set of guide pages, which are for reading only and
+have no commands in them. A Do row is one lab writeup, and the lab writeups are where every
+command in the course lives. Each lab's "Before you start" section repeats which pages it expects
+you to have read.
 
 | # | | What | Time |
 |---|---|---|---|
-| 1 | Read | [Getting started](guide/getting-started.md) | _N_ min |
-| 2 | Do | [Lab 01: Starter script](labs/lab-01-overview.md). Run the starter Python script, then change the message it prints and predict whether its checksum goes up or down. | _N_ min |
+| 1 | Read | [Getting started](guide/getting-started.md) · [What a framework buys you](guide/what-a-framework-buys-you.md) · [From cocotb to SystemVerilog classes](guide/from-cocotb-to-systemverilog-classes.md) | <!-- READTIME --> |
+| 2 | Do | [Lab 01: One ALU, two testbenches](labs/lab-01-one-alu-two-testbenches-overview.md). Test SimProc's ALU with DD104's cocotb test and with a UVM testbench, measure what each costs, and extend the UVM scoreboard until it catches the flags bug. | 1 h 30 min |
+| 3 | Read | [Classes for testbenches](guide/classes-for-testbenches.md) · [Interfaces, clocking blocks and virtual interfaces](guide/interfaces-clocking-blocks-and-virtual-interfaces.md) · [Threads, mailboxes and events](guide/threads-mailboxes-and-events.md) | <!-- READTIME --> |
+| 4 | Do | [Lab 02: A class testbench without UVM](labs/lab-02-a-class-testbench-without-uvm-overview.md). Write the monitor and the scoreboard of a class testbench for the router, catch two planted bugs, and find out what each catch depends on. | 2 h |
+| 5 | Read | [Constrained random on Verilator](guide/constrained-random-on-verilator.md) · [Functional coverage you can read](guide/functional-coverage-you-can-read.md) | <!-- READTIME --> |
+| 6 | Do | [Lab 03: Constraints and coverage](labs/lab-03-constraints-and-coverage-overview.md). Add a covergroup, constrain the packet until the simulator produces the lengths you ask for, and reach the two coverage holes where this lab's bugs hide. | 1 h 30 min |
+| 7 | Read | [The UVM skeleton](guide/the-uvm-skeleton.md) · [Sequences, sequencers and drivers](guide/sequences-sequencers-and-drivers.md) · [Monitors, analysis ports and scoreboards](guide/monitors-analysis-ports-and-scoreboards.md) · [The factory and config_db](guide/the-factory-and-config-db.md) | <!-- READTIME --> |
+| 8 | Do | [Lab 04: The same testbench in UVM](labs/lab-04-the-same-testbench-in-uvm-overview.md). Finish a UVM port of your Lab 03 testbench, inject errors with a factory override, and count what the structure cost in lines. | 2 h 30 min |
+| 9 | Read | [Assertions for interface rules](guide/assertions-for-interface-rules.md) · [Reactive agents and backpressure](guide/reactive-agents-and-backpressure.md) · [Virtual sequences](guide/virtual-sequences.md) | <!-- READTIME --> |
+| 10 | Do | [Lab 05: Protocol rules and backpressure](labs/lab-05-protocol-rules-and-backpressure-overview.md). Bind assertions for the output rules into the router, finish a sink that answers each beat in its own time, and write a virtual sequence that catches the third bug. | 2 h |
+| 11 | Read | [Register models](guide/register-models.md) · [Regressions and seeds](guide/regressions-and-seeds.md) | <!-- READTIME --> |
+| 12 | Do | [Lab 06: The register block](labs/lab-06-the-register-block-overview.md). Give the testbench a register model with an adapter and a predictor, run UVM's reset and bit-bash sequences, and check the interrupt, until all five register bugs are caught. | 2 h |
+| 13 | Read | [Verification plans and sign-off](guide/verification-plans-and-sign-off.md) · [Writing the verification report](guide/writing-the-verification-report.md) | <!-- READTIME --> |
+| 14 | Do | [Lab 07: Capstone](labs/lab-07-capstone-overview.md). Write a verification plan, run a seed regression, hunt mystery builds, and close the holes until all fifteen bugs are caught, then write the verification report. | 3 h 30 min |
+
+Keep these reference pages open in a tab while you work. They're for looking things up rather
+than for reading start to finish:
+
+- [The router in one page](reference/the-router-in-one-page.md)
+- [The packet router](reference/router-spec.md), the router's full specification
+- [The UVM register layer](reference/register-layer.md)
+- [Getting the tools outside the course image](reference/getting-the-tools-outside-the-course-image.md)
+
+## pyuvm and DD105-B
+
+This course uses UVM in SystemVerilog only. Its sibling course, DD105-B, covers pyuvm, the Python
+version of UVM, which is in the workbench image (version 4.0.1). In the research for these courses,
+a UVM environment for the ALU written in pyuvm built in 17 s, because Verilator then compiles only
+the design. The SystemVerilog version compiles the whole UVM library with it, which takes about
+100 s from cold with this course's build settings.
+
+## Getting help
+
+Ask in the [team Discord](https://discord.gg/hrJnP5UsGz); nobody expects you to work all of this
+out alone. Say which lab and step you're on, paste the command you ran and what it printed, and
+attach the `run.log` from the run folder if the question is about a simulation.
