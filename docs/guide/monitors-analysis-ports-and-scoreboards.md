@@ -22,9 +22,9 @@ switch works here too, and `make run BUG=A01` runs the same test on the ALU whos
 
 A monitor reads the pins and reports what it saw. It doesn't drive anything, and it doesn't know
 what the driver sent or what the answer should be, which is what lets the same monitor serve a
-scoreboard, a coverage collector and anything else you add later. The example's reads through a
-clocking block that only has inputs, so it sees each signal as it was just before the clock edge,
-which is the value in that cycle:
+scoreboard, a coverage collector and anything else you add later. The example's monitor reads
+through a clocking block that only has inputs, so it sees each signal as it was just before the
+clock edge, which is the value in that cycle:
 
 ```systemverilog
 virtual function alu_item next_item();
@@ -136,8 +136,8 @@ expects on that output. `write_out()` pops the next expected beat for that outpu
 counted. At the end, `check_phase` reports any beats still queued, which are beats the router
 never delivered.
 
-A scoreboard checks only what it compares. With `check_flags` off, the example compares `ALUout`
-and nothing else, and `make check-all` against Lab 01's three bugs says so:
+A scoreboard can catch a bug only in what it compares. With `check_flags` off, the example
+compares `ALUout` and nothing else, and against Lab 01's three bugs `make check-all` gives:
 
 ```text
   caught  tier 1  A01_sub_operands_swapped         33 UVM_ERROR                    0.2s
@@ -145,17 +145,17 @@ and nothing else, and `make check-all` against Lab 01's three bugs says so:
   MISSED  tier 1  A03_zero_flag_low_nibble         0 UVM_ERROR, 0 UVM_FATAL        0.2s
 ```
 
-A03 breaks the zero flag, and the monitor reported every wrong `Z`, but nothing compared it.
+A03 breaks the zero flag, and the monitor reported every wrong `Z`, but no subscriber compared it.
 [The factory and config_db](the-factory-and-config-db.md) turns `check_flags` on from a test,
 without editing the scoreboard.
 
 ## One object per write
 
 Every subscriber gets the same handle, to the same object. That's cheap, and it's safe as long as
-nobody changes the object afterwards. The example's monitor makes a new `alu_item` for every
+no code changes the object afterwards. The example's monitor makes a new `alu_item` for every
 vector. `mon_alias_test` swaps in a monitor that makes one item and fills it in again for every
 vector (the swap is a factory override, which the next page explains), and the history
-subscriber, which keeps every handle it's given, finds out at the end:
+subscriber, which keeps every handle it's given, prints this at the end:
 
 ```text
 UVM_INFO guide-examples/monitors-analysis-ports-and-scoreboards/mon_pkg.sv(260) @ 3995000: uvm_test_top.env.hist [HIST] kept 200 handles to 1 different objects

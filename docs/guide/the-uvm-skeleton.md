@@ -54,7 +54,7 @@ Every class also has a registration line, `` `uvm_object_utils(router_pkt) `` or
 `` `uvm_component_utils(router_env) ``, which tells UVM's factory the class exists, and the
 components are made with `router_env::type_id::create("env", this)` instead of `new()`. The
 [factory page](the-factory-and-config-db.md) explains what that buys; for now, it's the reason
-`+UVM_TESTNAME` can name a test that nothing in the code mentions.
+`+UVM_TESTNAME` can name a test that no other code in the testbench refers to.
 
 ## run_test() and +UVM_TESTNAME
 
@@ -141,7 +141,7 @@ The run phase has no natural end. A driver loops forever asking for items and a 
 forever watching pins, so UVM needs another way to know that the test is finished. It counts
 **objections**. A component that is in the middle of something calls
 `phase.raise_objection(this)`, and `phase.drop_objection(this)` when it's done, and the run phase
-ends once nobody holds an objection. A component can also set a **drain time**, which keeps the
+ends once every objection has been dropped. A component can also set a **drain time**, which keeps the
 phase open for that long after the last objection drops, so that anything still in flight can
 arrive.
 
@@ -168,7 +168,7 @@ In `sk_phase_test` the test holds an objection for 100 ns and sets a drain time 
 still held one. The phase ended 20 ns after that one dropped, at 170 ns, and UVM killed the
 monitor's loop, which had been running the whole time without holding the phase open.*
 
-`sk_noobj_test` is the same environment with nobody raising an objection. Every `run_phase` starts
+`sk_noobj_test` is the same environment with no objection raised at all. Every `run_phase` starts
 at 0 ns, and the phase ends at once:
 
 ```text
@@ -213,8 +213,8 @@ labs: the severity, the file and line that reported it, `@` and the time, the fu
 component, the message's ID in brackets, and the text. The time is in picoseconds, the
 simulator's precision, so `@ 50000` is 50 ns.
 
-The misspelt test name earlier is the one case the base test can't help with: no test was built,
-so there was no `final_phase` to hook, and the `UVM_FATAL` run exited with status 0. That's why the
+The base test can't help with the misspelt test name earlier, because no test was built: there
+was no `final_phase` to hook, and the `UVM_FATAL` run exited with status 0. That's why the
 course's `make run` reads the log as well as the exit status, and it called that run
 `BROKEN: UVM_FATAL [INVTST]`.
 
