@@ -8,11 +8,13 @@ DD105 -- build broken routers from the bug catalogue.
 
 THE FAULTY BUILD
 
-A UVM build of the router takes about five minutes, so building fifteen broken
-routers one at a time is not an option. `--all` writes a single copy of the
-RTL with every bug in it, each one switched off unless it is selected. Each
-anchored line from bugs.py keeps its place in its file, and the one
-expression the bug changes becomes a choice between the two versions:
+A cold UVM build of the router takes 1.5 to 2.5 minutes on 2 CPUs, and even a
+rebuild after a one-line design edit takes about 25 s, so building fifteen
+broken routers one at a time would cost fifteen builds where one will do.
+`--all` writes a single copy of the RTL with every bug in it, each one
+switched off unless it is selected. Each anchored line from bugs.py keeps its
+place in its file, and the one expression the bug changes becomes a choice
+between the two versions:
 
     golden RTL:   assign room      = (lkp_level <= LEVEL_W'(ADMIT_MAX));
     faulty RTL:   assign room      = ((router_bug_pkg::bug_id == 8) ?
