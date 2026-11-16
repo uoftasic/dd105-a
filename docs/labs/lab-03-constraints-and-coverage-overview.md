@@ -46,9 +46,15 @@ What does the starting testbench check, and does it catch this lab's two bugs?
    ```text
    - Verilator: Walltime 92.524 s (elab=0.711, cvt=2.632, bld=88.490); cpu 4.360 s on 2 threads; allocated 316.547 MB
    ========================================================================
-    built .../labs/lab-03-constraints-and-coverage/build/sim in 93 s (49M; the 922M of generated C++ was deleted, SLIM=0 keeps it)
+    built /w/labs/lab-03-constraints-and-coverage/build/sim in 93 s (49M; the 922M of generated C++ was deleted, SLIM=0 keeps it)
     ccache:  Hits: 0 / 36 ( 0.00%)  Misses: 36 / 36 (100.0%)
+   ========================================================================
+    /w/labs/lab-03-constraints-and-coverage/build/sim is up to date.
    ```
+
+   We ran it with the course folder mounted at `/w`, so your paths start with
+   `/foss/designs/modules/dd105-a` instead. The ccache counts add up over every build in your
+   clone, so after Labs 01 and 02 yours will be higher.
 
 2. While it builds, read the files in `tb/`. The test is the one UVM class: `router_rand_test`
    extends `dd105_base_test`, which turns any `UVM_ERROR` into a failing exit status, and its
@@ -80,7 +86,7 @@ What does the starting testbench check, and does it catch this lab's two bugs?
    DD105: TEST PASSED
    ```
 
-   and last, `ok: 0 UVM_ERROR, 0 UVM_FATAL   0.44 s`.
+   and last, `ok: 0 UVM_ERROR, 0 UVM_FATAL   0.44 s   log: build/runs/router_rand_test-s1/run.log`.
 
 4. This lab's bugs are B07, which counts a packet for a disabled route as a FULL drop as well when
    the output its route names is too full, and B08, which drops a packet that arrives when its
@@ -154,7 +160,8 @@ What does `router_rand_test` actually send the router, and where does it never g
    make build
    ```
 
-   It stops after about 4 s with:
+   It stops after about 4 s with these two lines, and then prints them again under
+   `BUILD FAILED after 4 s`, with the source line they point at:
 
    ```text
    %Warning-COVERIGN: labs/lab-03-constraints-and-coverage/tb/coverage.svh:18:24: Unsupported: 'covergroup' coverpoint referencing enclosing class member; ignoring covergroup '__vlAnonCG_cg_pkt'
@@ -297,9 +304,10 @@ it?
    ========================================================================
    ```
 
-   The first build of `traps.sv` took us 8.1 s, and later ones about 4 s. Each failed `randomize()`
-   prints UNSATCONSTR warnings, which the target counts instead of showing. Compare each line with
-   what you wrote.
+   Building `traps.sv` took us 4.2 s the first time and 4.0 s after we changed it, with a ccache
+   that already held this lab's earlier builds; with the ccache turned off it took 10.9 s. The run
+   takes about 4.4 s. Each failed `randomize()` prints UNSATCONSTR warnings, which the target
+   counts instead of showing. Compare each line with what you wrote.
 
    <details>
    <summary>Answer</summary>
@@ -417,9 +425,10 @@ What stimulus reaches B07's and B08's bins, and does the scoreboard catch the bu
    - `wait_sent()`, `cycles(4)`, `read_events()`, `drain()`, `read_events()` and `clear_events()`.
 
    The fill packets come from `packet::make()` rather than `randomize() with { len == n; }`,
-   because with the weights from Part 3 on, about half of those calls would fail (line 3 of the
-   experiments). A `uvm_info` that prints the plan's lengths will help you read the waveform later.
-   The scoreboard checks `irq` and every read, so `close_holes()` itself checks nothing.
+   because with the weights from Part 3 on, such a call fails whenever the `dist` draws a kind
+   whose range doesn't hold `n`, and in line 3 of the experiments the call with `len == 3` failed
+   498 times in 1000. A `uvm_info` that prints the plan's lengths will help you read the waveform
+   later. The scoreboard checks `irq` and every read, so `close_holes()` itself checks nothing.
 
 4. Build, then run the short test that does nothing but `close_holes()`:
 
@@ -476,7 +485,7 @@ What stimulus reaches B07's and B08's bins, and does the scoreboard catch the bu
     2 of 2 caught.
    ```
 
-   `make check BUG=B07` shows the first check that fired, and it's `irq`:
+   `make check BUG=B07` lists the first errors from the B07 run, and the first is the `irq` check:
 
    ```text
    UVM_ERROR [SB] irq is 1 from cycle 6155, but STATUS = 001 and INT_EN = 010 make it 0
