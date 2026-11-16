@@ -122,6 +122,9 @@ Part 3's sink catches no new bug, and the page says so: `router_test` keeps its 
 
 ## Differences from the first Lab 05
 
+This Lab 05 is built on Lab 04's solution. Each entry below is a way in which it differs from the
+first version of the lab.
+
 - No reset step. Lab 04 resets once at time 0 and its scoreboard doesn't flush on a reset, and a
   reset with beats waiting would reach B15 (Lab 07's).
 - No `STATUS` or `LEVEL` reads: the scoreboard checks only `DROP_CNT`.

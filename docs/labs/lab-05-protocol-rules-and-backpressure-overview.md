@@ -2,10 +2,11 @@
 
 In this lab you'll write assertions for the router's output rules and bind them into the design,
 finish a sink driver that answers each output beat in its own time, and write a virtual sequence
-that changes the routing table, the traffic and the backpressure together. The package is your
+that changes the routing table, the traffic and the backpressure together. The package is the
 Lab 04 testbench, and it already catches two of this lab's three planted bugs, B10 and B12. Your
-assertions name the rule the router broke and the cycle it broke it in, and your virtual sequence
-catches the third bug, B11, by sending the packets of more than 8 beats that no Lab 04 test sends.
+assertions name the rule that the router broke and the cycle it broke it in, and your virtual
+sequence catches the third bug, B11, by sending packets of more than 8 beats, which no Lab 04 test
+sends.
 
 Package: [`labs/lab-05-protocol-rules-and-backpressure/`](https://github.com/uoftasic/dd105-a/tree/main/labs/lab-05-protocol-rules-and-backpressure)
 
@@ -199,7 +200,7 @@ Which rule did B10 break, and in which cycle?
 
    `bind` puts an instance of `router_sva` inside every `router`, wired to the router's own ports,
    without editing the router's RTL or the top module. The same file works on the golden design
-   and on the faulty build, and the checker sees exactly the pins the rules are written about.
+   and on the faulty build, and the checker sees the same pins that the rules are written about.
    The top module reads the failure count back out through the router instance,
    `dut.u_sva.n_fail`, and hands it to the scoreboard through `router_sva_if`.
 
@@ -261,7 +262,8 @@ Which rule did B10 break, and in which cycle?
    UVM_ERROR labs/lab-05-protocol-rules-and-backpressure/tb/router_env_pkg.sv(193) @ 555000: uvm_test_top.env.sb [OUT] output 0: got 04 in cycle 56, expected 03
    ```
 
-   The assertion fired at the edge that ends cycle 48, and the scoreboard 8 cycles later.
+   The assertion fired at the edge that ends cycle 48, and the scoreboard reported its first error
+   8 cycles later, in cycle 56.
 
 7. To see the rule break, record both runs and open them in Surfer:
 
@@ -353,9 +355,9 @@ cycle?
    <summary>Answer</summary>
 
    `get_next_item()` blocks until the sequence hands over an item. The source driver can wait,
-   because nothing happens on the input until it has a packet. The sink can't: it has to drive
-   `out_ready` in every cycle, and the router may put a beat on the output whether or not an item
-   is ready. `try_next_item()` returns at once, with no item if there isn't one, and the driver
+   because nothing happens on the input until it has a packet. The sink driver can't wait like
+   that, because it has to drive `out_ready` in every cycle, and the router may put a beat on the
+   output whether or not an item is ready. `try_next_item()` returns at once, with no item if there isn't one, and the driver
    keeps `ready` at 0 for that cycle.
 
    </details>
@@ -389,10 +391,10 @@ cycle?
 
 3. Fill in the two TODOs in `out_ready_driver::run_phase`: the countdown while a beat waits, and
    the expression for `rdy`, the next cycle's `ready`. `rdy` must be 0 while the driver has no
-   item. The countdown stops at 0: `wait_left` is unsigned, and a beat whose wait is over can
-   still be waiting when a virtual sequence stalls its output (Part 4), so one more count would
-   wrap it round to about four billion, and in the per-beat modes the sink would never raise
-   `ready` for that beat.
+   item. The countdown stops at 0. A beat whose wait is over can still be waiting when a virtual
+   sequence stalls its output (Part 4), and `wait_left` is unsigned, so one more count would wrap
+   it round to about four billion, and in the per-beat modes the sink would never raise `ready`
+   for that beat.
 
 4. Before you rebuild, predict what happens to the `[SB]` line's `FULL` count and to the four
    `cp_wait` bins.
@@ -430,9 +432,9 @@ cycle?
             1  __vlAnonCG_cg_wait.cp_wait.stalled
    ```
 
-   Lab 04's sinks gave 2 short waits in all of `router_test`, and yours give 305 in one run. The
-   run passing also means the scoreboard predicted all 86 FULL drops, because every phase's
-   `DROP_CNT` read matched.
+   Lab 04's sinks gave 2 short waits in the whole of `router_test`, and yours give 305 in one run
+   of `router_sink_test`. The run passed, so every phase's `DROP_CNT` read matched the scoreboard's
+   count, which means the scoreboard predicted all 86 FULL drops.
 
 6. Run the grader:
 
@@ -456,9 +458,9 @@ place?
    `router_lab05_vseq` in `tb/router_vseq_pkg.sv`. The helpers you'll use are
    `route(n, en, port)`, `ctrl(en)`, `sink(p, mode)`, `stall(p)`, `burst(dst, n, len)`,
    `send_rand(n, gap_pct, w_over)`, `backpressure()`, `cycles(n)`, `drain()` and `rd(A_...)`.
-   Most are the base test's steps from Lab 04, rewritten as a sequence's tasks on the same
-   sequences. Why does the virtual sequencer hold each sink's `out_cfg`, and not only its
-   sequencer?
+   Most of them are the base test's steps from Lab 04, rewritten as tasks of a sequence, and they
+   start the same Lab 04 sequences that the steps started. Why does the virtual sequencer hold
+   each sink's `out_cfg`, and not only its sequencer?
 
    <details>
    <summary>Answer</summary>
@@ -669,7 +671,7 @@ Questions:
    <summary>Answer</summary>
 
    It would fail. A reset lowers `out_valid` at once, with no handshake (the specification's
-   Valid/ready rules and example E8), and that is exactly what O1's consequent forbids. Rules about
+   Valid/ready rules and example E8), and that is what O1's consequent forbids. Rules about
    normal operation don't hold across a reset, so their assertions are switched off during one.
 
    </details>

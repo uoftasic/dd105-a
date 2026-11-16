@@ -2,11 +2,11 @@
 
 Writeup: [`docs/labs/lab-05-protocol-rules-and-backpressure-overview.md`](../../docs/labs/lab-05-protocol-rules-and-backpressure-overview.md)
 
-Our solution to Lab 04, with this lab's pieces added: assertions bound into the router, an output
-agent whose driver can answer each beat from a sequence, a virtual sequencer and its sequences,
-and an oversize length kind in the packet, switched off until a sequence gives it a weight. Three
-pieces are left for you, marked `TODO (Part n)`: three assertions, the sink driver's answer to a
-beat, and the virtual sequence's body. The router and its planted bugs come from
+This package is our solution to Lab 04, with this lab's pieces added: assertions bound into the
+router, an output agent whose driver can answer each beat from a sequence, a virtual sequencer and
+its sequences, and an oversize length kind in the packet, switched off until a sequence gives it a
+weight. Three pieces are left for you, marked `TODO (Part n)`: three assertions, the sink driver's
+answer to a beat, and the virtual sequence's body. The router and its planted bugs come from
 [`../common`](../common/README.md).
 
 Run it in the course image, from this folder:
