@@ -25,3 +25,12 @@ venv/
 # Build artifacts (if any local tools)
 site/
 _book/
+
+# DD105-A lab builds (labs/common/uvm.mk): simulators, runs, waves, coverage
+build/
+build-broken/
+.ccache/
+.hunt
+*.vcd
+*.fst
+coverage.dat

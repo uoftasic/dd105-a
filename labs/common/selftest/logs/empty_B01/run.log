@@ -1,0 +1,37 @@
+DD105-BUG: B01 enabled
+UVM_INFO third_party/uvm/src/base/uvm_root.svh(457) @ 0: reporter [UVM/RELNOTES] 
+  ***********       IMPORTANT RELEASE NOTES         ************
+
+  This implementation of the UVM Library deviates from the 1800.2-2020
+  standard.  See the DEVIATIONS.md file contained in the release
+  for more details.
+
+----------------------------------------------------------------
+Accellera:1800.2:UVM:2020.3.2
+
+All copyright owners for this kit are listed in NOTICE.txt
+All Rights Reserved Worldwide
+----------------------------------------------------------------
+
+      (Specify +UVM_NO_RELNOTES to turn off this notice)
+
+UVM_INFO @ 0: reporter [RNTST] Running test st_empty_test...
+UVM_INFO labs/common/selftest/alu/tb/st_pkg.sv(140) @ 65: uvm_test_top.env.sb [SB] checked 0 transactions: 0 ok, 0 mismatches
+DD105: TEST PASSED
+UVM_INFO third_party/uvm/src/base/uvm_report_server.svh(1009) @ 65: reporter [UVM/REPORT/SERVER] 
+--- UVM Report Summary ---
+
+** Report counts by severity
+UVM_INFO :    3
+UVM_WARNING :    0
+UVM_ERROR :    0
+UVM_FATAL :    0
+** Report counts by id
+[RNTST]     1
+[SB]     1
+[UVM/RELNOTES]     1
+
+- third_party/uvm/src/base/uvm_test_runner.svh:297: Verilog $finish
+- S i m u l a t i o n   R e p o r t: Verilator 5.050 2026-07-01
+- Verilator: $finish at 65ps; walltime 0.026 s; speed 2.458 ns/s
+- Verilator: cpu 0.025 s on 1 threads; allocated 45 MB

@@ -1,0 +1,21 @@
+DD105-BUG: B02 enabled
+UVM_INFO third_party/uvm/src/base/uvm_root.svh(457) @ 0: reporter [UVM/RELNOTES] 
+  ***********       IMPORTANT RELEASE NOTES         ************
+
+  This implementation of the UVM Library deviates from the 1800.2-2020
+  standard.  See the DEVIATIONS.md file contained in the release
+  for more details.
+
+----------------------------------------------------------------
+Accellera:1800.2:UVM:2020.3.2
+
+All copyright owners for this kit are listed in NOTICE.txt
+All Rights Reserved Worldwide
+----------------------------------------------------------------
+
+      (Specify +UVM_NO_RELNOTES to turn off this notice)
+
+UVM_INFO @ 0: reporter [RNTST] Running test st_good_test...
+[85] %Error: st_sva.sv:10: Assertion failed in st_top.u_alu.u_sva.a_zero_flag: zero flag is 1 for result 80
+%Error: labs/common/selftest/alu/tb/st_sva.sv:10: Verilog $stop
+Aborting...
