@@ -55,7 +55,7 @@ Seed 1, `router_class_test` with its default knobs (100 packets, `+DSTS=0123`, `
 | `make check-all SEED=2` to `5` | `2 of 2 caught.` on each; B05 53, 48, 51 and 57 `$error`s, B09 44, 43, 38 and 50 |
 | B05 | caught, 50 `$error`s; the first at 255 ns, packet `80` (`DST` 2) on output 0 |
 | B09 | caught, 46 `$error`s; the first at 895 ns, a 13-beat packet whose last 7 beats are packet 2's |
-| all 15 bugs (`BUG_LIST` set to B01 to B15) | `2 of 15 caught.`: B05 and B09, and no other |
+| all 15 bugs (`BUG_LIST` set to B01 to B15) | `2 of 15 caught.`: only B05 and B09 |
 
 The stimulus experiments in Part 4 of the writeup, with this solution:
 

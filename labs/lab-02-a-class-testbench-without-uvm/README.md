@@ -2,8 +2,8 @@
 
 Writeup: [`docs/labs/lab-02-a-class-testbench-without-uvm-overview.md`](../../docs/labs/lab-02-a-class-testbench-without-uvm-overview.md)
 
-A testbench for the router's input and output 0, written as plain SystemVerilog classes that talk
-through mailboxes. The generator, driver, sinks, APB writer and environment are shipped; you write
+This package is a testbench for the router's input and output 0, written as plain SystemVerilog
+classes that talk through mailboxes. The generator, driver, sinks, APB writer and environment are shipped; you write
 the monitor (`tb/monitor.svh`) and the scoreboard (`tb/scoreboard.svh`), and catch B05 and B09.
 
 Run it in the course image, from this folder:
