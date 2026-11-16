@@ -53,7 +53,7 @@ The first check that fired on each bug, seed 5 (`build/grade/<bug>/run.log`):
 |---|---|
 | B01 | `[SB] irq is 0 from cycle 6717, but STATUS = 110 and INT_EN = 010 make it 1` |
 | B02 | `[SB] irq is 1 from cycle 4490, but STATUS = 001 and INT_EN = 010 make it 0` |
-| B03 | `[SB] a read of ROUTE3 (2c), completing in cycle 451 returned 00000002; it should return 00000001, ...` |
+| B03 | the register model's mirror: `[RegModel] Register "regs.ROUTE3" value read from DUT (0x0000000000000002) does not match mirrored value (0x0000000000000001) ...`; the scoreboard follows a cycle later with `[SB] a read of ROUTE3 (2c), completing in cycle 451 returned 00000002; it should return 00000001, ...` |
 | B04 | `a_A7_bad`: `A7: a transfer to bad address 01 completed without pslverr` |
 | B05 | `[SB] irq is 1 from cycle 70, but STATUS = 000 and INT_EN = 111 make it 0` |
 | B06 | `[SB] output 1 delivered 84 (offered from cycle 80, taken in cycle 90), but no beat was waiting for it there` |
