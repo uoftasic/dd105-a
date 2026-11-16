@@ -25,16 +25,16 @@ module tb_smoke;
   // ---- Clock, reset and the DUT --------------------------------------------
 
   logic clk;
-  logic rst_n = 1'b0;
+  logic rst_n;
 
   initial begin
     clk = 1'b0;
     forever #5 clk = ~clk;   // 100 MHz
   end
 
-  logic        psel = 1'b0, penable = 1'b0, pwrite = 1'b0;
-  logic [7:0]  paddr = '0;
-  logic [31:0] pwdata = '0;
+  logic        psel, penable, pwrite;
+  logic [7:0]  paddr;
+  logic [31:0] pwdata;
   logic [31:0] prdata;
   logic        pready, pslverr;
   // Lint waiver: the smoke test never looks at the interrupt.
@@ -42,8 +42,8 @@ module tb_smoke;
   logic        irq;
   /* verilator lint_on UNUSEDSIGNAL */
 
-  logic        in_valid = 1'b0, in_last = 1'b0;
-  logic [7:0]  in_data = '0;
+  logic        in_valid, in_last;
+  logic [7:0]  in_data;
   logic        in_ready;
 
   logic        out0_valid, out0_last, out1_valid;
@@ -54,7 +54,7 @@ module tb_smoke;
   logic [7:0]  out1_data;
   logic        out1_last;
   /* verilator lint_on UNUSEDSIGNAL */
-  logic        out0_ready = 1'b1, out1_ready = 1'b1;   // never stalled
+  logic        out0_ready, out1_ready;
 
   router dut (
     .clk, .rst_n,
@@ -84,44 +84,65 @@ module tb_smoke;
     end
   endtask
 
-  // ---- APB -----------------------------------------------------------------
+  // ---- Driving the router -------------------------------------------------
+  //
+  // Inputs change 1 ns after a rising edge, by blocking assignment, and every
+  // decision about the cycle in progress (did PREADY come? was the beat
+  // taken?) is made at the falling edge, when everything has settled. Only
+  // the router's flip-flops change at a rising edge, so the testbench and
+  // the router never race. Every task starts and ends 1 ns after a rising
+  // edge.
 
-  // Every input is changed with a nonblocking assignment just after a rising
-  // edge, and every output is sampled at a rising edge, so the testbench and
-  // the router never race.
+  task automatic tick();
+    @(posedge clk);
+    #1;
+  endtask
 
   task automatic apb_write(input logic [7:0] addr, input logic [31:0] data);
-    @(posedge clk);
-    psel <= 1'b1; penable <= 1'b0; pwrite <= 1'b1; paddr <= addr; pwdata <= data;
-    @(posedge clk);
-    penable <= 1'b1;
-    do @(posedge clk); while (!pready);
-    check(!pslverr, $sformatf("PSLVERR on a write to 0x%02h", addr));
-    psel <= 1'b0; penable <= 1'b0;
+    bit done;
+    psel = 1'b1; penable = 1'b0; pwrite = 1'b1; paddr = addr; pwdata = data;
+    tick();                                   // the setup cycle
+    penable = 1'b1;
+    do begin                                  // access cycles, until PREADY
+      @(negedge clk);
+      done = pready;
+      if (done) check(!pslverr, $sformatf("PSLVERR on a write to 0x%02h", addr));
+      tick();
+    end while (!done);
+    psel = 1'b0; penable = 1'b0;
   endtask
 
   task automatic apb_read(input logic [7:0] addr, output logic [31:0] data);
-    @(posedge clk);
-    psel <= 1'b1; penable <= 1'b0; pwrite <= 1'b0; paddr <= addr;
-    @(posedge clk);
-    penable <= 1'b1;
-    do @(posedge clk); while (!pready);
-    data = prdata;
-    check(!pslverr, $sformatf("PSLVERR on a read of 0x%02h", addr));
-    psel <= 1'b0; penable <= 1'b0;
+    bit done;
+    psel = 1'b1; penable = 1'b0; pwrite = 1'b0; paddr = addr;
+    tick();
+    penable = 1'b1;
+    do begin
+      @(negedge clk);
+      done = pready;
+      data = prdata;
+      if (done) check(!pslverr, $sformatf("PSLVERR on a read of 0x%02h", addr));
+      tick();
+    end while (!done);
+    psel = 1'b0; penable = 1'b0;
   endtask
 
   // ---- Input stream ----------------------------------------------------------
 
   task automatic send_packet(input logic [7:0] beats[$]);
+    bit taken;
     foreach (beats[i]) begin
-      in_valid <= 1'b1;
-      in_data  <= beats[i];
-      in_last  <= (i == beats.size() - 1);
-      do @(posedge clk); while (!in_ready);
+      in_valid = 1'b1;
+      in_data  = beats[i];
+      in_last  = (i == beats.size() - 1);
+      do begin                                // hold the beat until it is taken
+        @(negedge clk);
+        taken = in_ready;
+        tick();
+      end while (!taken);
     end
-    in_valid <= 1'b0;
-    in_last  <= 1'b0;
+    in_valid = 1'b0;
+    in_last  = 1'b0;
   endtask
 
   // ---- Output monitors ---------------------------------------------------------
@@ -152,9 +173,13 @@ module tb_smoke;
     p2 = '{8'h02, 8'hB0, 8'hB1, 8'hB2};
     p3 = '{8'h03, 8'hC0, 8'hC1};
 
-    repeat (5) @(posedge clk);
-    rst_n <= 1'b1;
-    repeat (2) @(posedge clk);
+    rst_n = 1'b0;
+    psel = 1'b0; penable = 1'b0; pwrite = 1'b0; paddr = '0; pwdata = '0;
+    in_valid = 1'b0; in_last = 1'b0; in_data = '0;
+    out0_ready = 1'b1; out1_ready = 1'b1;     // never stalled
+    repeat (5) tick();
+    rst_n = 1'b1;
+    repeat (2) tick();
 
     apb_read(8'h00, id);
     check(id == 32'hD105_0001, $sformatf("ID reads 0x%08h, expected 0xD1050001", id));
@@ -171,8 +196,8 @@ module tb_smoke;
     foreach (p3[i]) begin want.push_back(p3[i]); want_last.push_back(i == p3.size() - 1); end
 
     // Wait for the last beat, or give up after 100 cycles.
-    for (int n = 0; n < 100 && got0.size() < want.size(); n++) @(posedge clk);
-    repeat (5) @(posedge clk);
+    for (int n = 0; n < 100 && got0.size() < want.size(); n++) tick();
+    repeat (5) tick();
 
     check(got0.size() == want.size(),
           $sformatf("output 0 delivered %0d beats, expected %0d", got0.size(), want.size()));
