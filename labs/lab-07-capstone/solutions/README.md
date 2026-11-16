@@ -68,7 +68,7 @@ with the golden router `ok`; only the counts that change from seed to seed are l
 | 2 | ok, 7.8 s | 10 UVM_ERROR, 53 assertions | 4 | 4, 20 assertions |
 | 3 | ok, 7.7 s | 5 UVM_ERROR, 23 assertions | 2 | 4, 13 assertions |
 | 4 | ok, 8.3 s | 50 UVM_ERROR, 32 assertions | 4 | 4, 20 assertions |
-| 5 | ok, 7.9 s | 50 UVM_ERROR, 33 assertions | 3 | (not kept) |
+| 5 | ok, 7.9 s | 50 UVM_ERROR, 33 assertions | 3 | 4, 20 assertions |
 
 With Part 5 done and Part 6 not (`router_saturate_vseq` empty and not run), `make check-all` on
 seed 1 already printed `15 of 15 caught.`, with B15 at `50 UVM_ERROR, 18 assertions`: Part 6
