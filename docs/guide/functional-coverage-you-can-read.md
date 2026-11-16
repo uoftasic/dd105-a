@@ -9,8 +9,8 @@ operands? have I taken a backward branch?) and answered with a `for` loop and a 
 simulator counts how often the stimulus produced each one, and the counts go into a file that
 tools can merge and report. In
 [Lab 03, Part 2](../labs/lab-03-constraints-and-coverage-overview.md#part-2-a-covergroup-you-can-read)
-you write one for the router's packets, and it shows you two holes in the stimulus of a test that
-passes.
+you write one for the router's packets, and it shows you two holes in the stimulus, even though
+the test passes.
 
 On Verilator 5.050 the counts are right, and almost everything built from them, the percentage
 included, works differently from the standard. This page shows how to write a covergroup that
