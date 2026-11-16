@@ -230,8 +230,8 @@ What does the same job cost when it's built the UVM way?
    make build
    ```
 
-   The build prints its own estimate of how long it will take; on the course's 2 CPUs it took us
-   102 s. It ends with:
+   The banner the build starts with estimates 5 to 6 minutes for a cold build, but on the course's
+   2 CPUs it took us 102 s. It ends with:
 
    ```text
    - V e r i l a t i o n   R e p o r t: Verilator 5.050 2026-07-01 rev v5.050
@@ -561,7 +561,8 @@ What does it take to make the UVM scoreboard catch A03, and what does the change
 
    The first `[FLAGS]` error is stamped `@ 35000`, which is 35 ns: the monitor sampled the
    `SHL A=62 B=93` vector just before the rising edge at 35 ns, after the driver had written it at
-   26 ns. Compare it with Part 3's picture, where `Z` stays low.
+   26 ns. Compare it with Part 3's picture, where `Z` stays low once the first vector arrives at
+   6 ns.
 
 7. `alu_directed_test` sends the same six vectors as `t01`, and it now goes through your flag
    check, because both tests share the scoreboard. Predict whether it catches A03, then run it:
