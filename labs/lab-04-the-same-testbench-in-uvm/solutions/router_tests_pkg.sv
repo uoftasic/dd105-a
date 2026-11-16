@@ -6,11 +6,17 @@
 //                       make check and make check-all grade this one
 //   router_stall_test   router_rand_test, with one output stalled in each
 //                       phase while the other runs (Part 3)
-//   router_rand_test    Lab 03's test: random routing tables and packets,
-//                       then its two directed steps
-//   router_smoke_test   Lab 02's test: a few packets, by hand
+//   router_rand_test    Lab 03's test: CTRL.EN, then +PHASES phases of +N
+//                       random packets, each with its own random routing
+//                       table and a DROP_CNT check; then close_holes() and a
+//                       last DROP_CNT check
+//   router_fill_test    Lab 03's close_holes() on its own
+//   router_class_test   Lab 02's test: +N random packets on +ROUTES, and a
+//                       DROP_CNT check
 //
-// Plusargs: +N=<packets per phase> (60), +PHASES=<n> (4), +MAX_CYCLES=<n> (200000).
+// Plusargs: +N=<packets> (200 per phase; 100 in router_class_test),
+// +PHASES=<n> (4), +ROUTES=<abcd> (0110, router_class_test only),
+// +MAX_CYCLES=<n> (200000).
 //
 // This is the reference solution: router_stall_test and router_inject_test
 // are filled in, as Parts 3 and 4 of the lab ask.
@@ -22,10 +28,24 @@ package router_tests_pkg;
   import router_env_pkg::*;
   `include "uvm_macros.svh"
 
+  // Lab 03's fill_plan: packet lengths that add up to target. A 0 is "no
+  // packet", so the plan has 1 to 8 packets. The array has a fixed size
+  // because sum() on a dynamic array can't be solved here (Lab 03, traps
+  // line 5).
+  class fill_plan;
+    rand int unsigned lens[8];
+    int unsigned      target = 8;
+    constraint c_sum { foreach (lens[i]) lens[i] inside {[0:8]};
+                       lens.sum() == target; }
+  endclass
+
   // ── the base test ─────────────────────────────────────────────────────────
-  // Lab 02's router_class_test did everything in run_phase: fetch the
-  // interfaces, build the environment and call env.run(). Here build_phase
-  // builds, run_phase runs, and dd105_base_test turns any UVM_ERROR into a
+  // Lab 03's router_base_test made the environment in run_phase, handed it
+  // the interfaces and called body(), and its env had the steps a test
+  // calls (write_routes, enable, send_random, send, drain, check_drops and
+  // so on). Here build_phase builds, the agents fetch their own interfaces
+  // from config_db, and those steps are tasks of the base test, written on
+  // the agents' sequences. dd105_base_test turns any UVM_ERROR into a
   // failing exit status.
   class router_base_test extends dd105_base_test;
     `uvm_component_utils(router_base_test)
@@ -33,7 +53,9 @@ package router_tests_pkg;
     router_env     env;
     out_cfg        ocfg[2];       // each output agent's knobs; the test keeps the handles
     virtual apb_if vif;           // for its clock and reset
-    bit [3:0]      route_en;      // the routing table written last
+    string         routes;        // the routing table written last, as +ROUTES writes it
+    bit [3:0]      route_en;      // ... and its EN bits, for the packets' c_dst
+    int unsigned   next_tag;      // the next packet's number, for its header
     int unsigned   max_cycles = 200000;
 
     function new(string name, uvm_component parent);
@@ -74,7 +96,8 @@ package router_tests_pkg;
     virtual task body();
     endtask
 
-    // Lab 02's apb_master.write(), and a read, as one-item sequences on the APB agent.
+    // Lab 03's apb_master.write() and read(), as one-item sequences on the
+    // APB agent. The APB monitor reports both to the scoreboard.
     task write_reg(bit [7:0] addr, bit [31:0] data);
       apb_rw_seq s = apb_rw_seq::type_id::create("wr");
       s.write = 1;
@@ -91,17 +114,63 @@ package router_tests_pkg;
       data = s.t.rdata;
     endtask
 
-    // One packet, built by hand.
-    task send_pkt(bit [1:0] dst, int unsigned len, bit [5:0] tag = 0);
-      router_one_seq s = router_one_seq::type_id::create("one");
-      s.pkt = router_pkt::make(dst, len, tag);
+    // ROUTE0 to ROUTE3, written as Lab 03's env.write_routes() wrote them:
+    // one character per route, 0 or 1 for the output, - for disabled
+    // (written with PORT 0). The scoreboard follows the table from the APB
+    // writes, so call this only while no packet is coming in.
+    task write_routes(string r);
+      if (r.len() != 4)
+        `uvm_fatal("ROUTES", $sformatf("routes %s: give four characters, one per route, for example 0110", r))
+      foreach (r[i])
+        if (!(r[i] inside {"0", "1", "-"}))
+          `uvm_fatal("ROUTES", $sformatf("routes %s: each character must be 0, 1 or - (disabled)", r))
+      routes = r;
+      for (int d = 0; d < 4; d++) begin
+        route_en[d] = r[d] != "-";
+        write_reg(A_ROUTE0 + 8'(4 * d), {30'b0, r[d] == "1", r[d] != "-"});
+      end
+    endtask
+
+    // CTRL.EN, which opens the input.
+    task enable();
+      write_reg(A_CTRL, 32'h1);
+    endtask
+
+    // A new packet that knows which routes are enabled, not yet randomized,
+    // for close_holes(). It's made with new() rather than through the
+    // factory, so a factory override (Part 4) doesn't reach it.
+    function router_pkt new_packet();
+      router_pkt p = new("pkt");
+      p.route_en = route_en;
+      return p;
+    endfunction
+
+    // n random packets for the routes written last. Returns when the last
+    // one has gone into the router.
+    task send_random(int unsigned n);
+      router_rand_seq s = router_rand_seq::type_id::create("rand");
+      s.n         = n;
+      s.route_en  = route_en;
+      s.first_tag = next_tag;
+      next_tag   += n;
       s.start(env.src.sqr);
     endtask
 
-    // Write ROUTE0 to ROUTE3. Bit r of en and port is ROUTEr.EN and ROUTEr.PORT.
-    task write_routes(bit [3:0] en, bit [3:0] port);
-      route_en = en;
-      for (int r = 0; r < 4; r++) write_reg(A_ROUTE0 + 8'(4 * r), {30'b0, port[r], en[r]});
+    // Packets the test made itself, in order, each with the next tag.
+    // Returns when the last one has gone into the router.
+    task send(router_pkt pkts[$]);
+      router_one_seq s;
+      foreach (pkts[i]) begin
+        s = router_one_seq::type_id::create("one");
+        pkts[i].tag     = 6'(next_tag++);
+        pkts[i].data[0] = {pkts[i].hdr_dst, pkts[i].tag};
+        s.pkt = pkts[i];
+        s.start(env.src.sqr);
+      end
+    endtask
+
+    task cycles(int unsigned n);
+      repeat (n) @(vif.cb);
     endtask
 
     // Make both outputs ready and wait until the scoreboard expects nothing
@@ -111,34 +180,77 @@ package router_tests_pkg;
       for (int i = 0; i < 300 && env.sb.outstanding() > 0; i++) @(vif.cb);
       repeat (4) @(vif.cb);
     endtask
-  endclass
 
-  // ── Lab 02 ────────────────────────────────────────────────────────────────
-  class router_smoke_test extends router_base_test;
-    `uvm_component_utils(router_smoke_test)
-    function new(string name, uvm_component parent);
-      super.new(name, parent);
-    endfunction
-
-    task body();
+    // Lab 03's check_drops(): read DROP_CNT. The scoreboard compares what the
+    // read returns with the drops it predicted.
+    task check_drops();
       bit [31:0] d;
-      write_routes(4'b0011, 4'b0010);     // DST 0 to output 0, DST 1 to output 1
-      write_reg(A_CTRL, 32'h1);
-      send_pkt(0, 3, 6'h01);
-      send_pkt(0, 1, 6'h02);
-      send_pkt(0, 8, 6'h03);
-      send_pkt(1, 2, 6'h04);
-      send_pkt(0, 5, 6'h05);
-      drain();
       read_reg(A_DROP_CNT, d);
+    endtask
+
+    // Write DROP_CNT, which clears both counters; the scoreboard sees the
+    // write and clears its counts too.
+    task clear_drops();
+      write_reg(A_DROP_CNT, 32'h0);
+    endtask
+
+    // Lab 03's close_holes(): the two coverage holes, on output 0. ROUTE0 is
+    // enabled to output 0 and the other three routes are disabled. With
+    // output 0's sink stalled, packets for DST 0 whose lengths add up to
+    // exactly 8 fill it to level 8, and then two packets follow:
+    //
+    //   1. a random packet for DST 0: decided at level 8, so admitted
+    //      (out0_x_at_8, B08's bin), which takes the level to 9 to 16;
+    //   2. a random packet for DST 1, a disabled route whose PORT is 0:
+    //      NOROUTE with the level above 8 (noroute_x_at_9 or noroute_x_high,
+    //      B07's bin). c_dst would keep it off a disabled route, so it is
+    //      switched off for this one packet.
+    //
+    // The two random packets come from new_packet(), not the factory. In
+    // router_inject_test the factory makes a router_noroute_pkt, whose own
+    // c_dst stayed on when this switched c_dst off through a router_pkt
+    // handle, and randomize() then failed for the DST 1 packet.
+    //
+    // Nothing more goes to output 0 while it holds more than 8 beats, and
+    // nothing goes to output 1. The test reads DROP_CNT after this, and the
+    // scoreboard expects 00000001.
+    virtual task close_holes();
+      fill_plan  plan = new();
+      router_pkt pkts[$];
+      router_pkt p;
+      string     lens = "";
+      int        ok;
+      write_routes("0---");
+      ocfg[0].ready_pct = 0;
+      cycles(2);
+      ok = plan.randomize();
+      if (ok == 0) `uvm_fatal("RAND", "fill_plan randomize() failed")
+      foreach (plan.lens[i])
+        if (plan.lens[i] != 0) begin
+          pkts.push_back(router_pkt::make(2'd0, plan.lens[i]));
+          lens = {lens, $sformatf(" %0d", plan.lens[i])};
+        end
+      p = new_packet();
+      ok = p.randomize() with { hdr_dst == 0; };
+      if (ok == 0) `uvm_fatal("RAND", "router_pkt randomize() failed")
+      pkts.push_back(p);
+      p = new_packet();
+      p.c_dst.constraint_mode(0);
+      ok = p.randomize() with { hdr_dst == 1; };
+      if (ok == 0) `uvm_fatal("RAND", "router_pkt randomize() failed")
+      pkts.push_back(p);
+      `uvm_info("HOLES", $sformatf("output 0 stalled and filled to 8 by packets of%s beats, then %0d beats for DST 0 and %0d for DST 1",
+                lens, pkts[pkts.size() - 2].len, p.len), UVM_LOW)
+      send(pkts);
+      ocfg[0].ready_pct = 100;
+      drain();
     endtask
   endclass
 
   // ── Lab 03 ────────────────────────────────────────────────────────────────
   class router_rand_test extends router_base_test;
     `uvm_component_utils(router_rand_test)
-    int unsigned n = 60, phases = 4;
-    bit [3:0]    route_port;      // the PORT bits written last, for the log
+    int unsigned n = 200, phases = 4;
 
     function new(string name, uvm_component parent);
       super.new(name, parent);
@@ -151,61 +263,91 @@ package router_tests_pkg;
     endfunction
 
     task body();
-      bit [31:0]      d;
-      router_rand_seq s;
-      write_reg(A_CTRL, 32'h1);
-      for (int k = 0; k < phases; k++) begin
-        s = router_rand_seq::type_id::create("rand");
-        configure_routes(k);
+      string r;
+      enable();
+      for (int k = 1; k <= phases; k++) begin
+        r = random_routes();
+        write_routes(r);
         set_sinks(k);
-        `uvm_info("TEST", $sformatf("phase %0d: ROUTE EN %4b PORT %4b; output 0 ready %0d%%, output 1 ready %0d%%",
-                  k, route_en, route_port, ocfg[0].ready_pct, ocfg[1].ready_pct), UVM_LOW)
-        s.n         = n;
-        s.route_en  = route_en;
-        s.first_tag = k * n;
-        s.start(env.src.sqr);
+        `uvm_info("PHASE", $sformatf("%0d of %0d: routes %s, %0d packets; output 0 ready %0d%%, output 1 ready %0d%%",
+                  k, phases, r, n, ocfg[0].ready_pct, ocfg[1].ready_pct), UVM_LOW)
+        send_random(n);
+        drain();
+        check_drops();
+        clear_drops();
       end
-      drain();
-      lab03_steps();
-      read_reg(A_DROP_CNT, d);
+      close_holes();
+      check_drops();
     endtask
 
-    // A random routing table with a disabled route and an enabled route to
-    // each output, so both outputs get traffic.
-    virtual task configure_routes(int k);
-      bit [3:0] en, port;
+    // Lab 03's random routing table, written as +ROUTES is, with at least
+    // one disabled route and an enabled route to each output.
+    function string random_routes();
+      string r;
+      bit    off, to0, to1;
       do begin
-        en   = 4'($urandom);
-        port = 4'($urandom);
-      end while (en == 4'hF || (en & ~port) == 4'h0 || (en & port) == 4'h0);
-      route_port = port;
-      write_routes(en, port);
-    endtask
+        r   = "----";
+        off = 0;
+        to0 = 0;
+        to1 = 0;
+        for (int d = 0; d < 4; d++)
+          case ($urandom_range(2))
+            0: off = 1;
+            1: begin r[d] = "0"; to0 = 1; end
+            2: begin r[d] = "1"; to1 = 1; end
+          endcase
+      end while (!(off && to0 && to1));
+      return r;
+    endfunction
 
-    // How ready each output is in phase k. Before this lab both always were.
+    // How ready each output is in phase k (1 to +PHASES). In Lab 03 both
+    // always were.
     virtual function void set_sinks(int k);
       ocfg[0].ready_pct = 100;
       ocfg[1].ready_pct = 100;
     endfunction
+  endclass
 
-    // The two coverage holes Lab 03 closed by hand, on a stalled output 0:
-    // a packet admitted at a level of exactly 8, and a packet for a disabled
-    // route whose PORT names a full output. The scoreboard checks the
-    // packets, and the DROP_CNT read at the end of body() checks the counts.
-    task lab03_steps();
-      ocfg[0].ready_pct = 0;                // stall output 0 (it's empty after drain())
-      write_routes(4'b0001, 4'b0000);       // DST 0 enabled, DST 1 disabled; both name output 0
-      send_pkt(0, 8, 6'h30);                // level 0 to 8
-      send_pkt(0, 1, 6'h31);                // admitted at exactly 8; level 9
-      send_pkt(1, 2, 6'h32);                // NOROUTE, with output 0 full
+  class router_fill_test extends router_base_test;
+    `uvm_component_utils(router_fill_test)
+    function new(string name, uvm_component parent);
+      super.new(name, parent);
+    endfunction
+
+    task body();
+      enable();
+      close_holes();
+      check_drops();
+    endtask
+  endclass
+
+  // ── Lab 02 ────────────────────────────────────────────────────────────────
+  // Lab 02's test, as Lab 03 kept it: +N random packets (100) on the
+  // routing table +ROUTES gives (0110), a drain, and a DROP_CNT check.
+  class router_class_test extends router_base_test;
+    `uvm_component_utils(router_class_test)
+    function new(string name, uvm_component parent);
+      super.new(name, parent);
+    endfunction
+
+    task body();
+      int unsigned n = 100;
+      string       r = "0110";
+      void'($value$plusargs("N=%d", n));
+      void'($value$plusargs("ROUTES=%s", r));
+      `uvm_info("ENV", $sformatf("%0d packets, routes %s", n, r), UVM_LOW)
+      write_routes(r);
+      enable();
+      send_random(n);
       drain();
+      check_drops();
     endtask
   endclass
 
   // ── Lab 04 ────────────────────────────────────────────────────────────────
-  // Part 3: stall one output at a time. Output 0 in even phases and output 1
-  // in odd ones is ready in 5% of cycles, so it fills past 8 beats while the
-  // other output, always ready, stays nearly empty.
+  // Part 3: stall one output at a time. Output 0 in phases 1 and 3 and
+  // output 1 in phases 2 and 4 is ready in 5% of cycles, so it fills past 8
+  // beats while the other output, always ready, stays nearly empty.
   class router_stall_test extends router_rand_test;
     `uvm_component_utils(router_stall_test)
     function new(string name, uvm_component parent);
@@ -213,8 +355,9 @@ package router_tests_pkg;
     endfunction
 
     virtual function void set_sinks(int k);
-      ocfg[k % 2].ready_pct     = 5;
-      ocfg[1 - k % 2].ready_pct = 100;
+      int s = (k % 2 == 1) ? 0 : 1;     // the output that stalls in phase k
+      ocfg[s].ready_pct     = 5;
+      ocfg[1 - s].ready_pct = 100;
     endfunction
   endclass
 
@@ -224,8 +367,8 @@ package router_tests_pkg;
     `uvm_object_utils(router_noroute_pkt)
     bit to_disabled;
 
-    constraint c_dst { to_disabled  -> ((route_en >> dst) & 4'h1) == 4'h0;
-                       !to_disabled -> ((route_en >> dst) & 4'h1) == 4'h1; }
+    constraint c_dst { to_disabled  -> ((route_en >> hdr_dst) & 4'h1) == 4'h0;
+                       !to_disabled -> ((route_en >> hdr_dst) & 4'h1) == 4'h1; }
 
     function new(string name = "router_noroute_pkt");
       super.new(name);
