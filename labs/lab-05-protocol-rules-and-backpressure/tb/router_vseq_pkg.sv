@@ -162,8 +162,8 @@ package router_vseq_pkg;
       // each one must do:
       //   1. configure the router: every route enabled, two DSTs to each
       //      output, and CTRL.EN set;
-      //   2. stall one output while packets go to the other, then the other
-      //      way round, with a drain() after each;
+      //   2. stall output 1 and send packets to both outputs, then stall
+      //      output 0 instead, with a drain() after each;
       //   3. oversize packets (9 beats or more) to every DST, with both
       //      sinks in SNK_RANDOM, then drain();
       //   4. random packets with oversize ones among them, backpressure(),

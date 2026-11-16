@@ -167,8 +167,8 @@ package router_vseq_pkg;
       route(3, 1, 1);
       ctrl(1);
 
-      // 2. One output stalled while packets go to the other, then the other
-      //    way round.
+      // 2. Output 1 stalled while packets go to both outputs, then output 0
+      //    stalled instead.
       stall(1);
       sink(0, SNK_FAST);
       burst(0, 4, 3);
