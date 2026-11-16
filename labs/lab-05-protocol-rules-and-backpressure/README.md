@@ -1,19 +1,23 @@
 # Lab 05: Protocol rules and backpressure
 
-The writeup is [`docs/labs/lab-05-protocol-rules-and-backpressure-overview.md`](../../docs/labs/lab-05-protocol-rules-and-backpressure-overview.md).
-This folder is the router testbench as Lab 04 leaves it, with three files to finish: the
-assertions, the sink driver and a virtual sequence.
+Writeup: [`docs/labs/lab-05-protocol-rules-and-backpressure-overview.md`](../../docs/labs/lab-05-protocol-rules-and-backpressure-overview.md)
 
-## Running it
+Our solution to Lab 04, with this lab's pieces added: assertions bound into the router, an output
+agent whose driver can answer each beat from a sequence, a virtual sequencer and its sequences,
+and an oversize length kind in the packet, switched off until a sequence gives it a weight. Three
+pieces are left for you, marked `TODO (Part n)`: three assertions, the sink driver's answer to a
+beat, and the virtual sequence's body. The router and its planted bugs come from
+[`../common`](../common/README.md).
 
-From this folder, in the course image:
+Run it in the course image, from this folder:
 
 ```bash
-make                                      # build if needed, then run router_test
-make run BUG=B10                          # the same run with planted bug B10 on
-make run UVM_TESTNAME=router_lab05_test   # your Part 4 virtual sequence on its own
-make check-all                            # router_test on the golden design and on B12, B10, B11
-make clean
+make build                                   # the simulator (106 s the first time, on 2 CPUs)
+make run                                     # router_test on the golden router
+make run BUG=B10                             # the same run with planted bug B10 on
+make run UVM_TESTNAME=router_lab05_test      # your Part 4 virtual sequence on its own
+make check-all                               # pass on the golden router, fail on B11, B10 and B12
+make clean                                   # remove build/ (the ccache at the top of the clone stays)
 ```
 
 The Makefile sets `PLUSARGS` to `+verilator+error+limit+100000`, so every failing assertion
@@ -21,36 +25,60 @@ prints and the run goes on. The simulator's default error limit is 1, which ends
 first failing assertion; `make run BUG=B10 PLUSARGS=` shows that.
 
 `router_lab05_test` runs `router_lab05_vseq` alone. Until you write that sequence's body it sends
-nothing, so the test fails on the golden design ("nothing was checked"), and so does `make regress`,
-which runs every test in `TESTS`.
+nothing, so the test fails on the golden router ("nothing was checked"), and so does
+`make regress`, which runs every test in `TESTS`.
 
-## Make targets
+## Tests
 
-`labs/common/README.md` has every target and variable. The ones this lab uses:
+| Test | What it does |
+|---|---|
+| `router_test` | `router_inject_test`, then `router_lab05_vseq` (Part 4); `make check` and `make check-all` grade this one |
+| `router_lab05_test` | `router_lab05_vseq` on its own |
+| `router_sink_test` | `router_rand_test` with both sinks in `SNK_RANDOM`, each beat answered by an item (Part 3) |
+| `router_inject_test` | Lab 04's: `router_stall_test` with `router_noroute_pkt` swapped in by a factory override |
+| `router_stall_test` | Lab 04's: `router_rand_test` with one output stalled in each phase |
+| `router_rand_test` | Lab 03's: `CTRL.EN`, four phases of 200 random packets with a `DROP_CNT` check each, then `close_holes()` and a last check |
+| `router_fill_test` | Lab 03's `close_holes()` on its own |
+| `router_class_test` | Lab 02's: 100 random packets on the routing table `+ROUTES` gives |
+
+The plusargs are Lab 04's: `+N`, `+PHASES`, `+ROUTES` and `+MAX_CYCLES`; `tb/router_tests_pkg.sv`
+lists them with their defaults.
+
+## Targets
+
+This lab's own target:
 
 | Target | What it does |
 |---|---|
-| `make` | build if needed, then run `router_test` |
-| `make run` | one run; `UVM_TESTNAME`, `SEED`, `BUG` and `PLUSARGS` pick it |
-| `make waves` | the same run, writing `waves.fst` into the run folder |
-| `make cov` | merge the `coverage.dat` of every run in `build/runs` and list the bins |
-| `make check` | `router_test` passes the golden design and fails on `BUG` (default B12) |
-| `make check-all` | the same against B12, B10 and B11 |
-| `make seeds` | `router_test` on seeds 1 to 10, or `SEEDS="..."` |
-| `make clean` | remove `build/` (the ccache stays) |
+| `make loc` | lines and code lines in the testbench files; `FILES="..."` counts another testbench beside it |
+
+and the targets from [`../common/uvm.mk`](../common/README.md) that the writeup uses:
+
+| Target | What it does |
+|---|---|
+| `make build` | build the simulator if a source changed |
+| `make run` | run `UVM_TESTNAME` once and print a verdict |
+| `make waves` | the same run, writing `build/runs/<run>/waves.fst` |
+| `make cov` | the coverage of every run in `build/runs`; `rm -rf build/runs` first to see one run's |
+| `make check` | the test must pass the golden router and fail on `BUG` (default `B11`) |
+| `make check-all` | the same against B11, B10 and B12 (`BUG_LIST`) |
+| `make seeds` | `UVM_TESTNAME` on seeds 1 to 10 (`SEEDS="1 2 3 4 5"` for fewer) |
+| `make regress` | every test on every seed in `SEEDS`, then their coverage |
+| `make clean` | remove `build/` |
+| `make help` | every target and the current variables |
 
 ## Files
 
 | File | What it is | Edit it? |
 |---|---|---|
-| `Makefile` | the sources, the tests, `BUG_LIST` and `PLUSARGS`; includes `../common/uvm.mk` | no |
-| `tb/router_sva.sv` | assertions for the stream rules, each with a failure counter | Part 2: O1, O2, O6 |
+| `tb/router_sva.sv` | the assertions for the stream rules, each with a failure counter | Part 2: `a_O1`, `a_O2`, `a_O6` |
 | `tb/router_sva_bind.sv` | the `bind` that puts `router_sva` into every `router` | no |
-| `tb/stream_pkg.sv` | the source and sink agents, the stream monitor and their sequences | Part 3: the sink driver's decision |
-| `tb/router_seq_pkg.sv` | the virtual sequences: helpers, Lab 04's steps, this lab's, and both together | Part 4: `router_lab05_vseq` |
-| `tb/router_test_pkg.sv` | `router_test` and `router_lab05_test` | no |
-| `tb/router_env_pkg.sv` | the reset agent, the reference model, the scoreboard, the coverage, the virtual sequencer, the environment | no |
-| `tb/apb_pkg.sv` | the APB agent | no |
-| `tb/apb_if.sv`, `tb/stream_if.sv`, `tb/router_sys_if.sv` | the interfaces and their clocking blocks | no |
-| `tb/router_tb_top.sv` | the clock, the interfaces, the router and `run_test()` | no |
-| `solutions/` | the three finished files; see `solutions/README.md` | |
+| `tb/router_ifs.sv` | Lab 04's three interfaces, and `router_sva_if` for the assertions' failure count | no |
+| `tb/router_agents_pkg.sv` | the packet, and the input, output and APB agents with their sequences | Part 3: `out_ready_driver` |
+| `tb/router_env_pkg.sv` | the scoreboard, the coverage (`cg_pkt`, `cg_wait`), the virtual sequencer and the environment | no |
+| `tb/router_vseq_pkg.sv` | `router_base_vseq`, the steps a virtual sequence uses, and `router_lab05_vseq` | Part 4: `router_lab05_vseq::body()` |
+| `tb/router_tests_pkg.sv` | Lab 02's, Lab 03's and Lab 04's tests, and this lab's three | no |
+| `tb/router_tb_top.sv` | the clock, the reset, the router, the assertion count and `run_test()` | no |
+| `src/loc.py` | the line counter behind `make loc` | no |
+| `solutions/` | the three files with the TODOs filled in; see [`solutions/README.md`](solutions/README.md) | |
+| `Makefile` | the lab's settings, `include ../common/uvm.mk`, and `make loc` | no |

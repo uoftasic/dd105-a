@@ -4,7 +4,7 @@
 # router, a sink that can answer each beat, and a virtual sequence. One build
 # serves every test, seed and planted bug:
 #
-#   make build                         build the simulator
+#   make build                         build the simulator (the first build took 106 s on 2 CPUs)
 #   make run                           router_test on the golden router
 #   make run BUG=B10                   the same, with planted bug B10 on
 #   make run UVM_TESTNAME=router_lab05_test
