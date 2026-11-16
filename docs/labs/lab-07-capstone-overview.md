@@ -312,10 +312,11 @@ busy?
 
 1. Write the assertions marked `TODO (Part 5)` in `tb/router_sva.sv`: `a_I7`, `a_O4_rst`,
    `a_O4_after` and `a_A4`, and `a_R_pready`, `a_R_pslverr`, `a_R_prdata` and `a_R_irq` for the
-   specification's Reset table. These are the rules about reset itself, so unlike the others in the
-   file they have no `disable iff (!rst_n)`, and the specification's
-   [Valid/ready rules](../reference/router-spec.md#validready-rules) section says why. `a_O4_after`
-   needs the two flip-flops its comment describes. Each failure increments its counter and calls
+   specification's Reset table. All but `a_O4_after` are rules about reset itself, so unlike the
+   others in the file they have no `disable iff (!rst_n)`, and the specification's
+   [Valid/ready rules](../reference/router-spec.md#validready-rules) section says why.
+   `a_O4_after` checks the cycles after a reset, so it keeps the `disable iff`, and it needs the
+   two flip-flops its comment describes. Each failure increments its counter and calls
    `$error` with the rule's name, as `a_O1` does.
 
 2. Predict which of the eight will fail on the golden design. Then rebuild and run:
