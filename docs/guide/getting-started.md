@@ -47,13 +47,14 @@ it reports, and every exact number in the labs was recorded with them:
 | Surfer | `surfer 0.7.0 (git: v0.7.0)` |
 | UVM, in `third_party/uvm` | `Accellera:1800.2:UVM:2020.3.2`, at the start of every run |
 
-Verilator matters most, because the course leans on what version 5.050 does and doesn't do, and
-the labs and these pages point out the places you'll meet where it differs from the SystemVerilog
-standard.
+Verilator's version matters most, because much of the course depends on what 5.050 does and
+doesn't do, and the labs and these pages point out the places where it differs from the
+SystemVerilog standard as you come to them.
+
 Yices is there because Verilator needs an outside solver for every `randomize()` that has
 constraints. Without one, each such `randomize()` fails, nothing is randomized, and the test still
-passes, so the labs' makefile tells Verilator to use Yices and refuses to run at all if it can't
-find it. Lab 01, Part 1 has you check the first five.
+passes, so the labs' makefile tells Verilator to use Yices and stops before it runs anything if it
+can't find it. Lab 01, Part 1 has you check the first five rows of the table.
 
 ## How long things take
 
@@ -100,8 +101,8 @@ changing them never rebuilds anything. Every lab is written to make use of that.
 ## Where the builds go
 
 Each lab builds into its own `build/` folder. After a build, it holds mainly the simulator,
-`build/sim`, about 47 MB, and the build's log: the build deletes Verilator's generated C++,
-almost 900 MB of it, once the simulator is linked. Each run gets a folder of its own under
+`build/sim`, about 47 MB, and the build's log, because the build deletes Verilator's generated
+C++, almost 900 MB of it, once the simulator is linked. Each run gets a folder of its own under
 `build/runs/`, named for the test, the seed and the bug. It holds `run.log` and, if you asked for
 them, the waves.
 
@@ -125,8 +126,8 @@ make target the labs share, and `make help` in a lab prints the targets that lab
 
 Every run starts with UVM's release notes, a block of text headed `IMPORTANT RELEASE NOTES` that
 names the library, `Accellera:1800.2:UVM:2020.3.2`, and ends with
-`(Specify +UVM_NO_RELNOTES to turn off this notice)`. You can ignore it. Then come your test's own lines, and after them the end of the run, which comes in
-one of two orders.
+`(Specify +UVM_NO_RELNOTES to turn off this notice)`. You can ignore it. After it come your test's
+own lines, and then the end of the run, which comes in one of two orders.
 
 A run that passes prints `DD105: TEST PASSED`, a line from the course's base test, then UVM's
 report summary, and last, a one-line verdict from the labs' makefile:
@@ -139,9 +140,9 @@ report summary, and last, a one-line verdict from the labs' makefile:
 
 A run that reports errors prints UVM's report summary first, then a `DD105: TEST FAILED` line with
 the error counts, then a `%Fatal` line from `dd105_base_test` saying
-`DD105: UVM counted errors, so the exit status is nonzero`. The `%Fatal` is on purpose: on
-Verilator 5.050 a UVM run that reports errors otherwise exits with status 0, and the course wants
-the exit status to mean something.
+`DD105: UVM counted errors, so the exit status is nonzero`. The `%Fatal` is there on purpose. On
+Verilator 5.050 a UVM run that reports errors would otherwise exit with status 0, and we want a
+failing run to exit with a nonzero status.
 
 The graders judge your testbench from both sides, as in DD104: it must pass on the correct design
 and fail on a broken one. `make check` and `make check-all` run your test against each and put
@@ -171,15 +172,15 @@ You'll see that last line often. It's `make` reporting the failed verdict, and i
 your testbench catches every bug.
 
 Counts, simulated times and verdicts come out the same on every run of the same code with the same
-seed, which is 1 unless you choose another, so they should match the labs' exactly; if one doesn't,
-something is different and we want to know. Wall-clock times are ballpark, because they depend on your machine and on what
-else it's doing.
+seed, which is 1 unless you choose another, so yours should match the labs' exactly. If one
+doesn't, something is different, and we'd like to know what. Wall-clock times are only a rough
+guide, because they depend on your machine and on what else it's doing.
 
 ## Getting help
 
 - Ask in the [team Discord](https://discord.gg/hrJnP5UsGz). No question is too basic. A good part
-  of this course is about places where the tools fail quietly, so much of what looks like your own
-  mistake is the simulator being unhelpful.
+  of this course is about places where the tools go wrong without telling you, so much of what
+  looks like your own mistake is the simulator being unhelpful.
 - Quote the exact error, the command you ran, and the test, seed and bug. "My scoreboard fails" and
   "my scoreboard reports 46 errors on B09 with seed 1 and none on the golden router" are different
   questions, and the second is much easier to answer.
@@ -194,8 +195,8 @@ else it's doing.
 ### Requests to avoid
 
 `labs/common/bugs.py` lists all fifteen of the router's planted bugs, with the exact line each one
-changes, and every lab has a `solutions/` folder. All of it is in your clone, and nothing stops
-you reading it, but reading it throws away what the course teaches, which is finding a bug you can't
+changes, and every lab has a `solutions/` folder. All of it is in your clone and you can read it,
+but if you do, you skip what the course is teaching you, which is how to find a bug you can't
 see. The graders also refuse a testbench that reads the `+BUG` switch or the design's record of
 which bug is on, so a testbench that peeks can't pass. If you're stuck, ask in Discord for help
 finding a better question to put to the design rather than for the answer.
