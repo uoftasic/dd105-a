@@ -23,7 +23,16 @@ The setup has three pieces:
   is in your `workspace` folder, bind-mounted into the container, so your files are on your own
   disk and deleting the container doesn't delete your work.
 
-<!-- MODADD: capture after push -->
+`mod add dd105-a` prints:
+
+```text
+Cloning https://github.com/uoftasic/dd105-a.git
+     into /foss/designs/modules/dd105-a
+Cloning into '/foss/designs/modules/dd105-a'...
+OK  module ready: /foss/designs/modules/dd105-a
+    run: mod dd105-a
+cwd: /foss/designs/modules/dd105-a
+```
 
 Nothing else needs installing. Verilator, Icarus, cocotb, the Yices constraint solver and Surfer
 are all in the image, and the one thing the image lacks, a UVM library, is in the course repo
