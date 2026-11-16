@@ -12,7 +12,7 @@ Run it in the course image, from this folder:
 make build                         # the simulator (about 95 s the first time)
 make run                           # router_rand_test on the golden router
 make cov                           # every coverage.dat under build/runs, merged, bin by bin
-make traps                         # the constraint experiments in traps/traps.sv (about 13 s)
+make traps                         # the constraint experiments in traps/traps.sv (under 15 s)
 make check-all                     # router_rand_test on the golden router, B07 and B08
 make clean                         # remove build/ (the ccache at the top of the clone stays)
 ```
