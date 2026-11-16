@@ -178,11 +178,11 @@ happen?
    is checked, by the scoreboard. DR2, a counter that stops at 255, needs 255 drops with no clear
    or reset between them, and `router_inject_test`'s phases clear `DROP_CNT` after each phase.
 
-   The rest of the list is about the environment itself. Nothing checks `in_ready` (I4, I5, I6,
-   RT5), the cycle a beat appears (O8) or that the outputs come from flip-flops (O3), what
-   `CTRL.EN` does (EN1), the APB master's rules (A1 to A3) or `pready` (A5, A6), or `LEVEL`
-   (RG4). Those rows stay "nothing" through this lab. Put them in the plan's Open items, because
-   Part 8's report has to say what the environment doesn't show.
+   The remaining rows with no checker are gaps in the environment itself. Nothing checks
+   `in_ready` (I4, I5, I6, RT5), the cycle a beat appears (O8) or that the outputs come from
+   flip-flops (O3), what `CTRL.EN` does (EN1), the APB master's rules (A1 to A3) or `pready` (A5,
+   A6), or `LEVEL` (RG4), and those rows stay "nothing" through this lab. Put them in the plan's
+   Open items, because Part 8's report has to say what the environment doesn't show.
 
    </details>
 
@@ -237,9 +237,9 @@ Does a regression that passes on every seed tell you the environment is finished
    output only at 8 or less. `noroute_saturated` and `full_saturated` are drops whose counter is
    already 255 (row DR2), and `reset_with_beats` and `reset_mid_packet` are a reset with beats in
    a buffer and a reset with a packet half accepted (RS2 and RS3). You found the same rows in
-   Part 2 by reading, and the regression found them by counting. So the answer to this part's
-   question is no: 110 passes mean that no check fired in 110 runs, and the four empty bins are
-   situations that none of those checks was ever shown.
+   Part 2 by reading the environment, and the regression's bin counts point at them too. So the
+   answer to this part's question is no: 110 passes mean that no check fired in 110 runs, and the
+   four empty bins are situations that none of those checks was ever shown.
 
    </details>
 
@@ -393,7 +393,7 @@ busy?
 
    The rebuild took us 118 s. You should see the same `[SB]` lines as in Part 1 and
    `DD105: TEST PASSED`. None of the assertions fails, because the golden router obeys every one
-   of these rules, so if one does fail, its `%Error` line names it and the mistake is in the
+   of these rules. If one of yours does, its `%Error` line names it, and the mistake is in that
    assertion. So far the only reset they have seen is the one at time 0, three cycles long, when
    the router holds nothing.
 
@@ -485,9 +485,9 @@ Does each drop counter stop at 255, and how will you know that the regression go
    <details>
    <summary>Answer</summary>
 
-   No. We ran `make check-all` with Part 5's work in and none of Part 6's, and it printed
-   `15 of 15 caught.` on seed 1, with B15 at `50 UVM_ERROR, 18 assertions`: none of the fifteen
-   bugs changes what a counter does at 255. The new sequence gives a check you already had
+   No. None of the fifteen bugs changes what a counter does at 255. We ran `make check-all` with
+   Part 5's work in and none of Part 6's, and it printed `15 of 15 caught.` on seed 1, with B15
+   at `50 UVM_ERROR, 18 assertions`. The new sequence gives a check you already had
    something to look at: the scoreboard compares every `DROP_CNT` read with its counts, saturated
    at 255, so the reads past 255 would catch a counter that wraps. Until now row DR2 of your plan
    had no evidence either way.
@@ -645,9 +645,9 @@ wrote.
 Can someone else check your claim without redoing your work?
 
 1. Fill in `REPORT.md` section by section. Paste each number as the tool printed it, from
-   `results/` and from your notes. Section 7, what your environment doesn't show, is the one that
-   gets skipped, and it's the one that a reader who has to rely on your claim needs most. Your
-   plan's Open items from Part 2 belong there.
+   `results/` and from your notes. Section 7, what your environment doesn't show, is the section
+   people tend to skip, and a reader who has to rely on your claim needs it more than any other.
+   Your plan's Open items from Part 2 belong there.
 
 2. Copy your testbench and its outputs into the repository, and push:
 
