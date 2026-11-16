@@ -9,6 +9,7 @@ Utilities for DD105-A — Testbenches with UVM under the UofT ASIC org (`uoftasi
 | `check_site.py` | Check that every local link and `#anchor` in the rendered site resolves; `.github/workflows/site.yml` runs it on `docs/_site` |
 | `hello.py` | Smoke-check that Python runs in this clone |
 | `init-template.py` | Fill `dd105-a` / title / description after using the template |
+| `screenshots/shoot.sh` | Render a PNG of Surfer or GTKWave showing a waveform, headless in the screenshot rig image; see [`screenshots/README.md`](screenshots/README.md) |
 
 ## Usage
 
