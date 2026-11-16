@@ -1,4 +1,4 @@
-// DD105-A Lab 06: assertions for the router's valid/ready rules.
+// DD105-A Lab 05: assertions for the router's valid/ready rules.
 //
 // Plain SystemVerilog with no UVM in it, so any testbench can use it: this
 // lab binds it into the router (router_sva_bind.sv), and a testbench in

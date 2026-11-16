@@ -1,4 +1,4 @@
-// DD105-A Lab 06: attach the assertions to every router.
+// DD105-A Lab 05: attach the assertions to every router.
 //
 // The bind puts one router_sva, named u_sva, inside the router module, wired
 // to the router's own ports. The router's RTL doesn't change, and the same

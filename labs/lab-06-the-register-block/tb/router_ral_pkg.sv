@@ -4,21 +4,38 @@
 // (docs/reference/router-spec.md, "Register map"), each with its fields, and a
 // uvm_reg_block that puts them at their addresses. UVM's register layer uses
 // the field access policies to predict what a read should return, and the
-// built-in register sequences use them to decide what to test.
+// built-in register sequences use them to decide what to test:
+//
+//   ID          RO                 0x00   reset 0xD105_0001
+//   CTRL.EN     RW                 0x04
+//   STATUS.*    W1C, volatile      0x08   hardware sets the bits
+//   INT_EN.*    RW                 0x0C
+//   DROP_CNT.*  WC, volatile       0x10   hardware counts; any write clears
+//   LEVEL.*     RO, volatile       0x14   follows the buffers
+//   ROUTEn.*    RW                 0x20 + 4n
+//
+// UVM doesn't compare a volatile field when it reads one, so the register
+// layer checks only ID, CTRL, INT_EN and ROUTE0 to ROUTE3. The scoreboard
+// checks reads of STATUS and DROP_CNT.
+//
+// The adapter at the bottom turns register operations into apb_items and
+// back; PSLVERR becomes UVM_NOT_OK. Prediction is explicit: a
+// uvm_reg_predictor in the environment updates the model from every
+// transfer the APB monitor reports, whoever started it.
+//
+// CTRL, STATUS, INT_EN and DROP_CNT also have HDL paths, for the back door:
+// router_backdoor_test reads and writes them through uvm_hdl, which reaches
+// the signals named in tb/router_regs.vlt. Nothing else uses the back door.
 //
 // ID, CTRL and INT_EN are written for you, as examples. Part 2 of the lab has
 // you write the fields of STATUS, DROP_CNT, LEVEL and ROUTEn (the TODOs), and
 // the adapter at the bottom of the file. Until you do, those four registers
 // have no fields, so nothing reads or checks them, and a register operation
 // sends an empty APB transfer.
-//
-// CTRL, STATUS, INT_EN and DROP_CNT also have HDL paths, for the back door:
-// router_backdoor_test reads and writes them through uvm_hdl, which reaches
-// the signals named in tb/router_regs.vlt. Nothing else uses the back door.
 
 package router_ral_pkg;
   import uvm_pkg::*;
-  import apb_pkg::*;
+  import router_agents_pkg::*;
   `include "uvm_macros.svh"
 
   // A field is created, then configured with
@@ -26,15 +43,7 @@ package router_ral_pkg;
   //   f.configure(parent, size, lsb, access, volatile, reset, has_reset,
   //               is_rand, individually_accessible);
   //
-  //   parent    the register: this
-  //   size      the field's width in bits
-  //   lsb       its lowest bit in the register
-  //   access    the UVM access policy, such as "RW", "RO", "W1C" or "WC"
-  //   volatile  1 if the design can change the field on its own
-  //   reset     its value after reset
-  //   has_reset 1: the field has a reset value (all of the router's do)
-  //   is_rand   1 if randomize() may pick a value for it (writable fields)
-  //   individually_accessible  1 only for a field alone in its register
+  // docs/reference/register-layer.md says what each argument means.
 
   class router_reg_id extends uvm_reg;
     `uvm_object_utils(router_reg_id)
@@ -44,7 +53,7 @@ package router_ral_pkg;
     endfunction
     virtual function void build();
       id = uvm_reg_field::type_id::create("id");
-      id.configure(this, 32, 0, "RO", 0, 32'hD105_0001, 1, 0, 1);
+      id.configure(this, 32, 0, "RO", 0, uvm_reg_data_t'('hD105_0001), 1, 0, 1);
     endfunction
   endclass
 
@@ -56,7 +65,7 @@ package router_ral_pkg;
     endfunction
     virtual function void build();
       en = uvm_reg_field::type_id::create("en");
-      en.configure(this, 1, 0, "RW", 0, 1'b0, 1, 1, 1);
+      en.configure(this, 1, 0, "RW", 0, 0, 1, 1, 1);
     endfunction
   endclass
 
@@ -70,12 +79,14 @@ package router_ral_pkg;
       noroute  = uvm_reg_field::type_id::create("noroute");
       full     = uvm_reg_field::type_id::create("full");
       oversize = uvm_reg_field::type_id::create("oversize");
-      noroute.configure (this, 1, 0, "RW", 0, 1'b0, 1, 1, 0);
-      full.configure    (this, 1, 1, "RW", 0, 1'b0, 1, 1, 0);
-      oversize.configure(this, 1, 2, "RW", 0, 1'b0, 1, 1, 0);
+      noroute.configure (this, 1, 0, "RW", 0, 0, 1, 1, 0);
+      full.configure    (this, 1, 1, "RW", 0, 0, 1, 1, 0);
+      oversize.configure(this, 1, 2, "RW", 0, 0, 1, 1, 0);
     endfunction
   endclass
 
+  // STATUS has the same three bits as INT_EN. Hardware sets them, so they
+  // are volatile, and writing 1 clears one.
   class router_reg_status extends uvm_reg;
     `uvm_object_utils(router_reg_status)
     rand uvm_reg_field noroute, full, oversize;
@@ -88,6 +99,8 @@ package router_ral_pkg;
     endfunction
   endclass
 
+  // Two counters that hardware increments (volatile), and any write clears
+  // both (WC).
   class router_reg_drop_cnt extends uvm_reg;
     `uvm_object_utils(router_reg_drop_cnt)
     rand uvm_reg_field noroute_cnt, full_cnt;
@@ -100,6 +113,7 @@ package router_ral_pkg;
     endfunction
   endclass
 
+  // The two buffer levels: read-only, and they change on their own.
   class router_reg_level extends uvm_reg;
     `uvm_object_utils(router_reg_level)
     rand uvm_reg_field level0, level1;
@@ -112,6 +126,7 @@ package router_ral_pkg;
     endfunction
   endclass
 
+  // One routing table entry: EN in bit 0 and PORT in bit 1.
   class router_reg_route extends uvm_reg;
     `uvm_object_utils(router_reg_route)
     rand uvm_reg_field en, port;
@@ -133,7 +148,7 @@ package router_ral_pkg;
     rand router_reg_level    level;
     rand router_reg_route    route[4];
 
-    function new(string name = "router_regs");
+    function new(string name = "regs");
       super.new(name, UVM_NO_COVERAGE);
     endfunction
 
@@ -164,7 +179,7 @@ package router_ral_pkg;
         route[n] = router_reg_route::type_id::create($sformatf("ROUTE%0d", n));
         route[n].configure(this);
         route[n].build();
-        default_map.add_reg(route[n], 'h20 + 4 * n, "RW");
+        default_map.add_reg(route[n], uvm_reg_addr_t'('h20 + 4 * n), "RW");
       end
 
       // The back door: where each register lives in the design. A slice is
@@ -193,13 +208,12 @@ package router_ral_pkg;
     virtual function uvm_sequence_item reg2bus(const ref uvm_reg_bus_op rw);
       apb_item t = apb_item::type_id::create("reg_apb");
       // TODO (Part 2): fill in t from rw: write (rw.kind is UVM_WRITE or
-      // UVM_READ), addr (the low 8 bits of rw.addr), wdata (rw.data), and
-      // idle, the idle cycles before the transfer (0 to 2 at random, say).
+      // UVM_READ), addr (the low 8 bits of rw.addr) and wdata (the low 32
+      // bits of rw.data).
       return t;
     endfunction
 
-    // A finished apb_item, from the driver or the monitor, becomes the
-    // register operation it carried out.
+    // A finished apb_item becomes the register operation it carried out.
     virtual function void bus2reg(uvm_sequence_item bus_item, ref uvm_reg_bus_op rw);
       apb_item t;
       if (!$cast(t, bus_item)) begin
