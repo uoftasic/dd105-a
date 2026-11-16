@@ -1,9 +1,10 @@
 # Figure scripts
 
-Each script draws one diagram for the site and writes it as an SVG into `docs/assets/img/`. Two
-files set the look. `circuit_style.py` is the schemdraw style, copied from DD104 so that the
-courses' diagrams match, and `uvm_figure_style.py` does the same for the plain matplotlib figures
-on the UVM pages. Run a script from the top of the clone:
+Each script draws one diagram for the site and writes it as an SVG into `docs/assets/img/`. Most of
+them take their look from one of two files: `circuit_style.py`, the schemdraw style, copied from
+DD104 so that the courses' diagrams match, or `uvm_figure_style.py`, which does the same for plain
+matplotlib figures. `assertion_drop_timing.py` and `reactive_wait_histograms.py` set their own.
+Run a script from the top of the clone:
 
 ```bash
 pip install -r scripts/figures/requirements.txt
