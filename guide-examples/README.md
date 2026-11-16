@@ -10,6 +10,10 @@ takes well under a second.
 The guide pages are for reading, and none of them asks you to run anything here. The folders are
 for anyone who wants to check what a page says, or to change an example and see what happens.
 
+`./run-all.sh`, run from this folder, rebuilds all five examples from a clean `build/` and runs
+every command in the tables below, printing the lines the pages quote. It took 1 min 49 s
+with a warm ccache; with an empty one, add the five cold builds of about 100 s each.
+
 ## assertions-for-interface-rules
 
 A one-beat valid/ready stage (`stage.sv`), its three rules as assertions (`stage_sva.sv`, bound
