@@ -75,7 +75,7 @@ router `ok` both times:
 | B14, B15 | MISSED | MISSED |
 | total | `5 of 15 caught.` | `8 of 15 caught.` |
 
-The starter is the Lab 03 solution's row: Lab 03's solution catches B05, B07, B08, B09 and B10 too.
+The starter's column matches Lab 03's solution, which also catches B05, B07, B08, B09 and B10.
 B07 rises from 1 error to 3 because the stall test's phases 1 and 3 hold output 0 above 8 while
 `router_noroute_pkt` sends packets to disabled routes whose `PORT` is 0, so the `DROP_CNT` reads
 after those phases fail as well as the one after `close_holes()`:
@@ -93,7 +93,8 @@ after those phases fail as well as the one after `close_holes()`:
 | B10 | Lab 05 | the starter already (Lab 03's `close_holes()` stalls output 0 with beats in it), and the stall test | `output 0: got 04 in cycle 56, expected 03` |
 | B12 | Lab 05 | the stall test: output 1 carries traffic while the two `out_ready` signals differ | `output 1: got 80 in cycle 24, and no beat was expected`, then `got 80 in cycle 25, expected 14 last` and `got 80 in cycle 26` |
 
-Neither is mentioned on the lab's page; Lab 05 reframes both. Under B12 output 1's buffer moves on
+Lab 04's page mentions neither. Lab 05 starts from this testbench, which already catches both,
+and has you write the assertions that show the cycle in which the router goes wrong. Under B12 output 1's buffer moves on
 `out0_ready`, which is 1 in 5% of cycles in phase 1, while output 1's sink is always ready, so
 output 1 holds the beat `80` and its monitor reports it again in each of cycles 24, 25 and 26.
 
@@ -125,8 +126,9 @@ had to go to an enabled route, and DST 1 was disabled.
 ## The `DROP_CNT` reads that later labs keep
 
 `router_rand_test` reads `DROP_CNT` after each phase and after `close_holes()`, as Lab 03's test
-did, and writes it to clear it after each phase. B07 changes only `FULL_CNT`, so these reads are
-the only checks that see it; the read after `close_holes()` is the one that catches it in
+did, and writes it to clear it after each phase. B07 changes only `FULL_CNT` and `STATUS.FULL`,
+and `DROP_CNT` is the only register this testbench reads, so these reads are the only checks that
+see it; the read after `close_holes()` is the one that catches it in
 `router_rand_test`. The scoreboard expects `00000001` there.
 
-The files Lab 05's starter starts from are `tb/` with these two files copied in.
+Lab 05's starter is this lab's `tb/` with these two files copied in.

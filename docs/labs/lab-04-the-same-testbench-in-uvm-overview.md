@@ -19,8 +19,8 @@ Package: [`labs/lab-04-the-same-testbench-in-uvm/`](https://github.com/uoftasic/
   [Monitors, analysis ports and scoreboards](../guide/monitors-analysis-ports-and-scoreboards.md)
   and [The factory and config_db](../guide/the-factory-and-config-db.md).
 - Keep [the router's specification](../reference/router-spec.md) open, or
-  [the router in one page](../reference/the-router-in-one-page.md). Parts 3 and 4 lean on its
-  Routing section.
+  [the router in one page](../reference/the-router-in-one-page.md). Parts 3 and 4 use its Routing
+  section.
 - Copy this table into your notes and fill it in as you go:
 
   | | Build time | `make check-all` |
@@ -239,8 +239,8 @@ What does it take to watch output 1, when an output agent is a class you can mak
    UVM_INFO labs/lab-04-the-same-testbench-in-uvm/tb/router_env_pkg.sv(218) @ 57695000: uvm_test_top.env.sb [SB] beats checked: 1434 on output 0, 1799 on output 1; 5 DROP_CNT reads checked
    ```
 
-   and `ok`. The 1799 beats that went unwatched in Part 1 are now checked. The number in brackets
-   after each file name is a line in that file, so yours can differ by a few if your edit kept the
+   and `ok`. The 1799 beats that went unwatched in Part 1 are now checked. The number in
+   parentheses after each file name is a line in that file, so yours can differ by a few if your edit kept the
    TODO comment or added lines.
 
 5. Predict whether `make check-all` catches B06 or B13 now, then run it.
@@ -284,8 +284,8 @@ What does B13 need from the stimulus, and does the scoreboard know enough to jud
 3. Rebuild with `make build`. It took us 105 s, against 30 s and 31 s in Part 2, because the Part
    2 edits were inside existing function bodies and this one adds a function to a class. That
    changes most of the C++ that Verilator generates, as adding members to a class did in Lab 01,
-   Part 5. Before you run it, look at `level()` again. Phase 2 stalls output 1: what will the scoreboard
-   predict for the packets routed there?
+   Part 5. Before you run it, look at `level()` again. Phase 2 stalls output 1: what will the
+   scoreboard predict for the packets routed there?
 
 4. Run the stall test on the golden router:
 
@@ -509,9 +509,9 @@ makes them or the driver that sends them?
    second and third groups are hit now: `cp_fate.full`, `full_x_at_9` and `full_x_high` by the
    stall test's FULL drops, and `out1_x_low` and `out1_x_at_8` because `level()` gives output 1's
    real level. The seven bins left empty are the seven that no test can hit, so this is as far as
-   the percentage goes. `make regress` reports only its own runs, which matters here: `make cov`
-   merges every run in `build/runs`, and runs made before an edit moved the covergroup's lines
-   show each bin a second time.
+   the percentage goes. Read the coverage that `make regress` prints rather than `make cov`'s:
+   `make regress` reports only its own runs, while `make cov` merges every run in `build/runs`,
+   and runs made before an edit moved the covergroup's lines show each bin a second time.
 
 Check: `2 of 2 caught.` from `make check-all`, and `cp_fate.full` hit.
 
