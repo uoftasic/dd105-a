@@ -241,6 +241,7 @@ What does the same job cost when it's built the UVM way?
     built /foss/designs/modules/dd105-a/labs/lab-01-one-alu-two-testbenches/build/sim in 102 s (47M; the 888M of generated C++ was deleted, SLIM=0 keeps it)
     ccache:  Hits: 0 / 36 ( 0.00%)  Misses: 36 / 36 (100.0%)
    ========================================================================
+    /foss/designs/modules/dd105-a/labs/lab-01-one-alu-two-testbenches/build/sim is up to date.
    ```
 
    Verilator turned the three testbench files, the ALU and the whole UVM library (24 MB of
@@ -416,6 +417,7 @@ Which bugs does the UVM testbench catch, and why?
    [SB]     1
    [UVM/RELNOTES]     1
    [VALUE]   282
+
    DD105: TEST FAILED (282 UVM_ERROR, 0 UVM_FATAL)
    [20025000] %Fatal: dd105_pkg.sv:89: Assertion failed in dd105_pkg.dd105_base_test.m_end_of_test: DD105: UVM counted errors, so the exit status is nonzero
    ```
