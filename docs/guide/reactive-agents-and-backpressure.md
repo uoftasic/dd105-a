@@ -4,8 +4,8 @@ This page answers: *the design decides when each beat appears on its output. How
 answer each one, and what kind of backpressure finds bugs?*
 
 Your Lab 04 sink flipped a coin in every cycle: `out_ready` was 1 with probability `ready_pct`
-percent, whether or not a beat was on offer. That is backpressure, but one number decides
-everything about it. In [Lab 05, Part 1](../labs/lab-05-protocol-rules-and-backpressure-overview.md#part-1-the-lab-04-testbench-against-this-labs-bugs)
+percent, whether or not a beat was on offer. That is backpressure, but `ready_pct` was the only
+thing about it you could set. In [Lab 05, Part 1](../labs/lab-05-protocol-rules-and-backpressure-overview.md#part-1-the-lab-04-testbench-against-this-labs-bugs)
 the covergroup `cg_wait` counts the packets of the graded test by the longest any of their beats
 waited, and with Lab 04's sinks it says:
 
@@ -20,7 +20,7 @@ waited, and with Lab 04's sinks it says:
 Two packets out of 334 had a longest wait of 1 to 3 cycles. A bug that shows only when a beat
 waits a cycle or two would hide from that test however many times you ran it. In
 [Part 3](../labs/lab-05-protocol-rules-and-backpressure-overview.md#part-3-a-sink-that-answers-each-beat)
-you'll finish a sink driver that answers each beat on its own terms, with an item from a sequence.
+you'll finish a sink driver that answers each beat separately, with an item from a sequence.
 This page explains how an agent like that is put together, and measures what each kind of sink
 produces, on a small design of our own in
 [`guide-examples/reactive-agents-and-backpressure/`](https://github.com/uoftasic/dd105-a/tree/main/guide-examples/reactive-agents-and-backpressure).
@@ -73,9 +73,10 @@ task body();
 endtask
 ```
 
-The test never starts it. The agent's own `run_phase` starts it on the agent's sequencer at
-time 0, and it never returns. It also raises no objection. The test's objection decides when the
-test ends, and a sequence that never finishes would keep the test alive forever if it raised one.
+The test never starts it: the agent's own `run_phase` starts it on the agent's sequencer at
+time 0, and it never returns. It raises no objection either, because the test's objection decides
+when the test ends, and a sequence that never finishes would keep the test alive forever if it
+raised one.
 Lab 05's `out_agent` starts its `out_ready_seq` the same way.
 
 Each call to `finish_item()` blocks until the driver has taken the item and called `item_done()`,
@@ -106,16 +107,17 @@ It drives `ready` just after the rising edge, through the clocking block, and it
 at the falling edge, when everything has settled. At that point it knows whether a beat moves at the
 coming edge. If one does, that beat has had its answer, so the driver calls `item_done()`.
 
-The important call is `try_next_item()`. `get_next_item()` blocks until the sequence hands over an
-item; `try_next_item()` returns straight away, and leaves the handle `null` if the sequence has
-nothing ready. Then the driver keeps `ready` at 0 for that cycle and asks again in the next one.
+The driver asks for items with `try_next_item()`, not with the source driver's `get_next_item()`.
+`get_next_item()` blocks until the sequence hands over an item; `try_next_item()` returns straight
+away, and leaves the handle `null` if the sequence has nothing ready, in which case the driver keeps
+`ready` at 0 for that cycle and asks again in the next one.
 Lab 05's driver has the same shape, and Part 3 asks you why it is built that way.
 
-The split between the edge and the middle of the cycle matters on this simulator. The comment at the
-top of `tb/router_agents_pkg.sv` in Labs 04 to 07 records what the labs found on Verilator 5.050: a drive
-issued in the same time step as a clock edge, but after the sequencer has handed over an item,
-lands a cycle late. Asking for items in the middle of the cycle and driving only from an edge
-keeps the two apart.
+The loop is split between the edge and the middle of the cycle because of something the labs found
+on Verilator 5.050, which the comment at the top of `tb/router_agents_pkg.sv` in Labs 04 to 07
+records: a drive issued in the same time step as a clock edge, but after the sequencer has handed
+over an item, lands a cycle late. Asking for items in the middle of the cycle and driving only from
+an edge keeps the handover and the drive in different time steps.
 
 The rest of the loop counts the cycles the beat has been on offer, starting from the first cycle it
 appears, and sets `rdy` once the item's delay has gone by. You'll write that countdown for the
@@ -139,10 +141,10 @@ than 20.
 
 A coin-flip sink gives each beat the same chance of being taken in every cycle, so its waits fall
 off geometrically. A beat waits $w$ cycles with probability $p\,(1-p)^{w}$, and the mean wait is
-$(1-p)/p$: 19 cycles at $p = 5\%$ and 1 cycle at 50%, against our measured 18.27 and 0.98, so one
-number sets the whole shape. At 5% almost every beat waits a long time, and only 237 of 2,000
-waited 1 to 3 cycles; at 50%, no beat waited more than 11; and at 95% the sink is nearly always
-ready. There is no setting of `ready_pct` that gives you plenty of short waits *and* plenty of long
+$(1-p)/p$: 19 cycles at $p = 5\%$ and 1 cycle at 50%, against our measured 18.27 and 0.98. So
+`ready_pct` alone sets how the waits are spread. At 5% almost every beat waits a long time, and
+only 237 of 2,000 waited 1 to 3 cycles; at 50%, no beat waited more than 11; and at 95% the sink is
+nearly always ready. There is no setting of `ready_pct` that gives you plenty of short waits *and* plenty of long
 ones. That's why the test you inherit from Lab 04, whose sinks are ready in 5% or 100% of cycles,
 produced only two short-wait packets.
 
@@ -168,8 +170,8 @@ leaves only the value inside that range to the solver, and `cg_wait` is how you 
 The sink's driver reads its mode and `ready_pct` from a configuration object, `snk_cfg`, in every
 cycle, and its sequence reads `max_delay` for every item. So a test, or a virtual sequence, can
 change the backpressure in the middle of a run just by writing a field of that object, without
-starting anything on the sink's sequencer. In Lab 05, Part 4, `backpressure()` does exactly that
-for both outputs, changing each sink's mode every 30 to 250 cycles while packets go in, and
+starting anything on the sink's sequencer. In Lab 05, Part 4, `backpressure()` does that for both
+outputs, changing each sink's mode every 30 to 250 cycles while packets go in, and
 [Virtual sequences](virtual-sequences.md) explains how a sequence gets hold of the object.
 
 ## Check yourself
