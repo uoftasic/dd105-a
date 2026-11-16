@@ -208,3 +208,5 @@ time rather than with anything that needs a rebuild.
   `$test$plusargs` and `$value$plusargs`, which is how every test in the course reads its knobs.
 - [Coverage Driven Verification](https://chipverify.com/verification/coverage-driven-verification):
   merging coverage across seeds and deciding what an empty bin means.
+
+Next: [Lab 06: The register block](../labs/lab-06-the-register-block-overview.md).

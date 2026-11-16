@@ -223,3 +223,5 @@ for both outputs, changing each sink's mode every 30 to 250 cycles while packets
   never creates.
 - [Handshake Properties](https://chipverify.com/formal-verification/handshake-properties), in the
   formal section, on why a sink that is always ready hides bugs in the sender.
+
+Next: [Virtual sequences](../guide/virtual-sequences.md).

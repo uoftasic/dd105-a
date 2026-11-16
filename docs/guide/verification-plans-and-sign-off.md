@@ -204,3 +204,5 @@ empty column. That's the list you work through in Parts 5 and 6.
 - [Sign-Off Criteria](https://chipverify.com/verification/sign-off-criteria): the gates an
   industrial project uses, of which Lab 07's criteria are a small version. Its coverage gates assume
   a commercial simulator's metrics; on Verilator, count bins in `coverage.dat`.
+
+Next: [Writing the verification report](../guide/writing-the-verification-report.md).

@@ -261,3 +261,5 @@ solution adds an `idle` field that can never be 1 while the original constraint 
   shows what the macros expand into. This course writes `start_item` and `finish_item` out
   instead, and the macros' expansions on that page come from an older version of UVM than the
   course's library.
+
+Next: [Monitors, analysis ports and scoreboards](../guide/monitors-analysis-ports-and-scoreboards.md).

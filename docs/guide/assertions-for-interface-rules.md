@@ -278,3 +278,5 @@ commercial simulators, so the failure messages look different from Verilator's.
   assumed property the same way as an assertion.
 - [SystemVerilog Assertions in a UVM Testbench](https://www.chipverify.com/uvm/uvm-assertions-in-testbench):
   which checks belong in assertions, which in the monitor and which in the scoreboard.
+
+Next: [Reactive agents and backpressure](../guide/reactive-agents-and-backpressure.md).

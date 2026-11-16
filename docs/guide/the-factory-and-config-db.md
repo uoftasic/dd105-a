@@ -234,3 +234,5 @@ warning (`labs/ref/README.md` has the probe), so the labs' packages don't use on
   objects like Lab 04's `out_cfg`.
 - [Passing the Virtual Interface](https://www.chipverify.com/uvm/passing-virtual-interface), on
   how the top module's `set` reaches the driver and the monitor.
+
+Next: [Lab 04: The same testbench in UVM](../labs/lab-04-the-same-testbench-in-uvm-overview.md).

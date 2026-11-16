@@ -241,3 +241,5 @@ level its output was at, which only the scoreboard knows, so it listens to the s
   its own text recommends.
 - [UVM Subscriber](https://www.chipverify.com/uvm/uvm-subscriber). Its covergroup reads a class
   member, which Verilator 5.050 drops; write it `with function sample`.
+
+Next: [The factory and config_db](../guide/the-factory-and-config-db.md).

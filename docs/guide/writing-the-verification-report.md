@@ -188,3 +188,5 @@ which is where Lab 07's reset work comes from.
   usually has to show were met.
 - [Verification Metrics](https://chipverify.com/verification/verification-metrics): coverage, bug
   rates and escapes as measures of how far verification has got.
+
+Next: [Lab 07: Capstone](../labs/lab-07-capstone-overview.md).
