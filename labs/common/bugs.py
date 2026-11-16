@@ -59,7 +59,7 @@ BUGS = {
         anchor="    else if (wr_status) status_q <= (status_q & ~pwdata[NUM_EV-1:0]) | ev;",
         golden="(status_q & ~pwdata[NUM_EV-1:0]) | ev",
         buggy="ev",
-        caught_by=[],
+        caught_by=["C08", "C15"],
     ),
 
     "B02": dict(
@@ -72,7 +72,7 @@ BUGS = {
         anchor="  assign irq = |(status_q & int_en_q);",
         golden="|(status_q & int_en_q)",
         buggy="|status_q",
-        caught_by=[],
+        caught_by=["C05", "C06", "C07", "C08", "C09", "C10", "C11", "C12", "C14", "C15", "C17"],
     ),
 
     "B03": dict(
@@ -85,7 +85,7 @@ BUGS = {
         anchor="      W_ROUTE3:   rdata[1:0]            = {route_port_q[3], route_en_q[3]};",
         golden="{route_port_q[3], route_en_q[3]}",
         buggy="{route_en_q[3], route_port_q[3]}",
-        caught_by=[],
+        caught_by=["C02"],
     ),
 
     "B04": dict(
@@ -98,7 +98,7 @@ BUGS = {
         anchor="  assign bad_addr = !hit || (paddr[1:0] != 2'b00);",
         golden="!hit || (paddr[1:0] != 2'b00)",
         buggy="!hit",
-        caught_by=[],
+        caught_by=["C03"],
     ),
 
     # -- Tier 2: routing ---------------------------------------------------
@@ -113,7 +113,7 @@ BUGS = {
         anchor="  assign dst       = in_data[7:6];",
         golden="in_data[7:6]",
         buggy="in_data[6:5]",
-        caught_by=[],
+        caught_by=["C04", "C05", "C06", "C08", "C10", "C11", "C12", "C13", "C14", "C15", "C16", "C17", "C18"],
     ),
 
     "B06": dict(
@@ -126,7 +126,7 @@ BUGS = {
         anchor="  assign admit     = lkp_en && room;",
         golden="lkp_en && room",
         buggy="room",
-        caught_by=[],
+        caught_by=["C05", "C06", "C07", "C08", "C09", "C12", "C17"],
     ),
 
     "B07": dict(
@@ -139,7 +139,7 @@ BUGS = {
         anchor="  assign ev_full     = hs && at_head && lkp_en && !room;",
         golden="hs && at_head && lkp_en && !room",
         buggy="hs && at_head && !room",
-        caught_by=[],
+        caught_by=["C11"],
     ),
 
     # -- Tier 3: buffer corners --------------------------------------------
@@ -154,7 +154,7 @@ BUGS = {
         anchor="  assign room      = (lkp_level <= LEVEL_W'(ADMIT_MAX));",
         golden="(lkp_level <= LEVEL_W'(ADMIT_MAX))",
         buggy="(lkp_level < LEVEL_W'(ADMIT_MAX))",
-        caught_by=[],
+        caught_by=["C06", "C08", "C10", "C11", "C14", "C15"],
     ),
 
     "B09": dict(
@@ -167,7 +167,7 @@ BUGS = {
         anchor="      if (push) wr_ptr_q <= (wr_ptr_q == PTR_LAST) ? '0 : wr_ptr_q + 1'b1;",
         golden="(wr_ptr_q == PTR_LAST) ? '0 : wr_ptr_q + 1'b1",
         buggy="wr_ptr_q + 1'b1",
-        caught_by=[],
+        caught_by=["C04", "C05", "C10", "C12", "C13", "C14", "C15"],
     ),
 
     # -- Tier 4: protocol --------------------------------------------------
@@ -182,7 +182,7 @@ BUGS = {
         anchor="  assign load = (count_q != '0) && (!ovalid_q || out_ready);",
         golden="(count_q != '0) && (!ovalid_q || out_ready)",
         buggy="(count_q != '0)",
-        caught_by=[],
+        caught_by=["C06", "C08", "C10", "C11", "C14", "C15", "C18"],
     ),
 
     "B11": dict(
@@ -195,7 +195,7 @@ BUGS = {
         anchor="  assign wr_last  = in_last || at_max;   // the 8th beat always ends the packet",
         golden="in_last || at_max",
         buggy="in_last",
-        caught_by=[],
+        caught_by=["C08", "C09", "C12"],
     ),
 
     # -- Tier 5: backpressure ----------------------------------------------
@@ -210,7 +210,7 @@ BUGS = {
         anchor="    .out_ready (out1_ready),",
         golden="out1_ready",
         buggy="out0_ready",
-        caught_by=[],
+        caught_by=["C10", "C14", "C15"],
     ),
 
     "B13": dict(
@@ -223,7 +223,7 @@ BUGS = {
         anchor="  assign lkp_level = lkp_port ? level1 : level0;",
         golden="lkp_port ? level1 : level0",
         buggy="lkp_port ? level0 : level1",
-        caught_by=[],
+        caught_by=["C06", "C08", "C10", "C11", "C14", "C15"],
     ),
 
     # -- Tier 6: reset -----------------------------------------------------
@@ -238,7 +238,7 @@ BUGS = {
         anchor="      en_q          <= 1'b0;",
         golden="1'b0",
         buggy="1'b1",
-        caught_by=[],
+        caught_by=["C01", "C02", "C03", "C04", "C05", "C06", "C07", "C08", "C09", "C10", "C11", "C12", "C13", "C14", "C15", "C16", "C17", "C18", "C19"],
     ),
 
     "B15": dict(
@@ -251,7 +251,7 @@ BUGS = {
         anchor="      ovalid_q <= 1'b0;",
         golden="1'b0",
         buggy="ovalid_q",
-        caught_by=[],
+        caught_by=["C18"],
     ),
 }
 
