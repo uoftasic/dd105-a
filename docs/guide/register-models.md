@@ -31,8 +31,8 @@ block answers in the same cycle, and a write takes effect at the rising edge tha
 | `0xC` | `COUNT` | RO | [7:0], the number of events since reset |
 
 `CTRL` is the kind of register that software owns: it changes only when someone writes it. `FLAGS`
-and `COUNT` change on their own, when the design sees an event, and that difference runs through
-everything below.
+and `COUNT` change on their own, when the design sees an event. A register model handles the two
+kinds differently, as most of the sections below show.
 
 ## Fields, registers and the map
 
@@ -105,7 +105,7 @@ UVM_INFO third_party/uvm/src/reg/uvm_reg.svh(2833) @ 95000: reporter [RegModel] 
 ```
 
 The design was right and the mirror was out of date, because auto-predict never saw the raw write.
-Neither error is a design bug, and both would show up on a golden design. A check that fails on
+Neither line points to a design bug, and both would show up on a golden design. A check that fails on
 the golden design means the testbench is wrong, and here the missing piece is a predictor, which
 the labs connect to the monitor that the scoreboard already listens to. The valid bit mask has a 1
 for each bit that was compared, which here is all four bits of `CTRL`'s two fields.
@@ -183,10 +183,10 @@ Neither sequence was written for `regblk`: each works from the model's descripti
 registers. In Lab 06 the same two sequences catch two of the five planted bugs without a single test
 step written for either.
 
-There are two things the model can't do. It can't send a transfer to an address that has no register, because
-there is nothing to name, so the router's 246 bad addresses still need raw transfers (Lab 06,
-Part 4). And it knows nothing about what the registers *do* to the rest of the design, such as
-`irq`, which needs the scoreboard (Part 5).
+The model can't send a transfer to an address that has no register, because there is nothing to
+name, so the router's 246 bad addresses still need raw transfers (Lab 06, Part 4). Nor does it know
+anything about what the registers *do* to the rest of the design, such as `irq`, which needs the
+scoreboard (Part 5).
 
 ## The back door
 
@@ -212,7 +212,7 @@ peek the register after a rising edge, as that test does. A poke also goes aroun
 keeps its own copy of the register. The scoreboard learns `DROP_CNT` only from the transfers it sees
 on the bus, so after a poke its copy and the router's disagree, and Part 6 has you read the poked
 value through the front door to see what the scoreboard makes of it. Reading through the back door
-has no such cost, which makes `peek()` the safer half.
+has no such cost, so `peek()` is the safer of the two.
 
 ## Check yourself
 
