@@ -38,7 +38,7 @@ random choice in every thread comes out the same, so a run that failed can be re
 `make run UVM_TESTNAME=count_test SEED=random`, the run went into
 `build/runs/count_test-s16616597`, so that seed can be run again by name.
 
-## What changes the values
+## One more random call
 
 "The same simulator" in that paragraph means the same build of the same code, and it matters more
 than it looks. Each of these runs adds one thing to thread A before it draws, on seed 1:
@@ -76,7 +76,7 @@ Three habits follow from it:
 - If a failure matters, turn it into a test that doesn't depend on the seed: a directed step in a
   sequence, which is what Labs 06 and 07 have you write for each bug you need to reach.
 
-## A regression
+## Running many seeds
 
 A **regression** runs a set of tests on a set of seeds, all from one build, and reports every run
 and the coverage of all of them together. `make seeds` does it for one test and `make regress` for
@@ -128,11 +128,11 @@ the corner is a matter of luck, and seed 1, the one every "You should see" uses,
 unlucky ones.
 
 Each extra seed in a regression is another chance at the corners that the stimulus reaches only by
-luck. When a corner matters, though, it's better not to leave it to luck at all, and that's why
-Lab 07 has you write a sequence that drives a drop counter to 255 on purpose rather than hoping
-random traffic gets there.
+luck. When a corner matters, though, it's better not to leave it to luck at all, so Lab 07 has you
+write a sequence that drives a drop counter to 255 on purpose rather than hoping random traffic gets
+there.
 
-## What a regression can't tell you
+## Corners no seed reaches
 
 More seeds help only with corners the stimulus can reach. In Lab 07, Part 3, the starter's
 regression of eleven tests on ten seeds printed

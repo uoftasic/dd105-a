@@ -133,7 +133,7 @@ fail), and a statement that every row is `done` or has its gap written down.
 golden router can only show that your checks stay quiet when they should; the planted bugs show
 that they speak up when they should. Fifteen catches are still evidence about fifteen bugs, though,
 not about the router. A bug unlike all of them, in a rule with no checker, would pass every
-criterion on the list, and that's why the plan's open items go into the report.
+criterion on the list, so the plan's open items go into the report.
 
 ## A quiet hunt
 

@@ -105,7 +105,7 @@ the five seeds that got the counter there, so the sentence names all three. A se
 stay true forces you to write down every condition your evidence depends on, and a reader can then
 decide whether those conditions are good enough for what they need.
 
-## What the report doesn't show
+## Section 7: the limits
 
 "What this doesn't show" is the section people leave short, and it's the one a reader who has to
 rely on your claim needs most, because it's the only place they can find out where your evidence
