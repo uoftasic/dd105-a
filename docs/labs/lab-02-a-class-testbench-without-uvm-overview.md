@@ -48,6 +48,7 @@ What does the shipped testbench do, and what does it check?
     built /w/labs/lab-02-a-class-testbench-without-uvm/build/sim in 90 s (48M; the 898M of generated C++ was deleted, SLIM=0 keeps it)
     ccache:  Hits: 0 / 36 ( 0.00%)  Misses: 36 / 36 (100.0%)
    ========================================================================
+    /w/labs/lab-02-a-class-testbench-without-uvm/build/sim is up to date.
    ```
 
    We ran it with the course folder mounted at `/w`, so your paths start with
