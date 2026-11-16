@@ -51,7 +51,7 @@ unless a row says otherwise.
 | B15, `make check-all BUG_LIST=B15`, seeds 2 to 5 | `MISSED` on each | (in the full check-all below) |
 | `make regress` | 11 tests: `110 ok  (110 runs)`, `covergroup : 81.7% (49/60)`, 3 min 57 s | 13 tests: `130 ok  (130 runs)`, `covergroup : 88.3% (53/60)`, 4 min 26 s |
 | `make seeds SEEDS="1 2 3 4 5"` | | `5 ok  (5 runs)`, 8.0 to 8.6 s a run |
-| `make lint` | 0 warnings | |
+| `make lint` | 0 warnings | 0 warnings |
 | `make run UVM_TESTNAME=router_reset_test` | fails: nothing was checked | `ok ... 0.35 s`; 4 resets, `reset_with_beats=3 reset_mid_packet=1` |
 | `make run UVM_TESTNAME=router_saturate_test` | fails: nothing was checked | `ok ... 0.46 s`; `noroute_saturated=5 full_saturated=5` |
 

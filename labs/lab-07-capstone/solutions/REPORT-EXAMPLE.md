@@ -54,8 +54,8 @@ the plan names the sequence that makes it happen instead.
   130 ok  (130 runs)
 ```
 
-The simulator it used was built in 143 s with an empty ccache; the lab folder's first build, also
-with an empty one, took 130 s.
+The first build of `solutions/`, with an empty ccache, took 143 s; the lab folder's first build,
+also with an empty one, took 130 s.
 
 ## 5. Coverage
 
