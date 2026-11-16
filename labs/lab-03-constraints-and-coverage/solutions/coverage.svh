@@ -57,6 +57,6 @@ class router_coverage;
   endfunction
 
   function void sample_pkt(pkt_fate f);
-    cg_pkt.sample(f.len, f.dst, int'(f.fate), f.level);
+    cg_pkt.sample(f.len, int'(f.dst), int'(f.fate), f.level);
   endfunction
 endclass
