@@ -11,10 +11,11 @@ alongside the others and waits for its own things, and they pass packets to each
 one for each mailbox it reads. This page covers what that needs: `fork` and its three ways of
 joining, mailboxes, events, and how to stop a thread you no longer want.
 
-![Lab 02's environment: the generator and driver in thick boxes, the monitors, sinks and scoreboard in thin ones, and the mailboxes as labels on the arrows between them.](../assets/img/dd105-lab02-threads.svg){fig-alt="A block diagram. A generator box has an arrow labelled gen2drv to a driver box, which has an arrow labelled in to a dashed box labelled router (the design). The router's outputs out1 and out0 go to boxes labelled snk1 and snk0. A dot on the in arrow leads down to an in_mon box, and a dot on the out0 line leads down to an out0_mon box. Arrows labelled in2sb and out02sb lead from the two monitors to a scoreboard box at the bottom. The generator and driver have thick outlines; the note says thick boxes are started with fork...join and env.run() waits for both, and thin boxes with fork...join_none, running until the test ends."}
+![Lab 02's environment as threads and mailboxes](../assets/img/dd105-lab02-threads.svg){fig-alt="A block diagram. A generator box has an arrow labelled gen2drv to a driver box, which has an arrow labelled in to a dashed box labelled router (the design). The router's outputs out1 and out0 go to boxes labelled snk1 and snk0. A dot on the in arrow leads down to an in_mon box, and a dot on the out0 line leads down to an out0_mon box. Arrows labelled in2sb and out02sb lead from the two monitors to a scoreboard box at the bottom. The generator and driver have thick outlines; the note says thick boxes are started with fork...join and env.run() waits for both, and thin boxes with fork...join_none, running until the test ends."}
 
-*Lab 02's environment, from `env.svh`. Each box is an object whose `run()` is one thread, and the
-labels on the arrows between them are mailboxes.*
+*From Lab 02's `env.svh`. Each box is an object whose `run()` is one thread, and the labels on the
+arrows between them are mailboxes. The generator and the driver, in thick boxes, are started with
+`fork ... join`; the others run until the test ends.*
 
 We ran every example on this page in the course image. The source is in
 [`guide-examples/threads-mailboxes-and-events/`](https://github.com/uoftasic/dd105-a/tree/main/guide-examples/threads-mailboxes-and-events),

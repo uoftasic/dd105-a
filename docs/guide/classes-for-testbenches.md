@@ -89,9 +89,11 @@ c: pkt 0: 80 11 22 33
 a == b is 1, a == c is 0, pkt::n_made is 1
 ```
 
-![Left: handles a and b point at one pkt object and c at a copy of it. Right: a queue of three handles that all point at one reused pkt, and a queue of three handles that point at three different pkts.](../assets/img/dd105-handles.svg){fig-alt="Two drawings. On the left, small squares labelled a and b both have arrows to one box reading pkt 0: 80 11 22, and a square labelled c has an arrow to a separate box reading pkt 0: 80 11 22 33. On the right, under kept_once, three squares labelled [0], [1] and [2] all have arrows to one box reading pkt 0: 02 a2. Under kept_new, three squares labelled [0], [1] and [2] each have an arrow to its own box: pkt 1: 00 a0, pkt 2: 01 a1 and pkt 3: 02 a2."}
+![The objects that handles_test and reuse_test leave behind](../assets/img/dd105-handles.svg){fig-alt="Two drawings. On the left, small squares labelled a and b both have arrows to one box reading pkt 0: 80 11 22, and a square labelled c has an arrow to a separate box reading pkt 0: 80 11 22 33. On the right, under kept_once, three squares labelled [0], [1] and [2] all have arrows to one box reading pkt 0: 02 a2. Under kept_new, three squares labelled [0], [1] and [2] each have an arrow to its own box: pkt 1: 00 a0, pkt 2: 01 a1 and pkt 3: 02 a2."}
 
-*The objects that `handles_test` and `reuse_test` leave behind, with the values they printed.*
+*Left, `handles_test`: `a` and `b` point at one object, and `c` at a copy of it. Right,
+`reuse_test`: the first queue holds three handles to one reused object, and the second holds three
+handles to three objects. The values are the ones the tests printed.*
 
 `b = a` gave the one object a second name, so the byte pushed through `b` shows up through `a`.
 `a == b` compares handles, and it's 1 because they point at the same object. Two objects with the
