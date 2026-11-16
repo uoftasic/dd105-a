@@ -242,3 +242,5 @@ this reason. [Regressions and seeds](regressions-and-seeds.md) measures it.
 - [How to execute sequences via start()](https://www.chipverify.com/uvm/how-to-execute-sequences-via-start-method).
   Its example test starts a sequence without raising an objection, which works only because that
   sequence takes no simulation time.
+
+Next: [Lab 05: Protocol rules and backpressure](../labs/lab-05-protocol-rules-and-backpressure-overview.md).

@@ -340,3 +340,5 @@ and in Lab 03.
   beats the class).
 - [Disable Constraints](https://chipverify.com/systemverilog/systemverilog-disable-constraints),
   for `constraint_mode()`.
+
+Next: [Functional coverage you can read](../guide/functional-coverage-you-can-read.md).

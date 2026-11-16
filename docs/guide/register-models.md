@@ -279,3 +279,5 @@ several pages. Read 12.1 to 12.6 in order.
 - [UVM Register Backdoor Access](https://www.chipverify.com/uvm/uvm-register-backdoor-access). On
   Verilator a back door needs UVM's DPI code, `--vpi` and the signals listed in a `.vlt` file, as
   Lab 06 does.
+
+Next: [Regressions and seeds](../guide/regressions-and-seeds.md).

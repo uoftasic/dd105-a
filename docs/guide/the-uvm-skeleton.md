@@ -275,3 +275,5 @@ course's `make run` reads the log as well as the exit status, and it called that
   twelve run-time sub-phases this course doesn't use, and objections raised from sequences.
 - [UVM Component](https://www.chipverify.com/uvm/uvm-component) and
   [UVM Object](https://www.chipverify.com/uvm/uvm-object).
+
+Next: [Sequences, sequencers and drivers](../guide/sequences-sequencers-and-drivers.md).

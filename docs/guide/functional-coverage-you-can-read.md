@@ -224,3 +224,5 @@ simulators.
 - [UVM Functional Coverage](https://www.chipverify.com/uvm/uvm-functional-coverage), for a
   coverage subscriber. Its covergroup reads a member of the class, which Verilator 5.050 drops;
   write it `with function sample`, as Lab 04's `router_coverage` is.
+
+Next: [Lab 03: Constraints and coverage](../labs/lab-03-constraints-and-coverage-overview.md).
