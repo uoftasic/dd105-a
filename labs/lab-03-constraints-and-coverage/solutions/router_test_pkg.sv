@@ -1,30 +1,28 @@
-// DD105-A Lab 03: the tests.
+// DD105-A Lab 03: the tests, the one piece of UVM in this lab (reference
+// solution).
 //
-// A test is the one UVM class in this testbench. It extends dd105_base_test,
-// which checks that the constraint solver works and makes the exit status
-// nonzero when anything reported an error, and UVM picks it by name at run
-// time (+UVM_TESTNAME). It creates the class testbench, router_env, starts
-// it, and runs its stimulus from run_phase.
+// A test does what the `initial` block of a classic SystemVerilog testbench
+// does: it makes the environment, hands it the interfaces, and runs the
+// stimulus. It's a UVM test, extending dd105_base_test, only so that `make`
+// picks it with +UVM_TESTNAME and the graders read UVM's report summary. If
+// the testbench reported any errors, it reports one UVM_ERROR saying how
+// many, and dd105_base_test turns that into a failing exit status.
 //
-//   router_rand_test   random routing tables and random packets, in phases,
-//                      then close_holes(); `make check` grades this one
-//   router_fill_test   close_holes() on its own, for a short run and its waves
-//
-// Plusargs: +N=<n> packets per phase (default 200), +PHASES=<n> (default 4).
+//   router_rand_test   CTRL.EN, then +PHASES phases (default 4) of +N random
+//                      packets each (default 200), each phase with its own
+//                      random routing table; then close_holes() and a last
+//                      DROP_CNT check. `make check` grades this one.
+//   router_fill_test   close_holes() on its own, for a short run and its waves.
+//   router_class_test  Lab 02's test: +N packets (default 100) on +ROUTES.
 
 package router_test_pkg;
   import uvm_pkg::*;
-  import dd105_pkg::*;
   import router_tb_pkg::*;
   `include "uvm_macros.svh"
 
-  // Register addresses.
-  localparam bit [7:0] A_ID = 8'h00, A_CTRL = 8'h04, A_STATUS = 8'h08, A_INT_EN = 8'h0C,
-                       A_DROP_CNT = 8'h10, A_LEVEL = 8'h14, A_ROUTE0 = 8'h20;
-
-  // Part 4 (Lab 03's solution): packet lengths that add up to target. A 0 is
-  // "no packet", so the plan has 1 to 8 packets. The array has a fixed size
-  // because sum() on a dynamic array can't be solved here (traps line 5).
+  // Part 4: packet lengths that add up to target. A 0 is "no packet", so the
+  // plan has 1 to 8 packets. The array has a fixed size because sum() on a
+  // dynamic array can't be solved here (traps line 5).
   class fill_plan;
     rand int unsigned lens[8];
     int unsigned      target = 8;
@@ -32,248 +30,163 @@ package router_test_pkg;
                        lens.sum() == target; }
   endclass
 
-  class router_base_test extends dd105_base_test;
+  // Makes the environment as Lab 02's test did, then runs body().
+  class router_base_test extends dd105_pkg::dd105_base_test;
     `uvm_component_utils(router_base_test)
 
-    router_env            env;
-    virtual router_sys_if sys_vif;
-    int unsigned          n_pkts = 200;
-    int unsigned          n_phases = 4;
-    int unsigned          n_sent = 0;     // packets this test has sent, for their tags
+    router_cfg cfg;
+    env        e;
 
     function new(string name, uvm_component parent);
       super.new(name, parent);
     endfunction
 
-    function void build_phase(uvm_phase phase);
-      virtual apb_if        a;
-      virtual stream_src_if s;
-      virtual stream_snk_if k0, k1;
-      super.build_phase(phase);
-      if (!uvm_config_db#(virtual apb_if)::get(this, "", "apb_vif", a))
-        `uvm_fatal("NOVIF", "no apb_if in config_db")
-      if (!uvm_config_db#(virtual stream_src_if)::get(this, "", "src_vif", s))
-        `uvm_fatal("NOVIF", "no stream_src_if in config_db")
-      if (!uvm_config_db#(virtual stream_snk_if)::get(this, "", "snk0_vif", k0))
-        `uvm_fatal("NOVIF", "no stream_snk_if for output 0 in config_db")
-      if (!uvm_config_db#(virtual stream_snk_if)::get(this, "", "snk1_vif", k1))
-        `uvm_fatal("NOVIF", "no stream_snk_if for output 1 in config_db")
-      if (!uvm_config_db#(virtual router_sys_if)::get(this, "", "sys_vif", sys_vif))
-        `uvm_fatal("NOVIF", "no router_sys_if in config_db")
-      void'($value$plusargs("N=%d", n_pkts));
-      void'($value$plusargs("PHASES=%d", n_phases));
-      // A scoreboard that has lost step with the router would print an error
-      // for every beat; stop after 50.
-      uvm_report_server::get_server().set_max_quit_count(50);
-      env = new(a, s, k0, k1, sys_vif);
-    endfunction
-
     task run_phase(uvm_phase phase);
+      virtual stream_src_if in_vif;
+      virtual stream_snk_if out0_vif, out1_vif;
+      virtual stream_mon_if in_mon_vif, out0_mon_vif;
+      virtual apb_if        apb_vif;
       phase.raise_objection(this);
-      env.start();
-      reset_dut();
+      if (!uvm_config_db#(virtual stream_src_if)::get(this, "", "in_vif", in_vif) ||
+          !uvm_config_db#(virtual stream_snk_if)::get(this, "", "out0_vif", out0_vif) ||
+          !uvm_config_db#(virtual stream_snk_if)::get(this, "", "out1_vif", out1_vif) ||
+          !uvm_config_db#(virtual stream_mon_if)::get(this, "", "in_mon_vif", in_mon_vif) ||
+          !uvm_config_db#(virtual stream_mon_if)::get(this, "", "out0_mon_vif", out0_mon_vif) ||
+          !uvm_config_db#(virtual apb_if)::get(this, "", "apb_vif", apb_vif))
+        `uvm_fatal("NOVIF", "the top module didn't set every virtual interface")
+      cfg = new();
+      cfg.from_plusargs();
+      e = new(cfg, in_vif, out0_vif, out1_vif, in_mon_vif, out0_mon_vif, apb_vif);
       body();
-      cycles(4);
+      if (e.n_errors() > 0)
+        `uvm_error("TB", $sformatf("the testbench reported %0d error%s", e.n_errors(),
+                                   e.n_errors() == 1 ? string'("") : string'("s")))
       phase.drop_objection(this);
     endtask
 
     virtual task body();
     endtask
 
-    function void check_phase(uvm_phase phase);
-      super.check_phase(phase);
-      env.sb.final_check();
-    endfunction
-
-    function void report_phase(uvm_phase phase);
-      super.report_phase(phase);
-      env.sb.report();
-    endfunction
-
-    // ── time and reset ───────────────────────────────────────────────────────
-    task cycles(int n);
-      repeat (n) @(sys_vif.mon_cb);
-    endtask
-
-    task reset_dut(int n = 3);
-      sys_vif.cb.rst_n <= 1'b0;
-      repeat (n) @(sys_vif.cb);
-      sys_vif.cb.rst_n <= 1'b1;
-      @(sys_vif.cb);
-    endtask
-
-    // ── registers ────────────────────────────────────────────────────────────
-    // The scoreboard checks every read, so these return nothing.
-    task wr(bit [7:0] addr, bit [31:0] data);
-      env.apb.write(addr, data);
-    endtask
-
-    task rd(bit [7:0] addr);
-      bit [31:0] data;
-      env.apb.read(addr, data);
-    endtask
-
-    task route(int n, bit en, bit port);
-      wr(A_ROUTE0 + 8'(4 * n), {30'b0, port, en});
-    endtask
-
-    task read_all();
-      rd(A_ID);
-      rd(A_CTRL);
-      rd(A_STATUS);
-      rd(A_INT_EN);
-      rd(A_DROP_CNT);
-      rd(A_LEVEL);
-      for (int n = 0; n < 4; n++) rd(A_ROUTE0 + 8'(4 * n));
-    endtask
-
-    // STATUS, DROP_CNT and LEVEL: what the drops did, and how full the outputs are.
-    task read_events();
-      rd(A_STATUS);
-      rd(A_DROP_CNT);
-      rd(A_LEVEL);
-    endtask
-
-    task clear_events();
-      wr(A_STATUS, 32'h7);
-      wr(A_DROP_CNT, 32'h0);
-    endtask
-
-    // ── packets ──────────────────────────────────────────────────────────────
-    // Queue a packet for the source. Its tag becomes a count of the packets
-    // this test has sent, so each header on a waveform is easy to find.
-    task send(packet p);
-      p.tag = 6'(n_sent++);
-      p.data[0] = {p.dst, p.tag};
-      env.src.pkts.put(p);
-    endtask
-
-    task send_random(int n);
-      for (int k = 0; k < n; k++) begin
-        packet p = new();
-        if (!p.randomize()) `uvm_fatal("RAND", "packet randomize() failed")
-        send(p);
-      end
-    endtask
-
-    // Wait until the source has sent everything it was given.
-    task wait_sent(int budget = 100000);
-      int n = 0;
-      while (!env.src.idle() && n < budget) begin
-        cycles(1);
-        n++;
-      end
-      if (!env.src.idle())
-        `uvm_error("TEST", $sformatf("the source still had packets to send after %0d cycles", budget))
-    endtask
-
-    // ── the sinks ────────────────────────────────────────────────────────────
-    // stall(p, 1) holds out_ready of output p at 0 from the next rising edge.
-    task stall(int port, bit on);
-      env.snk[port].stall = on;
-    endtask
-
-    // Let both outputs empty: no stalls, then wait until the model expects no
-    // beat anywhere for a few cycles in a row.
-    task drain(int budget = 3000);
-      int quiet = 0, n = 0;
-      stall(0, 0);
-      stall(1, 0);
-      while (quiet < 4 && n < budget) begin
-        cycles(1);
-        n++;
-        quiet = env.sb.idle() ? quiet + 1 : 0;
-      end
-      if (quiet < 4)
-        `uvm_error("DRAIN", $sformatf("after %0d cycles with both sinks ready, beats are still waiting to come out", budget))
-    endtask
-
-    // ── stimulus ─────────────────────────────────────────────────────────────
-    // One phase: a random routing table (each route enabled 3 times in 4),
-    // random interrupt enables, n random packets, then the event registers
-    // read and cleared once the router is empty.
-    task random_phase(int n);
-      for (int r = 0; r < 4; r++) route(r, $urandom_range(3) != 0, 1'($urandom_range(1)));
-      wr(A_INT_EN, 32'($urandom_range(7)));
-      wr(A_CTRL, 32'h1);
-      send_random(n);
-      wait_sent();
-      drain();
-      read_events();
-      clear_events();
-    endtask
-
-    // Part 4 (Lab 03's solution): the two coverage holes, on each output in
-    // turn. With the output's sink stalled, packets for DST 0 whose lengths
-    // add up to exactly 8 fill it to level 8, and then three packets follow:
+    // Part 4: the two coverage holes, on output 0. ROUTE0 is enabled to
+    // output 0 and the other three routes are disabled. With output 0's sink
+    // stalled, packets for DST 0 whose lengths add up to exactly 8 fill it to
+    // level 8, and then two packets follow:
     //
-    //   1. for DST 0, enabled to this output: decided at level 8, so admitted
-    //      (fate out0 or out1, level at_8);
-    //   2. for DST 1, disabled, with PORT naming this output: NOROUTE with
-    //      the level above 8 (noroute, at_9 or high);
-    //   3. for DST 0 again: a FULL drop (full, at_9 or high).
+    //   1. a random packet for DST 0: decided at level 8, so admitted
+    //      (out0_x_at_8, B08's bin), which takes the level to 9 to 16;
+    //   2. a random packet for DST 1, a disabled route whose PORT is 0:
+    //      NOROUTE with the level above 8 (noroute_x_at_9 or noroute_x_high,
+    //      B07's bin). c_dst would keep it off a disabled route, so it is
+    //      switched off for this one packet.
     //
-    // INT_EN has only FULL set, so irq rises at the one FULL drop, and the
-    // event registers are read once the packets are in and again once the
-    // output has drained.
+    // Nothing more goes to output 0 while it holds more than 8 beats: the
+    // router would drop it as FULL, and the scoreboard, which expects every
+    // packet for an enabled route with PORT 0 to come out, would report it
+    // missing. Nothing goes to output 1. The test checks DROP_CNT after this.
     virtual task close_holes();
-      for (int port = 0; port < 2; port++) begin
-        fill_plan plan = new();
-        packet    p[3];
-        string    lens = "";
-        route(0, 1'b1, 1'(port));
-        route(1, 1'b0, 1'(port));
-        wr(A_INT_EN, 32'h2);
-        wr(A_CTRL, 32'h1);
-        stall(port, 1'b1);
-        cycles(2);
-        if (!plan.randomize()) `uvm_fatal("RAND", "fill_plan randomize() failed")
-        foreach (plan.lens[i])
-          if (plan.lens[i] != 0) begin
-            send(packet::make(2'd0, plan.lens[i]));
-            lens = {lens, $sformatf(" %0d", plan.lens[i])};
-          end
-        foreach (p[k]) begin
-          p[k] = new();
-          if (!p[k].randomize() with { dst == ((k == 1) ? 2'd1 : 2'd0); })
-            `uvm_fatal("RAND", "packet randomize() failed")
-          send(p[k]);
+      fill_plan   plan = new();
+      rand_packet pkts[$];
+      rand_packet p;
+      string      lens = "";
+      e.write_routes("0---");
+      e.snk0.stall = 1;
+      e.cycles(2);
+      if (!plan.randomize()) `uvm_fatal("RAND", "fill_plan randomize() failed")
+      foreach (plan.lens[i])
+        if (plan.lens[i] != 0) begin
+          pkts.push_back(rand_packet::make(2'd0, plan.lens[i]));
+          lens = {lens, $sformatf(" %0d", plan.lens[i])};
         end
-        `uvm_info("HOLES", $sformatf("output %0d stalled and filled to 8 by packets of%s beats, then packets of %0d, %0d and %0d beats for DST 0, 1 and 0",
-                  port, lens, p[0].len, p[1].len, p[2].len), UVM_LOW)
-        wait_sent();
-        cycles(4);
-        read_events();
-        drain();
-        read_events();
-        clear_events();
-      end
+      p = e.gen.new_packet();
+      if (!p.randomize() with { hdr_dst == 0; }) `uvm_fatal("RAND", "rand_packet randomize() failed")
+      pkts.push_back(p);
+      p = e.gen.new_packet();
+      p.c_dst.constraint_mode(0);
+      if (!p.randomize() with { hdr_dst == 1; }) `uvm_fatal("RAND", "rand_packet randomize() failed")
+      pkts.push_back(p);
+      $display("[HOLES] output 0 stalled and filled to 8 by packets of%s beats, then %0d beats for DST 0 and %0d for DST 1",
+               lens, pkts[pkts.size() - 2].len, p.len);
+      e.send(pkts);
+      e.snk0.stall = 0;
+      e.drain();
     endtask
   endclass
 
   class router_rand_test extends router_base_test;
     `uvm_component_utils(router_rand_test)
+
     function new(string name, uvm_component parent);
       super.new(name, parent);
     endfunction
+
+    // A random routing table, written as +ROUTES is, with at least one
+    // disabled route and an enabled route to each output.
+    function string random_routes();
+      string r;
+      bit    off, to0, to1;
+      do begin
+        r   = "----";
+        off = 0;
+        to0 = 0;
+        to1 = 0;
+        for (int d = 0; d < 4; d++)
+          case ($urandom_range(2))
+            0: off = 1;
+            1: begin r[d] = "0"; to0 = 1; end
+            2: begin r[d] = "1"; to1 = 1; end
+          endcase
+      end while (!(off && to0 && to1));
+      return r;
+    endfunction
+
     virtual task body();
-      read_all();
-      repeat (n_phases) random_phase(n_pkts);
+      int unsigned n = 200, n_phases = 4;
+      string       routes;
+      void'($value$plusargs("N=%d", n));
+      void'($value$plusargs("PHASES=%d", n_phases));
+      e.start();
+      e.enable();
+      for (int k = 1; k <= n_phases; k++) begin
+        routes = random_routes();
+        $display("[PHASE] %0d of %0d: routes %s, %0d packets", k, n_phases, routes, n);
+        e.write_routes(routes);
+        e.send_random(n);
+        e.drain();
+        e.check_drops();
+        e.clear_drops();
+      end
       close_holes();
-      read_all();
+      e.check_drops();
+      e.report();
     endtask
   endclass
 
   class router_fill_test extends router_base_test;
     `uvm_component_utils(router_fill_test)
+
     function new(string name, uvm_component parent);
       super.new(name, parent);
     endfunction
+
     virtual task body();
-      read_all();
-      wr(A_CTRL, 32'h1);
+      e.start();
+      e.enable();
       close_holes();
-      read_all();
+      e.check_drops();
+      e.report();
+    endtask
+  endclass
+
+  // Lab 02's test, unchanged in what it does.
+  class router_class_test extends router_base_test;
+    `uvm_component_utils(router_class_test)
+
+    function new(string name, uvm_component parent);
+      super.new(name, parent);
+    endfunction
+
+    virtual task body();
+      e.run();
     endtask
   endclass
 endpackage
