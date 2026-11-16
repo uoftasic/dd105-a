@@ -137,9 +137,13 @@ a second. One cold build adds about 106 MB to the ccache.
 |---|---|
 | pass | ran to UVM's report summary, exit status 0, and no UVM_ERROR, UVM_FATAL or failed assertion |
 | caught | a check fired: a `uvm_error` from the lab's code, a register-model mismatch, or a failed assertion or `$error` |
-| BROKEN | anything else: a failed build, any UVM_FATAL, a UVM_ERROR from the UVM library itself, a timeout, a crash or null handle, a `$fatal`, a failed `randomize()`, a missing solver, or a run that stopped before UVM's summary |
+| BROKEN | anything else: a failed build, any UVM_FATAL, a UVM_ERROR from the UVM library itself, a timeout, a crash or null handle, a `$fatal`, a failed `randomize()`, a missing solver, or a run that stopped before UVM's summary with no failed assertion or `$error` in its log |
 
-A BROKEN run is never a pass and never a catch. `make check` needs pass on the golden design and
+A BROKEN run is never a pass and never a catch. The exception in the last case is there because
+Verilator stops a run when it reaches its error limit (`+verilator+error+limit+N`, 1 by default),
+and it counts each failed assertion and `$error` towards it. A run that stopped that way, before
+UVM's summary, is caught if nothing else went wrong; Lab 03's B05 and B09 runs, which stop at their
+100th `$error`, are graded that way. `make check` needs pass on the golden design and
 caught on the bug, so a bug run that is a pass is MISSED.
 
 ## The bug switch
