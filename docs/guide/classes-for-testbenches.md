@@ -247,7 +247,7 @@ declared virtual in the library, so when UVM calls them on your components it ge
 A method that overrides another can still call the one it replaced, as `super.build_phase(phase)`.
 Lab 01's `alu_base_test::build_phase()` starts that way, and it matters, because the parent's
 version is `dd105_base_test`'s, which checks that the constraint solver works. If you leave the
-`super` call out, the check doesn't run, and nothing reports that it didn't.
+`super` call out, the check doesn't run, and no message tells you it was skipped.
 
 ## Check yourself
 
