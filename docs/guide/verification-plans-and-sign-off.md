@@ -28,10 +28,10 @@ followed, after the other fourteen rows, by
 
 The regression ran the golden router, and every check in all 110 runs passed. `make check-all`
 shows that the same graded test also passes on a router with B15 switched on, which breaks rule O4
-of the specification. What the line `110 ok` can't tell you is which of the specification's rules
-those checks cover, and which situations the stimulus ever produced. Answering those two questions
-is the job of a **verification plan**, and in Lab 07, Part 2 you'll write one for the router
-before you go looking for what the environment misses.
+of the specification. The line `110 ok` can't tell you which of the specification's rules those
+checks cover, or which situations the stimulus ever produced. A **verification plan** answers those
+two questions, and in Lab 07, Part 2 you'll write one for the router before you go looking for what
+the environment misses.
 
 ## One row for each rule
 
@@ -72,8 +72,8 @@ have an answer. Each of them has let a bug through somewhere in this course.
 The "hides behind" strings are the catalogue's own, from `labs/common/bugs.py`, and each one names
 a gap in a column. A check with no stimulus is the case that's easiest to miss, because the check
 exists and passes. [Assertions for interface rules](assertions-for-interface-rules.md) shows it on
-a small design: a bug that drops a waiting beat, under a sink that is always ready, passes an
-assertion written exactly for it. B02 shows a subtler version of the same thing: Lab 06's own
+a small design: a bug that drops a waiting beat, under a sink that is always ready, passes the
+assertion written for the rule it breaks. B02 shows a subtler version of the same thing: Lab 06's own
 `STATUS` step ends with `INT_EN` at `'b111`, and once every enable is on, a router that ignores the
 enables behaves exactly like one that doesn't, so the traffic after that step can't catch it. The
 plan's "made to happen" column has to describe the situation the rule needs, not just name a test
@@ -94,10 +94,10 @@ correct router. The other four are the bins of `cg_corner`, which count a reset 
 buffer, a reset in the middle of an input packet, and a drop while each counter is already at 255.
 Any of those four could happen, and none did.
 
-So 100% isn't the target, and it couldn't be. The target is that every empty bin is explained:
-either the specification rules it out, which you write down, or it's a hole the stimulus has to
-close. After your work in Parts 5 and 6, the reference solution's regression of thirteen tests
-printed
+So 100% isn't the target, because those seven bins put it out of reach. The target is that every
+empty bin is explained: either the specification rules it out, which you write down, or it's a hole
+the stimulus has to close. With the work of Parts 5 and 6 done, the reference solution's regression
+of thirteen tests printed
 
 ```text
  verilator_coverage: covergroup : 88.3% (53/60)
@@ -122,16 +122,15 @@ a command and the output it must print, for example:
 make regress prints ... ok (... runs) with no other class, on seeds ...
 ```
 
-Writing it this way does two things. Anyone can check it, including you a week later, by running
-the command and comparing one line. And it forces you to say exactly which seeds, which tests and
+Written this way, a criterion can be checked by anyone, including you a week later, by running the
+command and comparing one line. It also forces you to say exactly which seeds, which tests and
 which build you mean, which "the regression passes" doesn't. A good set of criteria covers each
 column of the plan: the regression's summary line (the checks passed), its coverage line with the
 empty bins named (the situations happened), `make check-all` on more than one seed (the checks can
 fail), and a statement that every row is `done` or has its gap written down.
 
-`make check-all` is in that list for a reason the regression can't cover. A regression on the
-golden router can only show that your checks stay quiet when they should; the planted bugs show
-that they speak up when they should. Fifteen catches are still evidence about fifteen bugs, though,
+`make check-all` is in that list because a regression on the golden router can only show that your
+checks stay quiet when they should, and the planted bugs show that they fire when they should. Fifteen catches are still evidence about fifteen bugs, though,
 not about the router. A bug unlike all of them, in a rule with no checker, would pass every
 criterion on the list, so the plan's open items go into the report.
 
@@ -160,7 +159,7 @@ empty column. That's the list you work through in Parts 5 and 6.
    <summary>Answer</summary>
 
    Nothing shows that `router_test` ever sent a packet whose 8th beat wasn't its last, which is
-   the only situation in which O6 can fail. That's exactly how B11 hid from Lab 04's tests. A bin
+   the only situation in which O6 can fail. That's how B11 hid from Lab 04's tests. A bin
    such as `cp_len.oversize` above 0 is the evidence the row needs.
 
    </details>
