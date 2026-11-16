@@ -339,7 +339,8 @@ package stream_pkg;
           r = null;
         end else if (vif.rst_n && vif.valid && r != null) begin
           // A beat is waiting. The cycle valid first appears starts the wait;
-          // each cycle after it counts one off, unless the sink is stalled.
+          // each cycle after it counts one off, down to 0, unless the sink is
+          // stalled. Below 0 the unsigned wait_left would wrap round.
           if (!seen) seen = 1;
           else if (wait_left > 0 && !cfg.stall) wait_left--;
         end

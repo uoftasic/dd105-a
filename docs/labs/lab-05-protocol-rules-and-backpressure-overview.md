@@ -284,6 +284,15 @@ What happens to the outputs once each sink takes its beats at its own pace?
    the expression for `rdy`, the next cycle's `ready`. `rdy` must be 0 while the sink is stalled
    or has no item.
 
+   The countdown stops at 0. A beat whose wait is already over while the sink is stalled (one
+   with a delay of 0, say) is still waiting when the stall ends, and because `wait_left` is
+   unsigned, one more count wraps it round and the sink never raises `ready` for that beat. When
+   we left out that check, the golden run on seed 1 in step 4 failed with this error:
+
+   ```
+   [DRAIN] after 3000 cycles with both sinks always ready, beats are still waiting to come out
+   ```
+
 3. Before you rebuild, predict which of B12, B10 and B11 `make check-all` will catch with your
    sink, and why. The sinks start in `SNK_RANDOM`, and Lab 04's first random traffic runs before
    anything changes that.
