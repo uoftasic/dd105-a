@@ -460,11 +460,12 @@ package router_env_pkg;
     longint      last_rdy1  = -1;    // the latest processed cycle with in_ready predicted 1
     bit          in_reset   = 1;
     bit          last_irq   = 0;
+    bit          irq_bad    = 0;     // irq was wrong in the previous cycle
     int unsigned sva_fails  = 0;
 
     // Totals for the report.
     int unsigned n_in_beats, n_pkts, n_fwd, n_noroute, n_full, n_oversize;
-    int unsigned n_out_beats, n_reads, n_writes, n_bad, n_resets, n_cycles;
+    int unsigned n_out_beats, n_reads, n_writes, n_bad, n_resets, n_cycles, n_irq_bad;
     int unsigned n_corner[C_NCORNERS];
 
     function new(string name, uvm_component parent);
@@ -549,6 +550,7 @@ package router_env_pkg;
         if (ib != null || ob[0] != null || ob[1] != null || a != null)
           `uvm_error("SB", $sformatf("a monitor saw a transfer in cycle %0d, a reset cycle", t))
         last_irq = 0;
+        irq_bad = 0;
         return;
       end
       in_reset = 0;
@@ -561,10 +563,18 @@ package router_env_pkg;
       end
 
       // ── irq ───────────────────────────────────────────────────────────────
+      // A wrong irq is reported in the first cycle it's wrong, not in every
+      // cycle after; n_irq_bad counts the cycles.
       exp_irq = m.irq();
-      if (s.irq != exp_irq)
-        `uvm_error("SB", $sformatf("irq is %0d in cycle %0d, but STATUS = %03b and INT_EN = %03b make it %0d",
-                   s.irq, t, m.status, m.int_en, exp_irq))
+      if (s.irq != exp_irq) begin
+        if (!irq_bad)
+          `uvm_error("SB", $sformatf("irq is %0d from cycle %0d, but STATUS = %03b and INT_EN = %03b make it %0d",
+                     s.irq, t, m.status, m.int_en, exp_irq))
+        irq_bad = 1;
+        n_irq_bad++;
+      end else begin
+        irq_bad = 0;
+      end
       if (s.irq && !last_irq) corner(C_IRQ_RISE);
       if (!s.irq && last_irq) corner(C_IRQ_FALL);
       last_irq = s.irq;
@@ -704,8 +714,8 @@ package router_env_pkg;
       `uvm_info("SB", $sformatf("%0d cycles, %0d resets; %0d input beats in %0d packets: %0d forwarded, %0d NOROUTE, %0d FULL, %0d oversize; %0d output beats",
                 n_cycles, n_resets, n_in_beats, n_pkts, n_fwd, n_noroute, n_full, n_oversize, n_out_beats),
                 UVM_LOW)
-      `uvm_info("SB", $sformatf("%0d register reads checked, %0d writes, %0d to bad addresses",
-                n_reads, n_writes, n_bad), UVM_LOW)
+      `uvm_info("SB", $sformatf("%0d register reads checked, %0d writes, %0d to bad addresses; irq wrong in %0d cycles",
+                n_reads, n_writes, n_bad, n_irq_bad), UVM_LOW)
       s = "corners hit:";
       for (int k = 0; k < C_NCORNERS; k++) begin
         corner_e c = corner_e'(k);
@@ -735,14 +745,28 @@ package router_env_pkg;
 
     // Every packet: how long, where it was going, what happened to it, and
     // how full its output was when its header was decided.
+    //
+    // A coverpoint that is part of a cross has every bin written out: this
+    // simulator turns an array of bins such as `bins len[] = {[2:7]}` into a
+    // single bin when its coverpoint is crossed, without a warning.
     covergroup cg_pkt with function sample(int len, int dst, int act, int level);
       cp_len: coverpoint len {
-        bins one = {1};
-        bins mid[] = {[2:7]};
-        bins eight = {8};
+        bins len1 = {1};
+        bins len2 = {2};
+        bins len3 = {3};
+        bins len4 = {4};
+        bins len5 = {5};
+        bins len6 = {6};
+        bins len7 = {7};
+        bins len8 = {8};
         bins oversize = {[9:64]};
       }
-      cp_dst: coverpoint dst { bins dst[] = {[0:3]}; }
+      cp_dst: coverpoint dst {
+        bins dst0 = {0};
+        bins dst1 = {1};
+        bins dst2 = {2};
+        bins dst3 = {3};
+      }
       cp_act: coverpoint act {
         bins noroute = {0};
         bins full = {1};
@@ -769,7 +793,10 @@ package router_env_pkg;
         bins int_en = {3};
         bins drop_cnt = {4};
         bins level = {5};
-        bins route[] = {[8:11]};
+        bins route0 = {8};
+        bins route1 = {9};
+        bins route2 = {10};
+        bins route3 = {11};
         bins bad_aligned = {12};
         bins bad_unaligned = {13};
       }
@@ -785,7 +812,10 @@ package router_env_pkg;
 
     // Backpressure: the longest any beat of an output packet waited.
     covergroup cg_wait with function sample(int port, int max_wait);
-      cp_port: coverpoint port { bins port[] = {[0:1]}; }
+      cp_port: coverpoint port {
+        bins out0 = {0};
+        bins out1 = {1};
+      }
       cp_wait: coverpoint max_wait {
         bins none = {0};
         bins short_wait = {[1:3]};
