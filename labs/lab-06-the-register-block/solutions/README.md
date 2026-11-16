@@ -95,12 +95,13 @@ Lab 05 column is from `labs/lab-05-protocol-rules-and-backpressure/solutions/REA
 | total | `9 of 15 caught.` | `9 of 15 caught.` | `14 of 15 caught.` |
 
 The starter catches the same nine bugs as Lab 05's solution. The counts move because
-`router_test` now starts `router_lab06_vseq` before `router_inject_test`'s steps, and starting a
-sequence draws from the test's random state, so every routing table, packet and coin flip after
-it differs. With the sequence left out, this `router_test` printed Lab 05's `[SB]` lines number
-for number (`1122 packets in: 240 to output 0, 270 to output 1, 194 NOROUTE, 418 FULL`;
-`1108` and `1219` beats), so nothing else this lab adds changes the stimulus. The starter misses
-all five of this lab's bugs on seeds 1 to 5, and `make check` says
+`router_test` now makes and starts `router_lab06_vseq` before `router_inject_test`'s steps, and
+making a sequence and starting it both draw from the test's random state, so every routing table,
+packet and coin flip after it differs. With the sequence left out, this `router_test` printed
+Lab 05's `[SB]` lines number for number
+(`1122 packets in: 240 to output 0, 270 to output 1, 194 NOROUTE, 418 FULL`; `1108` and `1219`
+beats), so nothing else this lab adds changes the stimulus. The starter misses all five of this
+lab's bugs on seeds 1 to 5, and `make check` says
 `VERDICT: FAIL -- your test passes B01_status_write_clears_all too.` B15 is Lab 07's: the router is
 reset only at time 0.
 
