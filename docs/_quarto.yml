@@ -1,4 +1,4 @@
-# Quarto build of the COURSE-TEMPLATE docs (replacing Docsify's index.html,
+# Quarto build of the DD105-A docs (replacing Docsify's index.html,
 # _sidebar.md and _navbar.md).
 #
 #   quarto preview docs          # live site at http://localhost:4200
@@ -30,7 +30,7 @@ website:
       - text: "Guide"
         href: guide/getting-started.md
       - text: "Labs"
-        href: labs/lab-01-overview.md
+        href: labs/lab-01-one-alu-two-testbenches-overview.md
     right:
       - text: Course PDF
         icon: file-pdf
@@ -43,18 +43,90 @@ website:
     contents:
       - text: "Home"
         href: index.md
-      - section: "Course path"
+      - section: "1. Two testbenches"
         contents:
-          - text: "1. Getting started"
+          - text: "Getting started"
             href: guide/getting-started.md
-          - text: "2. Lab 01: Starter script"
-            href: labs/lab-01-overview.md
+          - text: "What a framework buys you"
+            href: guide/what-a-framework-buys-you.md
+          - text: "From cocotb to SystemVerilog classes"
+            href: guide/from-cocotb-to-systemverilog-classes.md
+          - text: "Lab 01: One ALU, two testbenches"
+            href: labs/lab-01-one-alu-two-testbenches-overview.md
+      - section: "2. Classes"
+        contents:
+          - text: "Classes for testbenches"
+            href: guide/classes-for-testbenches.md
+          - text: "Interfaces, clocking blocks and virtual interfaces"
+            href: guide/interfaces-clocking-blocks-and-virtual-interfaces.md
+          - text: "Threads, mailboxes and events"
+            href: guide/threads-mailboxes-and-events.md
+          - text: "Lab 02: A class testbench without UVM"
+            href: labs/lab-02-a-class-testbench-without-uvm-overview.md
+      - section: "3. Constraints and coverage"
+        contents:
+          - text: "Constrained random on Verilator"
+            href: guide/constrained-random-on-verilator.md
+          - text: "Functional coverage you can read"
+            href: guide/functional-coverage-you-can-read.md
+          - text: "Lab 03: Constraints and coverage"
+            href: labs/lab-03-constraints-and-coverage-overview.md
+      - section: "4. UVM"
+        contents:
+          - text: "The UVM skeleton"
+            href: guide/the-uvm-skeleton.md
+          - text: "Sequences, sequencers and drivers"
+            href: guide/sequences-sequencers-and-drivers.md
+          - text: "Monitors, analysis ports and scoreboards"
+            href: guide/monitors-analysis-ports-and-scoreboards.md
+          - text: "The factory and config_db"
+            href: guide/the-factory-and-config-db.md
+          - text: "Lab 04: The same testbench in UVM"
+            href: labs/lab-04-the-same-testbench-in-uvm-overview.md
+      - section: "5. Protocol rules"
+        contents:
+          - text: "Assertions for interface rules"
+            href: guide/assertions-for-interface-rules.md
+          - text: "Reactive agents and backpressure"
+            href: guide/reactive-agents-and-backpressure.md
+          - text: "Virtual sequences"
+            href: guide/virtual-sequences.md
+          - text: "Lab 05: Protocol rules and backpressure"
+            href: labs/lab-05-protocol-rules-and-backpressure-overview.md
+      - section: "6. Registers"
+        contents:
+          - text: "Register models"
+            href: guide/register-models.md
+          - text: "Regressions and seeds"
+            href: guide/regressions-and-seeds.md
+          - text: "Lab 06: The register block"
+            href: labs/lab-06-the-register-block-overview.md
+      - section: "7. Capstone"
+        contents:
+          - text: "Verification plans and sign-off"
+            href: guide/verification-plans-and-sign-off.md
+          - text: "Writing the verification report"
+            href: guide/writing-the-verification-report.md
+          - text: "Lab 07: Capstone"
+            href: labs/lab-07-capstone-overview.md
+      - section: "Reference"
+        contents:
+          - text: "The router in one page"
+            href: reference/the-router-in-one-page.md
+          - text: "The packet router"
+            href: reference/router-spec.md
+          - text: "The UVM register layer"
+            href: reference/register-layer.md
+          - text: "Getting the tools outside the course image"
+            href: reference/getting-the-tools-outside-the-course-image.md
       - section: "Repo"
         contents:
           - text: "Lab packages"
             href: https://github.com/uoftasic/dd105-a/tree/main/labs
-          - text: "Scripts"
-            href: https://github.com/uoftasic/dd105-a/tree/main/scripts
+          - text: "The shared build and graders"
+            href: https://github.com/uoftasic/dd105-a/tree/main/labs/common
+          - text: "The reference testbench"
+            href: https://github.com/uoftasic/dd105-a/tree/main/labs/ref
 
 filters:
   - _filters/course.lua
