@@ -14,11 +14,11 @@ Thanks for improving the UofT ASIC Team's course materials.
 
 Only these three are filled in:
 
-| Token | Example |
-|-------|---------|
-| `dd105-a` | `dd103` |
-| `DD105-A — Testbenches with UVM` | `DD103 — RTL on FPGAs & ASICs` |
-| `Build a UVM testbench in SystemVerilog on Verilator, and find out what the framework costs and buys.` | `RTL synthesis intro with Yosys` |
+| Token | Value in DD105-A |
+|-------|------------------|
+| `{{COURSE_ID}}` | `dd105-a` |
+| `{{COURSE_TITLE}}` | `DD105-A — Testbenches with UVM` |
+| `{{DESCRIPTION}}` | `Build a UVM testbench in SystemVerilog on Verilator, and find out what the framework costs and buys.` |
 
 ## Conventions
 
