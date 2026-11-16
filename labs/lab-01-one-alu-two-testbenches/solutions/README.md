@@ -40,7 +40,8 @@ end
 
 `report_phase` adds the flag count to its line. Because value and flag mismatches are reported
 under different IDs, UVM's report summary counts them apart (`[VALUE]` and `[FLAGS]` under
-"Report counts by id"), which is the two-bucket report DD104 Lab 03's `t02` builds by hand.
+"Report counts by id"), which gives the two separate counts that DD104 Lab 03's `t02` keeps by
+hand.
 
 A wrong value usually brings wrong flags with it, so on A01 and A02 most mismatched vectors are
 reported twice, once under each ID. On A03 every value is right and only `[FLAGS]` fires.

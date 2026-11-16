@@ -81,7 +81,7 @@ haven't set up the workbench yet, do
 | `bash: /foss/designs/common/.designinit: No such file or directory` | The workspace isn't mounted, so relaunch `start_vnc` from your `workspace` clone. In the meantime you can run this lab from a plain `git clone` of `github.com/uoftasic/dd105-a` inside the workbench image, because `make` needs neither `.designinit` nor `mod`. |
 | `bash: mod: command not found` | You haven't loaded `.designinit` in this terminal (the first line of step 2). Every new terminal starts without it. |
 | `mod: no such module: dd105-a` | You ran `mod dd105-a` before `mod add dd105-a`. |
-| `VERILATOR_SOLVER is "yices-smt2 --incremental", and yices-smt2 is not on PATH.` | You ran `make` outside the course image. Without a solver every constrained `randomize()` fails, nothing is randomized and the test still passes, so the makefile refuses to go on. Run it in the workbench terminal. |
+| `VERILATOR_SOLVER is "yices-smt2 --incremental", and yices-smt2 is not on PATH.` | You ran `make` outside the course image. Without a solver every constrained `randomize()` fails, nothing is randomized and the test still passes, so the makefile stops with this message instead. Run it in the workbench terminal. |
 
 For anything else, see IC101's [Troubleshooting](https://uoftasic.com/ic101/reference/troubleshooting.html) page.
 
@@ -230,8 +230,8 @@ What does the same job cost when it's built the UVM way?
    make build
    ```
 
-   The banner the build starts with estimates 1.5 to 2.5 minutes for a cold build, and on the
-   course's 2 CPUs it took us 102 s. It ends with:
+   The banner that the build starts with estimates 1.5 to 2.5 minutes for a cold build, and on
+   the course's 2 CPUs it took us 102 s. It ends with:
 
    ```text
    - V e r i l a t i o n   R e p o r t: Verilator 5.050 2026-07-01 rev v5.050
@@ -595,13 +595,12 @@ Questions:
    against nothing for a Python test. It isn't faster per vector either: 2000 vectors in about
    1.2 s is about 0.6 ms each, and cocotb's 393,216 in about 17 s is about 0.04 ms each.
 
-   What it gave you shows in Part 5. The flag check went into one class, and both tests used it
+   You saw what it gave you in Part 5. The flag check went into one class, and both tests used it
    without being edited, because stimulus and checking are separate pieces; in `test_alu.py`,
    `t01` and `t02` each do their own comparison. `alu_directed_test` is one sequence and one short
    test class that reuse the driver, monitor and scoreboard, and it's chosen when you run, without a
-   rebuild. The report server
-   counted your two kinds of mismatch by ID for you. On one combinational block that's a modest
-   return. The router you'll test from Lab 02 on has a register bus, an input stream and two
+   rebuild. The report server counted your two kinds of mismatch by ID for you. On one
+   combinational block that's a modest return. The router you'll test from Lab 02 on has a register bus, an input stream and two
    output streams, and that's the kind of design the structure is for.
 
    </details>
