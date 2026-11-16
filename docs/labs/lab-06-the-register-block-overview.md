@@ -202,8 +202,10 @@ How does the register model keep its mirror in step with the router, and what do
 sequence test?
 
 1. Write the first half of the Part 3 step: run a `uvm_reg_bit_bash_seq` the way you ran the reset
-   sequence. It writes each bit of each register with 1 and then with 0, reads the register after
-   every write, and compares what it read with what the model says the register should hold.
+   sequence. It works through every bit of every register. For each bit it writes the register
+   twice, each time with that bit the opposite of what the model expects it to hold, reads the
+   register after each write, and compares what it read with what the model says the register
+   should hold. A read-write bit that starts at 0 is written with 1 and then with 0.
 
 2. Write the second half. Lab 04 and Lab 05 set up the router with raw APB transfers, which go
    around the model, and so do `route()` and `ctrl()` here. After the five writes the `TODO`
@@ -250,8 +252,8 @@ sequence test?
 
    The usual place for a predictor to listen is the monitor, because a monitor sees every transfer
    on the bus, including those from other masters. Here it listens to the driver. When we
-   connected it to the monitor instead, the bit bash failed on the golden router with 18 errors,
-   the first of which was:
+   connected it to the monitor instead, the run on the golden router failed with 19 `UVM_ERROR`s,
+   18 of them from the bit bash, and the first was:
 
    ```text
    [uvm_reg_bit_bash_seq] Writing a 0 in bit #0 of register "regs.CTRL" with initial value 'h0000000000000001 yielded 'h0000000000000000 instead of 'h0000000000000001
@@ -291,9 +293,10 @@ sequence test?
    <details>
    <summary>Answer</summary>
 
-   Bits 3 to 31, which hold no field. The bit bash treats a bit with no field as read-only and
-   checks that it reads 0 after both a 1 and a 0 are written to it, so it tests the reserved bits
-   of every register, the volatile ones included.
+   Bits 3 to 31, which hold no field. The bit bash treats a bit with no field as read-only. The
+   model expects it to read 0, so both writes set it to 1, and after each one the bit bash checks
+   that it still reads 0. That way it tests the reserved bits of every register, the volatile ones
+   included.
 
    </details>
 
