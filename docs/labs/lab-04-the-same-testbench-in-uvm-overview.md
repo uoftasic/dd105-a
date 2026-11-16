@@ -166,8 +166,9 @@ Does the port do what the Lab 03 testbench did, and which of this lab's bugs doe
          hides behind: stalling both outputs together, or never letting one fill
    ```
 
-   B06 forwards a packet for a disabled route when its output has room. B13 judges whether an
-   output has room from the level of the other output. Why does this test miss each of them?
+   followed by a note and an error line from `make`, because the verdict is a fail. B06 forwards
+   a packet for a disabled route when its output has room. B13 judges whether an output has room
+   from the level of the other output. Why does this test miss each of them?
 
    <details>
    <summary>Answer</summary>
@@ -281,9 +282,9 @@ What does B13 need from the stimulus, and does the scoreboard know enough to jud
    grown into a percentage: 0 is a stall, 100 is a sink that is always ready.
 
 3. Rebuild with `make build`. It took us 105 s, against 30 s and 31 s in Part 2, because the Part
-   2 edits were inside existing function bodies and this one adds a function to a class, which
-   changes most of the C++ that Verilator generates (Lab 01, Part 5 measured the same thing).
-   Before you run it, look at `level()` again. Phase 2 stalls output 1: what will the scoreboard
+   2 edits were inside existing function bodies and this one adds a function to a class. That
+   changes most of the C++ that Verilator generates, as adding members to a class did in Lab 01,
+   Part 5. Before you run it, look at `level()` again. Phase 2 stalls output 1: what will the scoreboard
    predict for the packets routed there?
 
 4. Run the stall test on the golden router:
@@ -421,7 +422,7 @@ makes them or the driver that sends them?
    make run
    ```
 
-   You should see:
+   With the reference solution you should see:
 
    ```text
    UVM_INFO labs/lab-04-the-same-testbench-in-uvm/tb/router_env_pkg.sv(209) @ 61465000: uvm_test_top.env.sb [SB] 805 packets in: 144 to output 0, 190 to output 1, 194 NOROUTE, 277 FULL; the highest level a header saw was 16
@@ -430,7 +431,10 @@ makes them or the driver that sends them?
 
    and `ok`. The scoreboard already knew what to do with a packet for a disabled route, since it
    was written from the specification's Routing table; until now no test sent one with room in
-   its output.
+   its output. Which packets go to disabled routes depends on how your `pre_randomize()` draws
+   its bit. A version of ours that wrote the constraint differently but drew the bit the same way
+   gave the same counts, so if yours differ, compare your draw with the reference solution's once
+   step 5 says `2 of 2 caught.`
 
 5. Run the lab's verdict:
 
@@ -537,7 +541,8 @@ Where did the lines go, compared with your Lab 03 testbench, and what did they b
 
    As shipped it was 1330 lines and 921 code lines, so the four parts added 21 code lines.
    With our Lab 03 solution in Lab 03's `tb/`, the `FILES:` part totals 1206 lines and 789 code
-   lines. Write both totals, yours and Lab 03's, in your notes.
+   lines. Write your two totals, for this lab's testbench and for your Lab 03 testbench, in your
+   notes.
 
 2. For each piece of your Lab 03 testbench, find the UVM piece that does its job, and write down
    whether its code moved across nearly unchanged, changed shape, or had no Lab 03 counterpart
@@ -560,7 +565,7 @@ Where did the lines go, compared with your Lab 03 testbench, and what did they b
    | `fill_plan` and `close_holes()` | the same, in `router_tests_pkg.sv` | moved: the same rows in the same order, on the agents' sequences |
    | `router_cfg` and its plusargs | plusargs read in the tests | moved, except `+SHOW`, which is gone |
    | `$error` and `n_errors` | `` `uvm_error `` | changed: UVM counts the errors and stops the run at 50 |
-   | `router_class_test`, `router_rand_test`, `router_fill_test` | `router_base_test` and the five tests | changed shape, and `+UVM_TESTNAME` picks one at run time |
+   | `router_base_test` and its three tests | `router_base_test` and five tests | moved: the three tests' `body()`s call the same steps, and two tests are new; `+UVM_TESTNAME` picks one at run time, as it did in Lab 03 |
    | nothing | the agent classes, `out_cfg` and `config_db`, the factory registration lines | new |
 
    The code that touches the router (the drives, the sampling, the prediction) does the same work
@@ -584,8 +589,8 @@ Where did the lines go, compared with your Lab 03 testbench, and what did they b
 
    </details>
 
-Check: your table has a line count for both testbenches, and a build time and a `make check-all`
-result for each part.
+Check: your notes have a line count for both testbenches, and your table has a build time and a
+`make check-all` result for each part.
 
 ## Finishing
 
