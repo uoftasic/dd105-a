@@ -159,8 +159,8 @@ design and all the broken ones. The router's (from `inject.py --all`):
 
 The graders pass only `+BUG=<id>`, with an id from `BUG_LIST` or the catalogue, and nothing for the
 golden run. They don't need the design to print anything. A lab whose design does print a line for
-each bug can set `BUG_CONFIRM` to it, with `{id}` for the bug; the graders then refuse a bug run
-without that line, and a golden run with one.
+each bug can set `BUG_CONFIRM` to it, with `{id}` for the bug; the graders then grade a bug run
+without that line as BROKEN, and a golden run with one as well.
 
 `BUG_CATALOGUE` is the router's `bugs.py` (its `BUGS` dict and `ids()`), or a JSON file with the
 same fields:
@@ -171,7 +171,7 @@ same fields:
          "teaches": "bias the stimulus toward corners such as a == b"}}
 ```
 
-`check` and `hunt` refuse a testbench that reads `+BUG` or a design's `*_bug_pkg::` variable, and the
+`check` and `hunt` fail a testbench that reads `+BUG` or a design's `*_bug_pkg::` variable, and the
 waves leave packages out, so `make waves` doesn't show `router_bug_pkg::bug_id`.
 
 ## Drive through a clocking block
@@ -197,9 +197,10 @@ image (`selftest/nba/nba_repro.sv` and the selftest's UVM drivers), give:
 | an interface task that loops over its beats, called from a class | 3 of 3 |
 | a UVM driver doing it once per item, or for two beats per item | every item arrives |
 
-So the trap is in module code, and class code, where a UVM driver lives, kept every assignment in
-every shape tried. Drive through a clocking block all the same: it gave 3 of 3 everywhere, it is
-what the course teaches, and it doesn't depend on this:
+Of the shapes tried, only the module task called in a `repeat` loop lost assignments, and class
+code, where a UVM driver lives, kept every assignment in every shape. Drive through a clocking
+block all the same: it gave 3 of 3 everywhere, it is what the course teaches, and it doesn't depend
+on the order in which Verilator commits two nonblocking assignments in one time step:
 
 ```systemverilog
 vif.cb.valid <= 1; vif.cb.data <= req.data;
