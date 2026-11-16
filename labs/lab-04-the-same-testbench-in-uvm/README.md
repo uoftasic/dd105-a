@@ -2,18 +2,20 @@
 
 Writeup: [`docs/labs/lab-04-the-same-testbench-in-uvm-overview.md`](../../docs/labs/lab-04-the-same-testbench-in-uvm-overview.md)
 
-Lab 03's class testbench for the router, ported to UVM: an agent for the input stream, one for
-the APB port, and one output agent class that the environment makes once per output, with a
-scoreboard and a coverage subscriber fed by analysis ports. Four pieces are left for you, marked
-`TODO (Part n)`: the second output agent, two lines of the scoreboard, the stall test and the
-factory override. The router and its planted bugs come from [`../common`](../common/README.md).
+Our solution to Lab 03, ported to UVM: an agent for the input stream, one for the APB port, and
+one output agent class that the environment makes once per output, with a scoreboard (Lab 03's
+scoreboard and tracker in one class) and Lab 03's covergroup as a subscriber, fed by analysis
+ports. The packet's constraints, the covergroup, `fill_plan` and `close_holes()` are Lab 03's.
+Four pieces are left for you, marked `TODO (Part n)`: the second output agent, two lines of the
+scoreboard, the stall test and the factory override. The router and its planted bugs come from
+[`../common`](../common/README.md).
 
 Run it in the course image, from this folder:
 
 ```bash
-make build                                   # the simulator (about 100 s the first time)
+make build                                   # the simulator (116 s the first time, on 2 CPUs)
 make run                                     # router_inject_test on the golden router
-make run UVM_TESTNAME=router_smoke_test      # another test, no rebuild
+make run UVM_TESTNAME=router_class_test      # another test, no rebuild
 make check-all                               # pass on the golden router, fail on B06 and B13
 make clean                                   # remove build/ (the ccache at the top of the clone stays)
 ```
@@ -24,15 +26,17 @@ make clean                                   # remove build/ (the ccache at the 
 |---|---|
 | `router_inject_test` | `router_stall_test` with `router_noroute_pkt` swapped in by a factory override; `make check` and `make check-all` grade this one (Part 4) |
 | `router_stall_test` | `router_rand_test` with one output stalled in each phase (Part 3) |
-| `router_rand_test` | Lab 03's test: four phases of random routing tables and packets, then Lab 03's two directed steps |
-| `router_smoke_test` | Lab 02's test: five packets by hand |
+| `router_rand_test` | Lab 03's test: `CTRL.EN`, then four phases of 200 random packets, each with its own random routing table and a `DROP_CNT` check; then `close_holes()` and a last `DROP_CNT` check |
+| `router_fill_test` | Lab 03's `close_holes()` on its own |
+| `router_class_test` | Lab 02's test: 100 random packets on the routing table `+ROUTES` gives, and a `DROP_CNT` check |
 
 Plusargs the tests read:
 
 | Plusarg | Default | Meaning |
 |---|---|---|
-| `+N=<n>` | 60 | packets in each phase of `router_rand_test` and the tests built on it |
+| `+N=<n>` | 200 (100 in `router_class_test`) | packets in each phase of `router_rand_test` and the tests built on it, or in all of `router_class_test` |
 | `+PHASES=<n>` | 4 | phases, each with its own routing table |
+| `+ROUTES=<abcd>` | `0110` | `router_class_test`'s routing table: `0` or `1` is the output, `-` is disabled |
 | `+MAX_CYCLES=<n>` | 200000 | a watchdog: a test still running after this many cycles ends with `UVM_ERROR [WATCHDOG]` |
 
 ## Targets
@@ -68,9 +72,9 @@ edit moved the covergroup's lines, the old runs show each bin a second time, so 
 | File | What it is |
 |---|---|
 | `tb/router_ifs.sv` | the three interfaces: `apb_if`, `stream_src_if` (input), `stream_snk_if` (an output) |
-| `tb/router_agents_pkg.sv` | the packet, the input, output and APB agents, and their sequences |
+| `tb/router_agents_pkg.sv` | the packet (`router_pkt`, Lab 03's `rand_packet` with its constraints), the input, output and APB agents, and their sequences |
 | `tb/router_env_pkg.sv` | the scoreboard, the coverage and the environment; TODOs for Parts 2 and 3 |
-| `tb/router_tests_pkg.sv` | the tests; TODOs for Parts 3 and 4 |
+| `tb/router_tests_pkg.sv` | Lab 03's `fill_plan`, the base test with `close_holes()` and the other steps a test calls, and the tests; TODOs for Parts 3 and 4 |
 | `tb/router_tb_top.sv` | the clock, the reset, the router and `run_test()` |
 | `src/loc.py` | the line counter behind `make loc` |
 | `solutions/` | the two files with the TODOs filled in; see [`solutions/README.md`](solutions/README.md) |
