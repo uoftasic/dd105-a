@@ -34,7 +34,7 @@ module router
   input  wire                clk,
   input  wire                rst_n,
 
-  // APB register port (APB3 without PPROT and PSTRB).
+  // APB register port: the APB3 signals, one slave select, no PSTRB.
   input  wire                psel,
   input  wire                penable,
   input  wire                pwrite,
