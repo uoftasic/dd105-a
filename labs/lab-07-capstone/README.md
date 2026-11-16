@@ -2,9 +2,9 @@
 
 Writeup: [`docs/labs/lab-07-capstone-overview.md`](../../docs/labs/lab-07-capstone-overview.md)
 
-Our solution to Lab 06, with this lab's pieces added: a reset driver, a source driver and an APB
-driver that know what to do when a reset interrupts them, a scoreboard that follows a reset with
-traffic in flight, and four corners in the coverage. Four pieces are left for you, marked
+This package is our solution to Lab 06, with this lab's pieces added: a reset driver, a source
+driver and an APB driver that know what to do when a reset interrupts them, a scoreboard that
+follows a reset with traffic in flight, and four corners in the coverage. Four pieces are left for you, marked
 `TODO (Part n)`: the assertions for the rules about reset, the sequence that resets the router
 with traffic in flight, the resets in `router_lab07_vseq`'s random phases, and the sequence that
 takes both drop counters to 255. You also write a verification plan and a verification report from

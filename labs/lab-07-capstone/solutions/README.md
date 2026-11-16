@@ -156,9 +156,9 @@ a reset in flight needs added.
 
 - The graded test is `router_test`, as in Labs 05 and 06. Lab 07's own sequence,
   `router_lab07_vseq`, runs last, so nothing it draws changes what runs before it.
-- Lab 06 had no reset driver. The given pieces add one, and teach the source and APB drivers rules
-  I3 and A4. The APB driver needs a cycle's warning that a reset is coming, which the reset driver
-  gives it through `rst_soon`.
+- Lab 06 had no reset driver. The given pieces add one, and make the source and APB drivers follow
+  rules I3 and A4. The APB driver needs a cycle's warning that a reset is coming, which the reset
+  driver gives it through `rst_soon`.
 - The scoreboard isn't cycle-exact. It checks the order and data of the beats, not the cycle each
   one appears, and it checks a `DROP_CNT` read correctly only while no packet is coming in, so
   `router_saturate_vseq` reads between bursts. The ref's same-cycle clear of `DROP_CNT` (example
