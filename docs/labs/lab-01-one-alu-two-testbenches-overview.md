@@ -149,11 +149,11 @@ What does the cocotb test cost to build and run, and what does it report on each
    ========================================================================
    ```
 
-   The last line is the lab's makefile timing the two halves. The build is Icarus compiling a
-   34-line module, which takes well under a second (a build with nothing to do took 0.4 s, all of
-   it `make` itself). The run is mostly `t02` driving all 393,216 vectors, and the rest is starting
-   Python and cocotb. Write both times in your table. Times are ballpark, but the counts in this
-   lab are exact.
+   The line between the last two rules is the lab's makefile timing the two halves. The build is
+   Icarus compiling a 34-line module, which takes well under a second (a build with nothing to do
+   took 0.4 s, all of it `make` itself). The run is mostly `t02` driving all 393,216 vectors, and
+   the rest is starting Python and cocotb. Write both times in your table. Times are ballpark, but
+   the counts in this lab are exact.
 
 5. Before you run the test against the bugs, write down which of `t01`, `t02` and `t03` you expect
    to fail on each one. Then run it on all three:
