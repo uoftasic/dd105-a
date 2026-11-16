@@ -12,7 +12,7 @@ planted bugs come from [`../common`](../common/README.md).
 Run it in the course image, from this folder:
 
 ```bash
-make build                                   # the simulator (130 s the first time, on 2 CPUs)
+make build                                   # the simulator (127 s the first time, on 2 CPUs)
 make run                                     # router_test on the golden router
 make run BUG=B14                             # the same run with planted bug B14 on
 make run UVM_TESTNAME=router_lab06_test      # your virtual sequence on its own
