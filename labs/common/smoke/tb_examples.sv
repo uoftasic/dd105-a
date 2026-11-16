@@ -7,9 +7,9 @@
 // then records a few cycles. Column n of a table is cycle n: the clock period
 // that ends at rising edge n. Each value is what the signal holds during the
 // cycle, read at the falling edge in the middle of it. A dash means the
-// value doesn't matter in that cycle (its valid, PSEL or the read isn't
-// there), and the testbench prints a dash instead of whatever is left on the
-// wires. Rows marked (reg) are register values inside the router: what a
+// value doesn't matter in that cycle (its valid or PSEL is low, or it's
+// PWDATA outside a write), and the testbench prints a dash instead of
+// whatever is left on the wires. Rows marked (reg) are register values inside the router: what a
 // read starting in that cycle would return.
 //
 //   make TB_SRC=tb_examples.sv          (from labs/common/smoke)
@@ -106,8 +106,6 @@ module tb_examples;
 
   always @(negedge clk) begin : recorder
     if (rec && n_cyc < 64) begin
-      bit rd_done;
-      rd_done = psel && penable && pready && !pwrite;
       val[n_cyc][S_RST] = 32'(rst_n);             care[n_cyc][S_RST] = 1;
       val[n_cyc][S_PSEL] = 32'(psel);             care[n_cyc][S_PSEL] = 1;
       val[n_cyc][S_PENABLE] = 32'(penable);       care[n_cyc][S_PENABLE] = 1;
@@ -115,7 +113,7 @@ module tb_examples;
       val[n_cyc][S_PADDR] = 32'(paddr);           care[n_cyc][S_PADDR] = psel;
       val[n_cyc][S_PWDATA] = pwdata;              care[n_cyc][S_PWDATA] = psel && pwrite;
       val[n_cyc][S_PREADY] = 32'(pready);         care[n_cyc][S_PREADY] = 1;
-      val[n_cyc][S_PRDATA] = prdata;              care[n_cyc][S_PRDATA] = rd_done;
+      val[n_cyc][S_PRDATA] = prdata;              care[n_cyc][S_PRDATA] = 1;
       val[n_cyc][S_PSLVERR] = 32'(pslverr);       care[n_cyc][S_PSLVERR] = 1;
       val[n_cyc][S_IN_VALID] = 32'(in_valid);     care[n_cyc][S_IN_VALID] = 1;
       val[n_cyc][S_IN_READY] = 32'(in_ready);     care[n_cyc][S_IN_READY] = 1;
