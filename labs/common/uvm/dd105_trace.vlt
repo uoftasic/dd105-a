@@ -10,3 +10,6 @@
 // interfaces and the top module are.
 tracing_off -file "third_party/uvm/src/*"
 tracing_off -scope "*_pkg*"
+// The router's faulty build reads +BUG in an initial block named bug_switch,
+// whose local "id" holds the bug's number.
+tracing_off -scope "*bug_switch*"

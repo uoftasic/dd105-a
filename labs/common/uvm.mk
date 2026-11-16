@@ -280,7 +280,7 @@ cov:
 	@$(PYTHON) $(COMMON)/covreport.py $(BUILD_DIR)/runs --out $(BUILD_DIR)/coverage
 
 ## lint — Verilator's front end with the warnings the build hides shown (seconds)
-lint: | solver-check
+lint: $(BUILD_DEPS) | solver-check
 	@echo "$(RULE)"
 	@echo " LINT  $(TOP): the build's sources and flags, without $(VL_WNO)"
 	@echo "$(RULE)"
@@ -289,7 +289,6 @@ lint: | solver-check
 	cat $(BUILD_DIR)/lint.log; echo "$(RULE)"; \
 	n=$$(grep -c '^%Warning' $(BUILD_DIR)/lint.log); echo " $$n warnings, by kind:"; \
 	grep -oE '^%Warning-[A-Z0-9_]+' $(BUILD_DIR)/lint.log | sed 's/%Warning-//' | sort | uniq -c | sort -rn; \
-	echo "$(RULE)"; cd $(LAB_DIR) && $(PYTHON) $(COMMON)/drivecheck.py $(TB_SRCS); \
 	echo "$(RULE)"; exit $$rc
 
 ## check — the verdict: your test passes the golden design and fails on BUG

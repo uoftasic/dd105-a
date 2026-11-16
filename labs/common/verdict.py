@@ -293,6 +293,8 @@ def read_run(run_dir, expect_bug=None, label="", uvm_home=None, confirm=None):
     """Read a run folder written by uvm.mk (run.log, exit_status, seconds, cmd).
     expect_bug is the +BUG id the run was given (None: the golden design), and
     confirm is the lab's BUG_CONFIRM line, if it has one."""
+    if expect_bug and expect_bug.lower() == "none":
+        expect_bug = None                    # +BUG=none is the golden design
     log = _read(os.path.join(run_dir, "run.log"), None)
     rc_text = _read(os.path.join(run_dir, "exit_status")).strip()
     if log is None or not rc_text:
@@ -469,7 +471,7 @@ def main():
     run = read_run(a.run_dir, expect_bug=a.bug or None, uvm_home=a.uvm_home,
                    confirm=a.bug_confirm or None)
     rel = os.path.relpath(os.path.join(a.run_dir, "run.log"))
-    mark = run.mark("fail" if a.bug else "pass")
+    mark = run.mark("fail" if a.bug and a.bug.lower() != "none" else "pass")
     print("-" * 72)
     print(f" {mark}: {run.summary()}   {run.seconds:.2f} s   log: {rel}")
     if run.broken:
