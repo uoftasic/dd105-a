@@ -2,8 +2,9 @@
 
 Writeup: [`docs/labs/lab-01-one-alu-two-testbenches-overview.md`](../../docs/labs/lab-01-one-alu-two-testbenches-overview.md)
 
-SimProc's ALU from DD104, with DD104's three ALU bugs behind a run-time switch, and two
-testbenches for it: the cocotb test from DD104 Lab 03 and a UVM testbench in SystemVerilog.
+This package holds SimProc's ALU from DD104, with DD104's three ALU bugs behind a run-time
+switch, and two testbenches for it: the cocotb test from DD104 Lab 03 and a UVM testbench in
+SystemVerilog.
 
 Run it in the course image, from this folder:
 
