@@ -5,6 +5,9 @@
 // bind works on the golden design and on the faulty build. The top module
 // reads u_sva.n_fail (the number of assertion failures so far) through the
 // router instance, dut.u_sva.n_fail.
+//
+// This is Lab 05's bind. Lab 07 adds the APB port and irq, which the rules
+// about reset need.
 
 bind router router_sva u_sva (
   .clk(clk), .rst_n(rst_n),
