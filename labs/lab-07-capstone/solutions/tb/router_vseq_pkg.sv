@@ -501,11 +501,11 @@ package router_vseq_pkg;
       join
       drain();
 
-      // A reset while register transfers are going on. Each read and write
-      // here takes 7 cycles, idle cycles included, and the reset driver warns
-      // the APB driver at the second edge after reset() starts, so cycles(8)
-      // puts the warning in the setup cycle of the second read. The APB
-      // driver abandons that read and starts it again after the reset.
+      // A reset while register transfers are going on. A read and a write
+      // take 7 cycles together, idle cycles included. reset() raises rst_soon
+      // at the next edge, so after cycles(8) it rises as the second read's
+      // setup cycle ends, and rst_n falls after that read's first access
+      // cycle. The APB driver abandons the read and starts it again later.
       fork
         repeat (12) begin
           rd_reg(regs.status);

@@ -38,7 +38,7 @@ and nothing in the testbench could reset it again. What we added for you:
 
 | File | What Lab 07 adds |
 |---|---|
-| `tb/router_ifs.sv`, `tb/router_tb_top.sv` | a reset the testbench can drive: `rst_req_n` and `rst_soon` in `router_sys_if`, and `rst_n` made from them and the reset at time 0 |
+| `tb/router_ifs.sv`, `tb/router_tb_top.sv` | a reset the testbench can drive: `rst_req_n` and `rst_soon` (the APB driver's warning that a reset is coming) in `router_sys_if`, and `rst_n` made from `rst_req_n` and the reset at time 0 |
 | `tb/router_agents_pkg.sv` | the reset driver (`sys_agent`, `router_reset_seq`); a source driver that abandons its packet at a reset (rule I3), and an APB driver that keeps `psel` at 0 during one and starts an interrupted transfer again (rule A4) |
 | `tb/router_env_pkg.sv` | in the scoreboard, `reset_model()`: at a reset it throws away every beat it expected and puts its own models and the register model's mirror back to their reset values; four corners, with the covergroup `cg_corner` |
 | `tb/router_sva.sv`, `tb/router_sva_bind.sv` | the APB port and `irq` in the bound module, and a counter for each rule about reset; the assertions are yours (Part 5) |
@@ -86,11 +86,13 @@ the plan, eight assertions, two sequences and the report.
 
    Use your GitHub no-reply address, and leave out `--global`: the container's home folder is
    thrown away when the workbench restarts, but `.git/config` is inside your repository, on your
-   own disk, so it stays.
-   [IC102-A Lab 01, Part 3](https://uoftasic.com/ic102-a/labs/lab-01-your-repo-from-the-template-overview.html#part-3-make-the-repository)
-   explains both. Your plan and your report live in the repository from the start. The testbench
-   stays here in the course clone while you work on it, because it builds only from inside
-   `labs/`, and Part 8 copies it across.
+   own disk, so it stays. In IC102-A Lab 01,
+   [Part 2](https://uoftasic.com/ic102-a/labs/lab-01-your-repo-from-the-template-overview.html#part-2-your-github-settings)
+   says where to find your no-reply address, and
+   [Part 3](https://uoftasic.com/ic102-a/labs/lab-01-your-repo-from-the-template-overview.html#part-3-make-the-repository)
+   explains the token cache and `--global`. Your plan and your report live in the repository from
+   the start. The testbench stays here in the course clone while you work on it, because it builds
+   only from inside `labs/`, and Part 8 copies it across.
 
 4. When the build has finished, run the graded test, `router_test`, and pull the scoreboard's
    summary out of the log:
@@ -177,10 +179,10 @@ happen?
    or reset between them, and `router_inject_test`'s phases clear `DROP_CNT` after each phase.
 
    The rest of the list is about the environment itself. Nothing checks `in_ready` (I4, I5, I6,
-   RT5), the cycle a beat appears (O3, O8), what `CTRL.EN` does (EN1), the APB master's rules (A1
-   to A3) or `pready` (A5, A6), or `LEVEL` (RG4). Those rows stay "nothing" through this lab. Put
-   them in the plan's Open items, because Part 8's report has to say what the environment doesn't
-   show.
+   RT5), the cycle a beat appears (O8) or that the outputs come from flip-flops (O3), what
+   `CTRL.EN` does (EN1), the APB master's rules (A1 to A3) or `pready` (A5, A6), or `LEVEL`
+   (RG4). Those rows stay "nothing" through this lab. Put them in the plan's Open items, because
+   Part 8's report has to say what the environment doesn't show.
 
    </details>
 
@@ -392,7 +394,8 @@ busy?
    The rebuild took us 118 s. You should see the same `[SB]` lines as in Part 1 and
    `DD105: TEST PASSED`. None of the assertions fails, because the golden router obeys every one
    of these rules, so if one does fail, its `%Error` line names it and the mistake is in the
-   assertion. So far they have checked only the three cycles of the reset at time 0.
+   assertion. So far the only reset they have seen is the one at time 0, three cycles long, when
+   the router holds nothing.
 
 4. Write `router_reset_vseq::body()` in `tb/router_vseq_pkg.sv`. Its `TODO` lists the situations
    to reach, and the first is the specification's example E8: output 0 stalled with a packet in
@@ -402,8 +405,10 @@ busy?
    driver a cycle's warning and then holds `rst_n` low, so a reset starts two cycles after you
    call it.
 
-5. Do the other two `TODO (Part 5)`s in `router_lab07_vseq`: the line that runs your sequence, and
-   the reset thread in the random phases. Then add `router_reset_test` to `TESTS` in the Makefile.
+5. In `router_lab07_vseq`, write the line that runs your sequence (the `TODO (Parts 5 and 6)`;
+   Part 6 adds the other line), and the two `TODO (Part 5)`s in the random phases: setting
+   `do_reset`, and the thread that resets the router. Then add `router_reset_test` to `TESTS` in
+   the Makefile.
 
 6. Write down what you expect the `corners hit:` part of the `[SB] resets` line to say for your
    test. Then rebuild (114 s for us) and run it:
@@ -430,9 +435,10 @@ busy?
    and the run ends with `[SB] resets: 4 after the one at time 0, 11 expected beats lost; corners
    hit: reset_with_beats=3 reset_mid_packet=1 ...` and `DD105: TEST PASSED`, in 0.35 s. If your
    log has no `[APB] ... abandoned` line, your reset fell between two transfers, and rule A4 hasn't
-   been tried. In ours, each read and write together take 7 cycles, idle cycles included, and
-   `cycles(8)` before `reset(1)` put the warning in the setup cycle of the second read; move your
-   reset a cycle at a time until it lands in a transfer.
+   been tried. In ours, a read and a write together take 7 cycles, idle cycles included. After
+   `cycles(8)`, `reset(1)` raised `rst_soon` as the second read's setup cycle ended, and `rst_n`
+   fell after the read's first access cycle. Move your reset a cycle at a time until it lands in
+   a transfer.
 
 Check: `router_reset_test` passes on the golden router, with `reset_with_beats` and
 `reset_mid_packet` above 0, and an `[APB] ... abandoned` line in its log.
