@@ -74,6 +74,10 @@ package router_test_pkg;
           disable fork;
         end
       join
+      // A sequence's last register read finishes when its driver lets go,
+      // half a cycle before the rising edge that completes it. Two more
+      // cycles let the monitors see that edge, so the read is checked too.
+      repeat (2) @(env.vif.mon_cb);
       phase.drop_objection(this);
     endtask
   endclass
