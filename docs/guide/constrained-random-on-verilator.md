@@ -58,8 +58,8 @@ combination of values that satisfies the constraints is equally likely.
 [ITEM] the same with c_shift off returned 1: SHL A=10 B=05
 ```
 
-The third call can't be satisfied, because `c_shift` says a shift has `B` below 4 and the call
-asks for a shift with `B == 5`. It returned 0, and the run printed an `UNSATCONSTR` warning
+The call with `{ op == SHL; B == 5; }` can't be satisfied, because `c_shift` says a shift has
+`B` below 4. It returned 0, and the run printed an `UNSATCONSTR` warning
 naming both constraints. The standard says a failed call leaves the variables as they were, but
 here `A` changed from `35` to `e5`, so after a failed call the object holds a mixture you didn't
 ask for. With `c_shift` switched off, the same call succeeds.
@@ -69,7 +69,7 @@ That's why every `randomize()` in this course's code checks what it returned, us
 failed call as a broken run even when the test itself passed. This run's verdict was:
 
 ```text
- BROKEN: randomize() failed   0.03 s   log: build/runs/cr_item_test-s1/run.log
+ BROKEN: randomize() failed   0.02 s   log: build/runs/cr_item_test-s1/run.log
 ```
 
 ## The solver
@@ -142,11 +142,10 @@ holds for some enums and not others:
 The enums whose names fill every code of their bits (four names in two bits, eight in three)
 came out as their first name 813 and 890 times in 1,000, with no warning. Lab 03's line 1 gives
 809 for its four-name enum. The three-name and six-name enums were even. So the course names
-every `rand` enum in a constraint, even one that allows every value, as the last line does.
-
-When the names don't fill the bits, `inside` is not enough to make them even, as the previous
-section showed. What did give an even spread was a `dist` with one range and equal weights,
-which is how Lab 01's `alu_item` writes it:
+every `rand` enum in a constraint. For an enum whose names fill its bits, `inside` with every
+name is enough, as the last line shows. For one whose names don't, `inside` makes the spread
+uneven, as the previous section showed, and what gave an even spread was a `dist` with one range
+and equal weights, which is how Lab 01's `alu_item` writes it:
 
 ```text
 [ENUM] op dist {[ADD:SHR] := 1}:          ADD  161  SUB  166  OR  163  NAND  173  SHL  176  SHR  161
@@ -217,26 +216,27 @@ endclass
 `A < 8'h10` rules out `K_ONES`, which has a fifth of the weight, and a fifth of the calls failed.
 A selector is still the right place for a `dist`, because the data constraints stay ordinary
 constraints. For a call that pins the data, switch the `dist` off with `constraint_mode(0)`, or
-build the item without the solver. Lab 03 does both: `close_holes()` makes its fill packets with
-`rand_packet::make()`, because `randomize() with { len == 3; }` failed 478 times in 1,000 there.
+build the item without the solver. Lab 03's `close_holes()` builds its fill packets with
+`rand_packet::make()` for that reason: with the packet's weights on, `randomize() with { len == 3; }`
+failed 478 times in 1,000 (line 3 of its experiments).
 
 ### solve...before
 
 `solve big before len` asks the solver to choose `big` first, which changes how often each value
 of `big` comes out without changing which values are legal. In Lab 03's experiment the standard
-gives `big` about 500 times in 1,000 with it and about 125 without, and Verilator gave 33 and 41.
-`cr_solve_test` tries a different shape, where `is_shift` chooses between the two shifts and the
-four other operations:
+gives `big` about 500 times in 1,000 with it and about 125 without, and Verilator gave 33 and 41,
+as if the line weren't there. `cr_solve_test` tries a different shape, where `is_shift` chooses
+between the two shifts and the four other operations:
 
 ```text
 [SOLVE] solve is_shift before op:  is_shift in 665 of 1000;   ADD   51  SUB   77  OR   74  NAND  133  SHL  223  SHR  442
 [SOLVE] without solve...before:    is_shift in 512 of 1000;   ADD   69  SUB  178  OR   58  NAND  183  SHL   64  SHR  448
 ```
 
-The standard gives about 500 and 333. Verilator's runtime does have a separate pass for
-`solve...before`, and here it moved the count, but neither experiment came out at the
-standard's numbers. If you want `is_shift` half the time, say so with a `dist`, which this
-simulator does honour:
+The standard gives about 500 and 333. Verilator's runtime has a separate pass for
+`solve...before`, and in this shape the count moved, but in neither experiment did it come out
+at the standard's numbers, so don't use `solve...before` to shape a distribution on this
+simulator. If you want `is_shift` half the time, say so with a `dist`, which it does honour:
 
 ```text
 [SOLVE] is_shift dist {0:=1, 1:=1}: is_shift in 502 of 1000;   ADD   56  SUB   53  OR  196  NAND  193  SHL   59  SHR  443
@@ -269,9 +269,10 @@ different questions.
 
 Every finding on this page came from counting what came out. The four-name enum that came out
 as its first name 813 times broke no constraint and printed no warning, and the run passed, so
-a check on the design's answers had nothing to report. In Lab 03 you count with a covergroup instead of a histogram in the test, and
-its first run shows about a third of the router's packets 1 beat long and a third 8 beats long,
-because the packet's length comes from a three-name enum that nobody had weighted.
+a check on the design's answers had nothing to report. In Lab 03 you count with a covergroup
+instead of a histogram in the test, and its first run shows about a third of the router's
+packets 1 beat long and a third 8 beats long, because the packet's length comes from a
+three-name enum that nobody had weighted.
 [Functional coverage you can read](functional-coverage-you-can-read.md) explains how to read
 those counts.
 
@@ -326,8 +327,8 @@ and in Lab 03.
 - [SystemVerilog Randomization](https://chipverify.com/systemverilog/systemverilog-randomization)
 - [Constraint Blocks](https://chipverify.com/systemverilog/systemverilog-constraint-blocks)
 - [Inline Constraints](https://chipverify.com/systemverilog/systemverilog-inline-constraints).
-  On Verilator 5.050, an inline constraint on a variable that has a `dist` usually fails; see
-  above.
+  On Verilator 5.050, an inline constraint on a variable that has a `dist` fails whenever the
+  `dist` picked an entry the inline constraint rules out; see above.
 - [Constraints](https://chipverify.com/systemverilog/systemverilog-constraints). Its `dist`
   example names a variable `priority`, which is a keyword, so it doesn't compile; on Verilator,
   write `dist` values as numbers.

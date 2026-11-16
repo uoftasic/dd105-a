@@ -5,7 +5,8 @@ them?*
 
 Labs 02 and 03 used one piece of UVM, the test. Your test extended `dd105_base_test` so that
 `make` could choose it with `+UVM_TESTNAME` and read UVM's report at the end, and inside its
-`run_phase` it made the environment with `new()` and ran it like any other class. In
+`run_phase` it fetched the virtual interfaces from `config_db`, made the environment with `new()`
+and ran it like any other class. In
 [Lab 04](../labs/lab-04-the-same-testbench-in-uvm-overview.md) the whole testbench becomes UVM
 classes. Lab 04's Part 5 counts what that costs in lines, and most of those lines go into the
 structure this page describes: every piece becomes a component in a tree, UVM builds the tree
@@ -113,6 +114,7 @@ The build phase has to go from the top down, because a component's children don'
 its own `build_phase` makes them: `env` can't be built before the test's `build_phase` has created
 it. Within each parent, this library visited the children in name order (`a0`, `a1`, `mon`),
 although `env` made them in the order `mon`, `a1`, `a0`.
+
 The connect phase goes from the bottom up, so by the time `env` connects its agents' monitors to
 the scoreboard, every agent has already connected its own pieces. That's also why a component
 connects ports in `connect_phase` and never in `build_phase`: in `build_phase` the component on
@@ -126,11 +128,11 @@ Name            Type           Size  Value
 <unnamed>       uvm_root       -     @64  
   uvm_test_top  sk_phase_test  -     @150 
     env         sk_env         -     @220 
-      a0        sk_agent       -     @228 
+      a0        sk_agent       -     @244 
         child   sk_leaf        -     @252 
       a1        sk_agent       -     @236 
         child   sk_leaf        -     @260 
-      mon       sk_watcher     -     @244 
+      mon       sk_watcher     -     @228 
 ```
 
 ## Objections
@@ -193,11 +195,10 @@ Verilator ends a UVM run with exit status 0 even when the summary counts errors,
 trusts the exit status would call a failing test a pass. `dd105_base_test`, which every test in
 the course extends, fixes that. In its `final_phase`, and in `pre_abort` when a `UVM_FATAL` ends
 the run early, it prints `DD105: TEST PASSED` or `DD105: TEST FAILED`, and calls `$fatal` if UVM
-counted any error or fatal. `sk_error_test`
-reports one `UVM_ERROR` at 50 ns:
+counted any error or fatal. `sk_error_test` reports one `UVM_ERROR` at 50 ns:
 
 ```text
-UVM_ERROR guide-examples/the-uvm-skeleton/sk_pkg.sv(183) @ 50000: uvm_test_top [CHECK] a check failed at 50 ns
+UVM_ERROR guide-examples/the-uvm-skeleton/sk_pkg.sv(186) @ 50000: uvm_test_top [CHECK] a check failed at 50 ns
 ```
 
 and ends with
@@ -224,9 +225,10 @@ course's `make run` reads the log as well as the exit status, and it called that
    <details>
    <summary>Answer</summary>
 
-   The monitor may not exist yet. The build phase goes from the top down, and the monitor is
-   made in its agent's `build_phase`, which can run after the scoreboard's (in the example above,
-   `env.mon` was built after `env.a0` and `env.a1`). By `connect_phase` every component has been
+   The monitor may not exist yet. It's made in its agent's `build_phase`, and the agent's
+   `build_phase` can run after the scoreboard's. In Lab 04, `env`'s children are built in name
+   order, as `a0`, `a1` and `mon` were above, so `sb` is built before `src`, and `src.mon`
+   doesn't exist yet when `sb`'s `build_phase` runs. By `connect_phase` every component has been
    built.
 
    </details>

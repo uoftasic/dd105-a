@@ -69,7 +69,7 @@ forever begin
 end
 ```
 
-(The real files also print a line at each step.) `sq_timeline_test` runs it for three items, with
+(The real files also print a line at each step, and tag each item with its sequence's name.) `sq_timeline_test` runs it for three items, with
 a 10 ns clock whose first rising edge is at 5 ns:
 
 ```text
@@ -102,17 +102,18 @@ time blocked in `finish_item()`, and the driver spends most of its time waiting 
 
 And on the ALU's pins, recorded with `make waves`:
 
-![sq_timeline_test on the ALU in Surfer, 0 to 60 ns: three vectors, each with valid high for one cycle.](../assets/img/sequences-alu-pins.png)
+![sq_timeline_test on the ALU in Surfer, 0 to 55 ns: three vectors, each with valid high for one cycle.](../assets/img/sequences-alu-pins.png)
 
 *The three vectors on the ALU's pins. Each one goes on 1 ns after a rising edge and holds for one
 cycle, and `ALUout` shows the ALU's answer (`b2`, `24`, `ff`). The cycle with `valid` low between
 them is the driver's `valid <= 0` before it asks for the next item.*
 
-The order of `start_item`, `randomize()` and `finish_item` is deliberate. The item gets its
-values at the moment the driver is ready for it, rather than whenever the sequence happened to
-make it, so its constraints can depend on what's true then. Lab 04's `router_rand_seq` sets each
-packet's `route_en` from the routing table the test wrote last, just before it randomizes the
-packet, so the packet's `c_dst` constraint sends it to a route that's enabled now.
+The sequence randomizes the item after `start_item()` returns, so the item gets its values at
+the moment the driver is ready for it rather than when the sequence made it. Anything the
+sequence sets before that, the constraints can use. Lab 04's `router_rand_seq` gives each packet
+the enable bits of the routing table the test wrote for the phase (`route_en`) before it
+randomizes the packet, and the packet's `c_dst` constraint uses them to keep it on an enabled
+route.
 
 ## Two sequences on one sequencer
 
@@ -137,16 +138,15 @@ of two items each, in a `fork`:
 
 The items alternate. The sequencer's default arbitration grants requests in the order they
 arrived, and each sequence asks again only after its last item is done, so `b`'s waiting request
-is always older than `a`'s new one. Lab 05's virtual sequence runs sequences on several agents'
-sequencers at once, and its Part 4 asks why it doesn't start a second sequence on a sequencer that
-already has one running.
+is always older than `a`'s new one. A second sequence on a busy sequencer competes with the one
+already there, which is why Lab 05's virtual sequence steers each sink's backpressure through its
+`out_cfg` rather than by starting another sequence on the sink's sequencer.
 
 ## Sequences that start sequences
 
 A sequence's `body()` can start other sequences on the same sequencer with
 `child.start(m_sequencer, this)`, where `m_sequencer` is the sequencer the parent is running on.
-That's how a sequence library grows: small sequences that each do one thing, and larger ones that
-call them. `sq_nested_test` runs a sequence that sends two random vectors and then two directed
+That lets you build larger sequences out of small ones that each do one thing. `sq_nested_test` runs a sequence that sends two random vectors and then two directed
 SUBs:
 
 ```text
@@ -182,8 +182,8 @@ That works because the APB driver fills in `rdata` before it calls `item_done()`
 
 ## Driving from a clock edge
 
-Every driver in the course waits for a clock edge before its first drive of an item, as the
-example's does with `@(vif.drv_cb)` straight after `get_next_item()`. The reason is a timing
+Lab 04's drivers wait for a clock edge before their first drive of an item, as the example's does
+with `@(vif.drv_cb)` straight after `get_next_item()`. The reason is a timing
 detail of this simulator, which the course's reference testbench found
 ([`labs/ref/README.md`](https://github.com/uoftasic/dd105-a/tree/main/labs/ref), "A
 clocking-block drive issued after an NBA-region wait lands a cycle late"). `try_next_item()`
@@ -214,15 +214,14 @@ block").
 
    </details>
 
-2. When is the second item randomized, and why does it matter for Lab 04's packets?
+2. At what time is the second item randomized, and what has to happen first?
 
    <details>
    <summary>Answer</summary>
 
-   At 15 ns, when its `start_item()` returns, because the driver has just asked for the next
-   item. Lab 04's sequence sets each packet's `route_en` from the routing table the test wrote
-   last and then randomizes it, so the packet's `c_dst` constraint sees which routes are enabled
-   when the packet is actually sent.
+   At 15 ns. Its `start_item()` can't return until the driver asks for another item, and the
+   driver asks only after it has driven the first item, held it through the edge at 15 ns and
+   called `item_done()`.
 
    </details>
 
