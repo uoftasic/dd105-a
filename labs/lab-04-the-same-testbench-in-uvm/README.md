@@ -2,10 +2,10 @@
 
 Writeup: [`docs/labs/lab-04-the-same-testbench-in-uvm-overview.md`](../../docs/labs/lab-04-the-same-testbench-in-uvm-overview.md)
 
-Our solution to Lab 03, ported to UVM: an agent for the input stream, one for the APB port, and
-one output agent class that the environment makes once per output, with a scoreboard (Lab 03's
-scoreboard and tracker in one class) and Lab 03's covergroup as a subscriber, fed by analysis
-ports. The packet's constraints, the covergroup, `fill_plan` and `close_holes()` are Lab 03's.
+This package is our solution to Lab 03, ported to UVM. It has an agent for the input stream, one
+for the APB port, and one output agent class that the environment makes once per output, with a
+scoreboard (Lab 03's scoreboard and tracker in one class) and Lab 03's covergroup as a
+subscriber, fed by analysis ports. The packet's constraints, the covergroup, `fill_plan` and `close_holes()` are Lab 03's.
 Four pieces are left for you, marked `TODO (Part n)`: the second output agent, two lines of the
 scoreboard, the stall test and the factory override. The router and its planted bugs come from
 [`../common`](../common/README.md).
