@@ -8,16 +8,17 @@ the sinks, send packets, drain, read `DROP_CNT`, and start again. Each step wait
 before it to finish. In [Lab 05, Part 4](../labs/lab-05-protocol-rules-and-backpressure-overview.md#part-4-a-virtual-sequence)
 you'll want routes that move to the other output while packets are still going in, with both sinks
 changing their behaviour at the same time. That's three agents doing things at once, in an order you
-choose, and the UVM piece that does it is a **virtual sequence**: a sequence that starts other
-sequences on several agents' sequencers, and changes their knobs, but makes no items of its own.
+choose, and in UVM you do it with a **virtual sequence**: a sequence that starts other sequences on
+several agents' sequencers, and changes their knobs, but makes no items of its own.
 
 This page builds one on a small design of our own, a four-beat FIFO with a valid/ready stream on
 each side, in
 [`guide-examples/virtual-sequences/`](https://github.com/uoftasic/dd105-a/tree/main/guide-examples/virtual-sequences).
 Two things drive the FIFO, and neither knows about the other: a source agent, whose sequences send
 one beat per item, and a sink driver with a knob, `ready_pct`, in a configuration object. The sink
-has no sequencer at all, which makes it a good stand-in for Lab 05's sinks: you steer it by
-changing its configuration, not by sending it items.
+has no sequencer at all. Lab 05's sinks do have one, but a virtual sequence steers them the way you
+steer this sink, by changing their configuration rather than by sending them items, so it's a good
+stand-in for them.
 
 ## A sequencer that holds handles
 
@@ -73,9 +74,9 @@ Lab 05's `router_base_vseq` gives you a dozen tasks like these (`route()`, `ctrl
 rewritten as a sequence's tasks.
 
 There is a second style, in which the test hands the virtual sequence its handles directly and
-starts it with `start(null)`, with no virtual sequencer. It works as well. With a virtual
-sequencer the handles are filled in once, by the environment, for every virtual sequence and every
-test, and that's the style the labs use.
+starts it with `start(null)`, with no virtual sequencer, and it works as well. The labs use a
+virtual sequencer, because then the environment fills in the handles once, for every virtual
+sequence and every test.
 
 ## Doing two things at once
 
@@ -165,8 +166,8 @@ step 3: the sink took 80 a0 81 a1 82 a2 83 a3
 
 A sequencer takes one item at a time from the sequences that are running on it. Each
 `start_item()` is a request for the driver, and the sequencer grants them in turn, so the two
-sequences alternated item by item. Sometimes that's exactly what you want, such as two traffic
-streams mixed together. But it means that starting a sequence on a sequencer that already has one
+sequences alternated item by item. Sometimes that's what you want, for example to mix two traffic
+streams together. But it means that starting a sequence on a sequencer that already has one
 running doesn't replace the first one; the two share the driver. Lab 05's sinks each run a sequence
 that never ends, and Part 4 asks you why the virtual sequencer holds each sink's `out_cfg` and not
 only its sequencer.
@@ -181,11 +182,10 @@ says that a header accepted in the same cycle as the write completes still uses 
 Lab 05's scoreboard stamps each write with the cycle it completed in, and Part 4 asks you why it
 uses the cycle rather than the order in which the two monitors report.
 
-Where you create a sequence matters too, for a different reason. Making a sequence and starting it
-both change the random values drawn after them (on Verilator 5.050, even in other threads), so a
-sequence added at the start of a test changes every random choice made after it, even if the new
-sequence does nothing. Lab 06,
-Part 1 shows this on `router_test`, and Lab 07 puts its new sequence at the end of the test for
+Making a sequence and starting it both change the random values drawn after them (on Verilator
+5.050, even in other threads), so it also makes a difference where in a test you put a new
+sequence: one added at the start changes every random choice made after it, even if it does
+nothing. Lab 06, Part 1 shows this on `router_test`, and Lab 07 puts its new sequence at the end of the test for
 this reason. [Regressions and seeds](regressions-and-seeds.md) measures it.
 
 ## Check yourself
