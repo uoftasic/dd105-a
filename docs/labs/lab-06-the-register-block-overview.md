@@ -85,13 +85,13 @@ What does your Lab 05 testbench check about the registers?
    <details>
    <summary>Answer</summary>
 
-   Starting a sequence draws from the random state of the thread that starts it. That thread goes
-   on to pick Lab 04's routing tables and to start the sequences that randomize its packets, so
-   their random choices change, even though `router_lab06_vseq` does nothing. Lab 05's
-   `router_test` made its own sequence after Lab 04's steps for this reason. We checked the other
-   half too: with `router_lab06_vseq` left out, this lab's `router_test` printed Lab 05's two
-   lines number for number, so nothing else this lab added changes the stimulus. The checks are
-   the same either way.
+   Making a sequence and starting it both draw from the random state of the thread that does it.
+   That thread goes on to pick Lab 04's routing tables and to start the sequences that randomize
+   its packets, so their random choices change, even though `router_lab06_vseq` does nothing.
+   Lab 05's `router_test` made and started its own sequence after Lab 04's steps for this reason.
+   We checked the other half too: with `router_lab06_vseq` left out, this lab's `router_test`
+   printed Lab 05's two lines number for number, so nothing else this lab added changes the
+   stimulus. The checks are the same either way.
 
    </details>
 
