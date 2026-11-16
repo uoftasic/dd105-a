@@ -205,10 +205,10 @@ How does the register model keep its mirror in step with the router, and what do
 sequence test?
 
 1. Write the first half of the Part 3 step: run a `uvm_reg_bit_bash_seq` the way you ran the reset
-   sequence. It works through every bit of every register. For each bit it writes the register
-   twice, each time with that bit the opposite of what the model expects it to hold, reads the
-   register after each write, and compares what it read with what the model says the register
-   should hold. A read-write bit that starts at 0 is written with 1 and then with 0.
+   sequence. It works through every bit it can check in every register. For each bit it writes
+   the register twice, each time with that bit the opposite of what the model expects it to hold,
+   reads the register after each write, and compares what it read with what the model says the
+   register should hold. A read-write bit that starts at 0 is written with 1 and then with 0.
 
 2. Write the second half. Lab 04 and Lab 05 set up the router with raw APB transfers, which go
    around the model, and so do `route()` and `ctrl()` here. After the five writes the `TODO`
