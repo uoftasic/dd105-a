@@ -325,10 +325,12 @@ Which packets should come out of output 0, and did they?
    -Info: labs/lab-02-a-class-testbench-without-uvm/tb/scoreboard.svh:65: Verilog $stop, ignored due to +verilator+error+limit
    ```
 
-   The `-Info` line appears once. Verilator stops a run at its first `$error` by default: when we
-   ran `build/sim` by hand without the plusarg, it stopped at this error with `Verilog $stop`,
-   before the scoreboard's report and UVM's summary. So the lab's Makefile adds
-   `+verilator+error+limit+100` to every run, and yours goes on to the 100th.
+   The `-Info` line appears only once, after the first error. Verilator stops a run at its first
+   `$error` by default: when we ran `build/sim` by hand without the plusarg, it stopped at this
+   error with `Verilog $stop`, before the scoreboard's report and UVM's summary. So the lab's
+   Makefile adds `+verilator+error+limit+100` to every run, and your runs go on past each error
+   until the 100th.
+
    The header is `80`, which is `1000_0000`. Which routing table entry should the router have
    used, which one did it use, and which bits of the header did it read?
 
@@ -359,8 +361,9 @@ Which packets should come out of output 0, and did they?
 
    They're packet 2, `02 74 a8 1f e8 f8 52`, the first packet output 0 delivered in this run.
    Its beats came out of the buffer a second time, and its `last` flag ended the packet, which is
-   why this one has 13 beats. Packets 2, 3 and 4 put 7, 2 and 6 beats through output 0 before
-   it went wrong, so the 16th beat is the first bad one. Part 4 shows why.
+   why this one has 13 beats. Before it went wrong, output 0 had delivered all 7 beats of packet 2,
+   both beats of packet 3 and the first 6 of packet 4's 8, which is 15 beats, so the 16th beat
+   (packet 4's seventh, `e2`) is the first bad one. Part 4 shows why.
 
    </details>
 
@@ -384,9 +387,9 @@ of these runs reuses the simulator you built.
    <details>
    <summary>Answer</summary>
 
-   B05 changes which routing table entry the router reads, and with all four entries the same,
-   every entry sends the packet to output 0 in the same order. Nothing at the pins depends on
-   which entry was read. A field is tested only when each of its values, and each of its bits,
+   B05 changes which routing table entry the router reads. With all four entries the same,
+   whichever entry it reads sends the packet to output 0, so every packet still comes out of
+   output 0 in the order it went in. Nothing at the pins depends on which entry was read. A field is tested only when each of its values, and each of its bits,
    has an effect of its own.
 
    </details>
@@ -523,9 +526,10 @@ Submit: nothing for this lab.
 
 ## Going further (optional)
 
-Watch output 1 as well. The top module needs a third `stream_mon_if` wired to `out1`, the
-environment a third monitor and mailbox, and the scoreboard a second queue of expected packets,
-filled by `predict()` for routes with `PORT` 1. Rebuild and run `make seeds NSEEDS=5` to check
+Watch output 1 as well. The top module needs a third `stream_mon_if` wired to `out1` and set in
+`config_db`, `router_class_test` has to get it and pass it to the `env`, the environment needs a
+third monitor and mailbox, and the scoreboard a second queue of expected packets, filled by
+`predict()` for routes with `PORT` 1. Rebuild and run `make seeds NSEEDS=5` to check
 that the golden router still passes.
 
 Next on the [Course path](../index.md#course-path): the reading on constrained random and
