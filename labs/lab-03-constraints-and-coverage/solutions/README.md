@@ -24,7 +24,8 @@ make check-all
 cp mine/* tb/
 ```
 
-Each swap rebuilds the simulator. With a warm ccache the solution built in 95 s on 2 CPUs.
+Each swap rebuilds the simulator. With a warm ccache the solution built in 95 s and in 105 s, the two
+times we measured on 2 CPUs.
 
 ## The covergroup
 

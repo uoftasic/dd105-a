@@ -28,8 +28,8 @@ build/rtl/router.f: $(wildcard ../common/rtl/*.sv) ../common/bugs.py ../common/i
 
 # ── the constraint experiments ───────────────────────────────────────────────
 # traps/traps.sv is a plain SystemVerilog file with no UVM and no router, so
-# Verilator builds it in seconds. Each experiment prints one line. The
-# randomize() calls that fail print an UNSATCONSTR warning each; they go to
+# Verilator builds it in seconds. Each experiment prints one line. Every
+# randomize() call that fails prints UNSATCONSTR warnings; they go to
 # build/traps/run.log, and only their number is shown here.
 TRAPS_DIR := $(BUILD_DIR)/traps
 TRAPS_LOG := $(patsubst $(LAB_DIR)/%,%,$(TRAPS_DIR))/run.log
