@@ -71,9 +71,9 @@ What does Lab 05's testbench check about the registers?
    [SB] irq checked in 0 cycles, wrong in 0
    ```
 
-4. `make check-all` runs `router_test` on the golden router and on the five bugs. Read the five
-   "hides behind" hints with `python3 ../common/bugs.py`, write down how many you expect the
-   starter to catch, then run it:
+4. `make check-all` runs `router_test` on the golden router and on the five bugs. Find the five in
+   the list that `python3 ../common/bugs.py` prints, which has all 15 bugs, and read their "hides
+   behind" hints. Write down how many you expect the starter to catch, then run it:
 
    ```bash
    make check-all
@@ -99,9 +99,11 @@ What does Lab 05's testbench check about the registers?
    <details>
    <summary>Answer</summary>
 
-   A wrong reset value shows only in a read made after reset and before the register is written,
-   and neither Lab 04's steps nor Lab 05's make one. Both reset the router, write the routing table
-   and `CTRL` straight away, and later read only `DROP_CNT`, `STATUS` and `LEVEL`. B02 hides for
+   A wrong reset value shows only between the reset and the first write to the register. A read
+   of `CTRL` in that window would show it, and so would a packet offered then, because the
+   specification says `in_ready` stays 0 after reset until software sets `CTRL.EN`. Neither
+   Lab 04's steps nor Lab 05's do either. Both reset the router, write the routing table and
+   `CTRL` straight away, and later read only `DROP_CNT`, `STATUS` and `LEVEL`. B02 hides for
    a simpler reason, which the third line of the summary gives: nothing checks `irq` yet.
 
    </details>
@@ -131,7 +133,8 @@ What does UVM need to know about each register, and what does the reset sequence
    `uvm_reg_hw_reset_seq`, set its `model` to `regs`, and start it with `start(null, this)`. It
    reads every register it can check, through the model and so through your adapter, and compares
    each with its reset value. Run `make lint`, which takes seconds and prints any syntax error with
-   its line, then `make build` (122 s for us).
+   its line. It also lists the width warnings that the build turns off, 24 of them from the shipped
+   files alone, so look for lines that start with `%Error`. Then run `make build` (122 s for us).
 
 5. Write down which of the ten registers you expect the reset sequence to read. Then run the test
    and list the ones it did:
@@ -339,9 +342,17 @@ Which part of the bus can the register model never test?
    `rd_all_regs()`. `router_model::good_addr(a)` is 1 for the ten good addresses.
 
 2. Write down what the golden router should return for a read of `0x01`, and what `pslverr` should
-   be. Build (51 s for us) and run `make check-all`. You should see B04 `caught` with
-   `50 UVM_ERROR` (the run stops at 50) and `3 of 5 caught.`, and the golden run's scoreboard
-   should say:
+   be. Then build (51 s for us), run `make check-all`, and look at the scoreboard's summary in the
+   golden run, whose log `make check-all` keeps in `build/grade/golden/`:
+
+   ```bash
+   make build
+   make check-all
+   grep -o '\[SB\] [0-9i].*' build/grade/golden/run.log
+   ```
+
+   You should see B04 `caught` with `50 UVM_ERROR` (the run stops at 50) and `3 of 5 caught.`, and
+   the second of the three `[SB]` lines should be:
 
    ```text
    [SB] 865 register reads checked, 849 writes, 492 to bad addresses; 0 assertion failures
@@ -422,16 +433,26 @@ Does `irq` follow `STATUS` and `INT_EN` in every cycle?
    must equal `m.irq()`.
 
 2. You haven't written any stimulus for `irq`. Write down which of B01 and B02 the check will catch
-   with the stimulus you already have, then build (32 s for us) and run `make check-all`. You
-   should see `4 of 5 caught.`, with B01 still `MISSED` and B02 caught by two errors:
+   with the stimulus you already have, then build (32 s for us), run `make check-all` and look at
+   B02's errors:
+
+   ```bash
+   make build
+   make check-all
+   grep '^UVM_ERROR' build/grade/B02/run.log | grep -o '\[[A-Za-z_]*\] .*'
+   ```
+
+   You should see `4 of 5 caught.`, with B01 still `MISSED` and B02 caught by two errors. You
+   chose the wording of your message; in the reference code's wording the two errors are:
 
    ```text
    [SB] irq is 1 from cycle 22, but STATUS = 001 and INT_EN = 000 make it 0
    [SB] irq is 1 from cycle 2369, but STATUS = 100 and INT_EN = 000 make it 0
    ```
 
-   The golden run's scoreboard now says `[SB] irq checked in 10142 cycles, wrong in 0`. Why does
-   Lab 04's traffic catch B02 in cycle 22, and why does B01 still hide?
+   The golden run's scoreboard (the `grep` in Part 4, step 2) now says
+   `[SB] irq checked in 10142 cycles, wrong in 0`. Why does Lab 04's traffic catch B02 in
+   cycle 22, and why does B01 still hide?
 
    <details>
    <summary>Answer</summary>
@@ -473,7 +494,7 @@ Does `irq` follow `STATUS` and `INT_EN` in every cycle?
     5 of 5 caught.
    ```
 
-   B01's first two errors, with the reference step, are:
+   B01's first two errors, with the reference code, are:
 
    ```text
    [SB] irq is 0 from cycle 10203, but STATUS = 110 and INT_EN = 111 make it 1
