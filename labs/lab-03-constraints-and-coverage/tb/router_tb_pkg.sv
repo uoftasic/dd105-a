@@ -10,10 +10,10 @@
 //   coverage.svh    router_coverage: the covergroup                     (Part 2)
 //   env.svh         env: builds the pieces, connects them, runs the steps
 //
-// Lab 02's package with three new files: tracker.svh, coverage.svh, and the
-// rand_packet in packet.svh. The monitor and the scoreboard are Lab 02's
-// solution, unchanged; if yours passed Lab 02's `make check-all`, you can use
-// yours instead.
+// Lab 02's package with two new files, tracker.svh and coverage.svh, and a
+// new class, rand_packet, in packet.svh. The monitor and the scoreboard are
+// Lab 02's solution, unchanged; if yours passed Lab 02's `make check-all`, you
+// can use yours instead.
 //
 // The classes talk through mailboxes, and each one that runs for the whole
 // test has a run() task that env.start() starts in a fork.
