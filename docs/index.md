@@ -34,7 +34,7 @@ a verification report.
 | Prerequisites | [DD104](https://uoftasic.com/dd104/), and through it [IC101](https://uoftasic.com/ic101/) and DD101 to DD103 |
 | Tools | Verilator 5.050, Yices 2.7.0 as its constraint solver, and Surfer for waveforms, all in the workbench image `hpretl/iic-osic-tools:2026.08`, and the UVM 2020-3.2 library, which ships in this course's repository. Lab 01 also runs cocotb 2.0.1 on Icarus Verilog 14.0. |
 | Machine | The workbench you already have. Every time on these pages was measured with 2 CPUs and 3 GB: a testbench's first build takes about 2 minutes, a rebuild after an edit from about 10 s to about 2 minutes, and a run a few seconds. The longest step, Lab 07's regression, takes about 4 minutes. |
-| Total time | About 15 h of labs, plus the reading in the Read rows below. <!-- READTIME: total = 15 h (the Do rows) + the Read rows; state it here and make the rows add up --> |
+| Total time | About 21 hours, self-paced. The Course path rows below add up to 21 h 10 min: 15 h of labs and 6 h 10 min of reading. The lab times are the ones the lab writeups give. The reading times are our estimates, from the length of each page at about 130 words a minute, plus time for its figures and examples. <!-- READTIME: each Read row is the sum over its pages of (words outside code blocks / 130 + 2 min per figure + 1 min per 10 lines of code or output), rounded to 5 min; counted Nov 16, 2026. --> |
 
 ## Course path
 
@@ -45,19 +45,19 @@ you to have read.
 
 | # | | What | Time |
 |---|---|---|---|
-| 1 | Read | [Getting started](guide/getting-started.md) · [What a framework buys you](guide/what-a-framework-buys-you.md) · [From cocotb to SystemVerilog classes](guide/from-cocotb-to-systemverilog-classes.md) | <!-- READTIME --> |
+| 1 | Read | [Getting started](guide/getting-started.md) · [What a framework buys you](guide/what-a-framework-buys-you.md) · [From cocotb to SystemVerilog classes](guide/from-cocotb-to-systemverilog-classes.md) | 55 min |
 | 2 | Do | [Lab 01: One ALU, two testbenches](labs/lab-01-one-alu-two-testbenches-overview.md). Test SimProc's ALU with DD104's cocotb test and with a UVM testbench, measure what each costs, and extend the UVM scoreboard until it catches the flags bug. | 1 h 30 min |
-| 3 | Read | [Classes for testbenches](guide/classes-for-testbenches.md) · [Interfaces, clocking blocks and virtual interfaces](guide/interfaces-clocking-blocks-and-virtual-interfaces.md) · [Threads, mailboxes and events](guide/threads-mailboxes-and-events.md) | <!-- READTIME --> |
+| 3 | Read | [Classes for testbenches](guide/classes-for-testbenches.md) · [Interfaces, clocking blocks and virtual interfaces](guide/interfaces-clocking-blocks-and-virtual-interfaces.md) · [Threads, mailboxes and events](guide/threads-mailboxes-and-events.md) | 1 h 10 min |
 | 4 | Do | [Lab 02: A class testbench without UVM](labs/lab-02-a-class-testbench-without-uvm-overview.md). Write the monitor and the scoreboard of a class testbench for the router, catch two planted bugs, and find out what each catch depends on. | 2 h |
-| 5 | Read | [Constrained random on Verilator](guide/constrained-random-on-verilator.md) · [Functional coverage you can read](guide/functional-coverage-you-can-read.md) | <!-- READTIME --> |
+| 5 | Read | [Constrained random on Verilator](guide/constrained-random-on-verilator.md) · [Functional coverage you can read](guide/functional-coverage-you-can-read.md) | 40 min |
 | 6 | Do | [Lab 03: Constraints and coverage](labs/lab-03-constraints-and-coverage-overview.md). Add a covergroup, constrain the packet until the simulator produces the lengths you ask for, and reach the two coverage holes where this lab's bugs hide. | 1 h 30 min |
-| 7 | Read | [The UVM skeleton](guide/the-uvm-skeleton.md) · [Sequences, sequencers and drivers](guide/sequences-sequencers-and-drivers.md) · [Monitors, analysis ports and scoreboards](guide/monitors-analysis-ports-and-scoreboards.md) · [The factory and config_db](guide/the-factory-and-config-db.md) | <!-- READTIME --> |
+| 7 | Read | [The UVM skeleton](guide/the-uvm-skeleton.md) · [Sequences, sequencers and drivers](guide/sequences-sequencers-and-drivers.md) · [Monitors, analysis ports and scoreboards](guide/monitors-analysis-ports-and-scoreboards.md) · [The factory and config_db](guide/the-factory-and-config-db.md) | 1 h 20 min |
 | 8 | Do | [Lab 04: The same testbench in UVM](labs/lab-04-the-same-testbench-in-uvm-overview.md). Finish a UVM port of your Lab 03 testbench, inject errors with a factory override, and count what the structure cost in lines. | 2 h 30 min |
-| 9 | Read | [Assertions for interface rules](guide/assertions-for-interface-rules.md) · [Reactive agents and backpressure](guide/reactive-agents-and-backpressure.md) · [Virtual sequences](guide/virtual-sequences.md) | <!-- READTIME --> |
+| 9 | Read | [Assertions for interface rules](guide/assertions-for-interface-rules.md) · [Reactive agents and backpressure](guide/reactive-agents-and-backpressure.md) · [Virtual sequences](guide/virtual-sequences.md) | 1 h |
 | 10 | Do | [Lab 05: Protocol rules and backpressure](labs/lab-05-protocol-rules-and-backpressure-overview.md). Bind assertions for the output rules into the router, finish a sink that answers each beat in its own time, and write a virtual sequence that catches the third bug. | 2 h |
-| 11 | Read | [Register models](guide/register-models.md) · [Regressions and seeds](guide/regressions-and-seeds.md) | <!-- READTIME --> |
+| 11 | Read | [Register models](guide/register-models.md) · [Regressions and seeds](guide/regressions-and-seeds.md) | 35 min |
 | 12 | Do | [Lab 06: The register block](labs/lab-06-the-register-block-overview.md). Give the testbench a register model with an adapter and a predictor, run UVM's reset and bit-bash sequences, and check the interrupt, until all five register bugs are caught. | 2 h |
-| 13 | Read | [Verification plans and sign-off](guide/verification-plans-and-sign-off.md) · [Writing the verification report](guide/writing-the-verification-report.md) | <!-- READTIME --> |
+| 13 | Read | [Verification plans and sign-off](guide/verification-plans-and-sign-off.md) · [Writing the verification report](guide/writing-the-verification-report.md) | 30 min |
 | 14 | Do | [Lab 07: Capstone](labs/lab-07-capstone-overview.md). Write a verification plan, run a seed regression, hunt mystery builds, and close the holes until all fifteen bugs are caught, then write the verification report. | 3 h 30 min |
 
 Keep these reference pages open in a tab while you work. They're for looking things up rather
