@@ -304,8 +304,7 @@ it?
    ========================================================================
    ```
 
-   Building `traps.sv` took us 4.2 s the first time and 4.0 s after we changed it, with a ccache
-   that already held this lab's earlier builds; with the ccache turned off it took 10.9 s. The run
+   Building `traps.sv` took us 4.2 s the first time and 4.0 s after we changed it, and the run
    takes about 4.4 s. Each failed `randomize()` prints UNSATCONSTR warnings, which the target
    counts instead of showing. Compare each line with what you wrote.
 
