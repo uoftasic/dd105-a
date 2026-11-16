@@ -68,7 +68,8 @@ module router_sva_out (
   //               assertion: a flag that is 1 in cycle t if in_hs was 1 in
   //               some cycle up to t-2 since the last reset (two flip-flops,
   //               cleared by rst_n). Until it is 1, valid must be 0.
-  //               n_O4_after++ on a failure.
+  //               It checks the cycles after a reset, so unlike a_O4_rst
+  //               it keeps disable iff (!rst_n). n_O4_after++ on a failure.
 
   // O6: the 8th beat of an output packet is its last.
   a_O6: assert property (@(posedge clk) disable iff (!rst_n)
