@@ -155,12 +155,11 @@ What goes into the router, and what comes out of output 0, packet by packet?
    interface whose signals are all inputs. The top module makes two, `in_mon` and `out0_mon`,
    wired to the input's four signals and to output 0's. Both have the same type, so one
    `monitor` class watches either, and it can't drive what it watches. The clocking block samples
-   with `#1step`, so after
-   `@(vif.cb)` returns at a rising edge, `vif.cb.valid` is the value `valid` had just before that
-   edge: its value in the cycle that the edge ends. The type is written out in full,
-   `virtual stream_mon_if`, and never through a `typedef`, because on Verilator 5.050 a class that
-   reaches an interface through a typedef reads 0 from every clocking-block input, with no
-   warning.
+   with `#1step`, so after `@(vif.cb)` returns at a rising edge, `vif.cb.valid` is the value
+   `valid` had just before that edge: its value in the cycle that the edge ends. The type is
+   written out in full, `virtual stream_mon_if`, and never through a `typedef`, because on
+   Verilator 5.050 a class in a package that reaches an interface through a typedef of its
+   virtual interface type reads 0 from every clocking-block input, with no warning.
 
 2. Here is the router taking one packet and delivering it on output 0, on the golden router:
 
