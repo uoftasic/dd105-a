@@ -21,22 +21,23 @@ package stream_pkg;
   `include "uvm_macros.svh"
 
   // ── items ─────────────────────────────────────────────────────────────────
-  // A packet for the input stream. Its length has a selector, kind, that
-  // carries the distribution, and constraints that pick len from kind. The
-  // simulator's solver fails when a dist and another constraint name the
-  // same variable, so the dist sits on kind and len only gets implications.
-  // kind is an enum, and naming it in a constraint also keeps the solver from
-  // skewing it toward its first value.
-  typedef enum bit [1:0] {LEN_ONE, LEN_MID, LEN_EIGHT, LEN_OVER} len_kind_e;
+  // A packet for the input stream. Its length comes in four kinds, and the
+  // kind is drawn with randcase in pre_randomize(), from weights the
+  // sequence can set; the solver then picks len from the kind's range. The
+  // weighted choice isn't left to a dist constraint because this simulator's
+  // solver got the distribution wrong: with weights 20/50/20/10 on the kind,
+  // 1,000 draws of this class gave 90/534/365/11, and with an enum as the
+  // kind every one of 2,000 draws came out as the last value.
+  localparam bit [1:0] LEN_ONE = 2'd0, LEN_MID = 2'd1, LEN_EIGHT = 2'd2, LEN_OVER = 2'd3;
 
   class stream_pkt extends uvm_sequence_item;
     `uvm_object_utils(stream_pkt)
 
-    rand len_kind_e   kind;
+    bit [1:0]         kind;       // LEN_ONE, LEN_MID, LEN_EIGHT or LEN_OVER (pre_randomize)
     rand int unsigned len;        // beats sent; more than 8 is an oversize packet
     rand bit [1:0]    dst;        // the header's DST field
     rand bit [5:0]    tag;        // the header's other six bits
-    rand bit          wait_ready; // hold in_valid at 0 until in_ready is 1 (rule I4 allows it)
+    bit               wait_ready; // hold in_valid at 0 until in_ready is 1 (rule I4 allows it)
 
     // Knobs, set before randomize(): the weights of the length kinds, and
     // how often (in percent) a beat is preceded by idle cycles, and how many.
@@ -49,16 +50,24 @@ package stream_pkg;
     bit          last[];
     int unsigned gap[];          // idle cycles before each beat
 
-    constraint c_kind { kind dist {LEN_ONE := w_one, LEN_MID := w_mid,
-                                   LEN_EIGHT := w_eight, LEN_OVER := w_over}; }
     constraint c_len  { (kind == LEN_ONE)   -> len == 1;
                         (kind == LEN_MID)   -> len inside {[2:7]};
                         (kind == LEN_EIGHT) -> len == 8;
                         (kind == LEN_OVER)  -> len inside {[9:max_len]}; }
-    constraint c_wait { wait_ready dist {1'b0 := 3, 1'b1 := 1}; }
 
     function new(string name = "stream_pkt");
       super.new(name);
+    endfunction
+
+    function void pre_randomize();
+      if (w_one + w_mid + w_eight + w_over == 0) w_mid = 1;
+      randcase
+        w_one:   kind = LEN_ONE;
+        w_mid:   kind = LEN_MID;
+        w_eight: kind = LEN_EIGHT;
+        w_over:  kind = LEN_OVER;
+      endcase
+      wait_ready = ($urandom_range(3) == 0);
     endfunction
 
     function void post_randomize();
@@ -103,16 +112,22 @@ package stream_pkg;
 
   class stream_ready_item extends uvm_sequence_item;
     `uvm_object_utils(stream_ready_item)
-    rand bit          pre_ready;
-    rand bit [1:0]    dsel;        // selector that carries the distribution of delay
+    bit               pre_ready;
+    bit [1:0]         dsel;        // which range delay comes from (pre_randomize)
     rand int unsigned delay;
-    constraint c_pre   { pre_ready dist {1'b0 := 1, 1'b1 := 1}; }
-    constraint c_dsel  { dsel dist {2'd0 := 5, 2'd1 := 3, 2'd2 := 2, 2'd3 := 0}; }
     constraint c_delay { (dsel == 2'd0) -> delay == 0;
                          (dsel == 2'd1) -> delay inside {[1:3]};
                          (dsel >= 2'd2) -> delay inside {[4:12]}; }
     function new(string name = "stream_ready_item");
       super.new(name);
+    endfunction
+    function void pre_randomize();
+      pre_ready = $urandom_range(1);
+      randcase
+        5: dsel = 2'd0;
+        3: dsel = 2'd1;
+        2: dsel = 2'd2;
+      endcase
     endfunction
   endclass
 
