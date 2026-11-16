@@ -1,11 +1,12 @@
 # Guide examples
 
-The SystemVerilog examples that the guide pages in `docs/guide/` quote. Each folder belongs to one
-page and has the page's name. Every folder has a `Makefile` that includes the labs' shared
-[`labs/common/uvm.mk`](../labs/common/README.md), so it builds with Verilator 5.050 and the UVM
-library in `third_party/uvm`, needs the course image and nothing else, and has the same targets as a
-lab (`make build`, `make run`, `make seeds`, `make lint`, `make clean` and the rest). One build
-serves every test in a folder, and `UVM_TESTNAME` picks the test when you run.
+This folder holds the SystemVerilog examples that the guide pages in `docs/guide/` quote. Each
+folder belongs to one page and has the page's name. Every folder has a `Makefile` that includes
+the labs' shared [`labs/common/uvm.mk`](../labs/common/README.md), so it builds with Verilator
+5.050 and the UVM library in `third_party/uvm`, needs the course image and nothing else, and has
+the same targets as a lab (`make build`, `make run`, `make seeds`, `make lint`, `make clean` and
+the rest). One build serves every test in a folder, and `UVM_TESTNAME` picks the test when you
+run.
 
 The guide pages are for reading, and none of them asks you to run anything here. The sections below
 give the commands that produced each output a page quotes, so the folders are for anyone who wants

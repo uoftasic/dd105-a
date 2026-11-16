@@ -14,7 +14,7 @@ verification report. Lab 01 compares DD104's cocotb test with a UVM testbench on
 
 Everything runs in the team workbench image `hpretl/iic-osic-tools:2026.08` (Verilator 5.050,
 Yices 2.7.0, cocotb 2.0.1, Icarus Verilog 14.0). The UVM library is in this repository, in
-`third_party/uvm`, so a clone needs nothing else. Every lab runs with `make`, and prints a verdict.
+`third_party/uvm`, so a clone needs nothing else. Every lab runs with `make` and prints a verdict.
 
 Students set up through the shared `workspace` and the desktop from
 [IC101](https://uoftasic.com/ic101/); [Lab 01, Part 1](https://uoftasic.com/dd105-a/labs/lab-01-one-alu-two-testbenches-overview.html)
