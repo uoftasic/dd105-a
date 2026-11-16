@@ -152,6 +152,8 @@ first `make check-all` ends like this:
 
 ```text
   MISSED  tier 1  A03_zero_flag_low_nibble         0 UVM_ERROR, 0 UVM_FATAL        1.1s
+  caught  tier 1  A01_sub_operands_swapped         282 UVM_ERROR                   1.1s
+  caught  tier 1  A02_nand_is_nor                  255 UVM_ERROR                   1.1s
 ------------------------------------------------------------------------
  2 of 3 caught.
  Still hiding from this test:
