@@ -7,6 +7,7 @@ table below says which of its checks catches which bug. It is not part of any la
 |---|---|
 | `tb_directed.sv` | The thorough directed test: a reference model written from the spec, the valid/ready and APB rule checkers, and 19 directed checks. No classes, no UVM. |
 | `run_catalogue.py` | Checks the catalogue end to end and prints the table below. |
+| `verilator_nba_repro.sv` | The Verilator nonblocking-assignment problem under "Verilator notes", in 13 lines of module code. |
 
 ## Running it
 
@@ -93,6 +94,6 @@ These came up while writing the testbenches, in the course image (Verilator 5.05
 - Two nonblocking assignments to the same signal in the same time step, from two statements
   separated by a timing control, are committed in source order instead of the order they ran. A
   task `x <= 1; @(posedge clk); x <= 0;` called twice in a row leaves `x` low for the second call.
-  A ten-line reproducer gave `a high at 1 of 3 edges` on Verilator and `3 of 3` on Icarus 14.0. A
+  `verilator_nba_repro.sv` gives `a high at 1 of 3 edges` on Verilator and `3 of 3` on Icarus 14.0. A
   clocking-block drive, a blocking assignment 1 ns after the edge, and dropping the trailing
   `x <= 0` all give 3 of 3. Both testbenches here drive with blocking assignments 1 ns after the edge.
