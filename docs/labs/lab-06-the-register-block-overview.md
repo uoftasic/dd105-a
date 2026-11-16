@@ -1,75 +1,99 @@
 # Lab 06: The register block
 
-You'll give the router's UVM testbench a register model. You write the fields of four registers
-and the adapter that turns register operations into APB transfers, connect a predictor, and run
-UVM's built-in reset and bit-bash sequences. Then you test the addresses the model can't reach, and
-make the scoreboard check the interrupt against `STATUS` and `INT_EN`. Lab 05's testbench misses
-all five register bugs this lab hunts (B01, B02, B03, B04 and B14), and yours will catch them.
+In this lab you'll give your Lab 05 testbench a register model. You write the fields of four
+registers and the adapter that turns register operations into APB transfers, connect a predictor,
+and run UVM's built-in reset and bit-bash sequences. Then you test the 246 addresses the model
+can't reach, and make the scoreboard check the interrupt against `STATUS` and `INT_EN`. Your Lab 05
+testbench misses all five of this lab's planted bugs (B01, B02, B03, B04 and B14), and by the end
+yours catches them.
 
 Package: [`labs/lab-06-the-register-block/`](https://github.com/uoftasic/dd105-a/tree/main/labs/lab-06-the-register-block)
 
 ## Before you start
 
-- Finish [Lab 05](lab-05-protocol-rules-and-backpressure-overview.md). This lab's testbench is
-  Lab 05's finished one with a register model added, and it uses the same makefile and course folder.
+- Finish [Lab 05](lab-05-protocol-rules-and-backpressure-overview.md).
 - Read [Register models](../guide/register-models.md) and
   [Regressions and seeds](../guide/regressions-and-seeds.md).
-- Keep the [specification](../reference/router-spec.md) open at its Register map, APB, INT_EN and
-  Reset sections.
+- Keep the router specification open at its [Register map](../reference/router-spec.md#register-map),
+  [APB](../reference/router-spec.md#apb), [INT_EN](../reference/router-spec.md#int_en) and
+  [Reset](../reference/router-spec.md#reset) sections, and the
+  [UVM register layer](../reference/register-layer.md) page beside it, which has the arguments,
+  policies and messages this lab uses.
 
-Time: about 2 h. You'll build the simulator seven times. On 2 CPUs those builds took us 136 s,
-122 s, 126 s, 136 s, 51 s, 32 s and 39 s, about 11 minutes in all, and each `make check-all` runs
-six simulations of 3 to 5.3 s each.
+The package is your Lab 05 testbench with our solution to Lab 05 in it: the three assertions, the
+sink driver's answer to each beat, and `router_lab05_vseq`'s body. If your own Lab 05 printed `3 of 3 caught.`, your
+code did the same job, but keep ours, because this lab adds to the files you edited. What we added
+for you:
 
-## Part 1: The starter
+| File | What Lab 06 adds |
+|---|---|
+| `tb/router_ral_pkg.sv` | the register model and its adapter; four registers' fields and the adapter are yours (Part 2) |
+| `tb/router_ifs.sv`, `tb/router_tb_top.sv`, `tb/router_agents_pkg.sv` | `router_sys_if` and `sys_monitor`, which report `rst_n` and `irq` every cycle |
+| `tb/router_env_pkg.sv` | the register model, adapter and predictor in the environment, which you connect (Part 3); a scoreboard model of `STATUS` and `INT_EN` with checks on `STATUS` reads, `PSLVERR` and bad reads, and an `irq` check for you to write (Part 5) |
+| `tb/router_vseq_pkg.sv` | helpers that go through the model (`wr_reg`, `rd_reg`, `check_reg`, `rd_all_regs`), `router_lab06_vseq` with one `TODO` per part, and `router_backdoor_vseq` |
+| `tb/router_tests_pkg.sv` | `router_test` runs `router_lab06_vseq` first, then everything Lab 05's `router_test` ran; `router_lab06_test` and `router_backdoor_test` |
+| `tb/router_regs.vlt` | the five register signals the back door reaches (Part 6) |
 
-What does Lab 05's testbench check about the registers?
+Time: about 2 h. You'll build the simulator seven times. On the course's 2 CPUs our first build
+took 130 s, and the rebuilds after each part's edits took 111 s (Part 2), 104 s and 112 s (Part 3),
+57 s (Part 4), and 111 s and 28 s (Part 5), about 11 minutes in all. Each `make check-all` runs six
+simulations of about 5 s or less each.
 
-1. Open a terminal on the workbench desktop, go to the lab folder and start the build, which is
-   the slowest step:
+## Part 1: The Lab 05 testbench against the registers
+
+What does your Lab 05 testbench check about the registers?
+
+1. Go to the lab folder and start the build:
 
    ```bash
-   . /foss/designs/common/.designinit   # in every new terminal
-   mod dd105-a
    cd labs/lab-06-the-register-block
    make build
    ```
 
-   With an empty ccache it took us 136 s, and it ended with:
+   Ours took 130 s. Near the end it prints Verilator's report:
 
    ```text
-    built /w/labs/lab-06-the-register-block/build/sim in 136 s (65M; the 1.2G of generated C++ was deleted, SLIM=0 keeps it)
-    ccache:  Hits: 0 / 38 ( 0.00%)  Misses: 38 / 38 (100.0%)
+   - V e r i l a t i o n   R e p o r t: Verilator 5.050 2026-07-01 rev v5.050
+   - Verilator: Built from 63.624 MB sources in 449 modules, into 29.574 MB in 3440 C++ files needing 213.292 MB
+   - Verilator: Walltime 128.696 s (elab=0.942, cvt=3.295, bld=122.850); cpu 6.222 s on 2 threads; allocated 369.230 MB
    ```
 
-   We ran it with the course folder mounted at `/w`, so your paths start with
-   `/foss/designs/modules/dd105-a` instead.
-
-2. While it builds, look at what this lab adds to Lab 05's files:
-
-   | File | New in this lab |
-   |---|---|
-   | `tb/router_ral_pkg.sv` | the register model and its adapter. `ID`, `CTRL` and `INT_EN` are written; the fields of `STATUS`, `DROP_CNT`, `LEVEL` and `ROUTEn` and the adapter are yours. |
-   | `tb/router_env_pkg.sv` | the environment makes the model, the adapter and a predictor. Connecting the predictor and the scoreboard's `irq` check are yours. |
-   | `tb/router_seq_pkg.sv` | helpers that go through the model (`wr_reg`, `rd_reg`, `check_reg`, `rd_all_regs`), `router_lab06_vseq` with one `TODO` per part, and `router_backdoor_vseq` |
-   | `tb/router_test_pkg.sv` | `router_test` runs Lab 04's, Lab 05's and Lab 06's steps; `router_lab06_test` runs this lab's alone |
-   | `tb/apb_pkg.sv` | the driver reports every transfer it finishes on `done_ap` (Part 3 says why) |
-   | `tb/router_regs.vlt` | five register signals made visible to the back door (Part 6) |
-
-3. Run the test and pull the scoreboard's summary out of the log:
+2. Run the graded test, `router_test`, and pull the scoreboard's summary out of the log:
 
    ```bash
    make run
-   grep -o '\[SB\] [0-9i].*' build/runs/router_test-s1/run.log
+   grep -o '\[SB\] [0-9a-z].*' build/runs/router_test-s1/run.log
    ```
 
-   You should see `ok: 0 UVM_ERROR, 0 UVM_FATAL   3.07 s` from `make run`, and from `grep`:
+   You should see `ok: 0 UVM_ERROR, 0 UVM_FATAL   3.44 s` from `make run`, and from `grep`:
 
    ```text
-   [SB] 4758 cycles, 2 resets; 3030 input beats in 653 packets: 509 forwarded, 32 NOROUTE, 112 FULL, 44 oversize; 2212 output beats
-   [SB] 15 register reads checked, 16 writes, 0 to bad addresses; 0 assertion failures
-   [SB] irq checked in 0 cycles, wrong in 0
+   [SB] 1123 packets in: 287 to output 0, 355 to output 1, 192 NOROUTE, 289 FULL; the highest level a header saw was 16
+   [SB] beats checked: 1281 on output 0, 1552 on output 1; 6 DROP_CNT reads checked
+   [SB] registers: 6 reads, 0 of STATUS checked; 0 transfers to bad addresses; irq checked in 0 cycles, wrong in 0
    ```
+
+   The third line is new in this lab. The six reads are `router_inject_test`'s five `DROP_CNT`
+   reads and the one at the end of your Lab 05 sequence. Nothing checks `irq` yet, so it was
+   checked in 0 cycles.
+
+3. At the end of Lab 05 (Part 4, step 6), `router_test` printed `1122 packets in: 240 to output 0,
+   270 to output 1, 194 NOROUTE, 418 FULL` on the same seed. Your Lab 05 code hasn't changed, and
+   `router_lab06_vseq`, which `router_test` now starts first, does nothing yet. Why are the
+   numbers different?
+
+   <details>
+   <summary>Answer</summary>
+
+   Starting a sequence draws from the random state of the thread that starts it. That thread goes
+   on to pick Lab 04's routing tables and to start the sequences that randomize its packets, so
+   their random choices change, even though `router_lab06_vseq` does nothing. Lab 05's
+   `router_test` made its own sequence after Lab 04's steps for this reason. We checked the other
+   half too: with `router_lab06_vseq` left out, this lab's `router_test` printed Lab 05's two
+   lines number for number, so nothing else this lab added changes the stimulus. The checks are
+   the same either way.
+
+   </details>
 
 4. `make check-all` runs `router_test` on the golden router and on the five bugs. Find the five in
    the list that `python3 ../common/bugs.py` prints, which has all 15 bugs, and read their "hides
@@ -82,29 +106,30 @@ What does Lab 05's testbench check about the registers?
    You should see:
 
    ```text
-         ok  the golden design                        0 UVM_ERROR, 0 UVM_FATAL        3.1s
+         ok  the golden design                        0 UVM_ERROR, 0 UVM_FATAL        3.6s
    ------------------------------------------------------------------------
-     MISSED  tier 1  B01_status_write_clears_all      0 UVM_ERROR, 0 UVM_FATAL        3.0s
-     MISSED  tier 1  B02_irq_ignores_int_en           0 UVM_ERROR, 0 UVM_FATAL        3.0s
-     MISSED  tier 1  B03_route3_readback_swapped      0 UVM_ERROR, 0 UVM_FATAL        3.0s
-     MISSED  tier 1  B04_misaligned_address_accepted  0 UVM_ERROR, 0 UVM_FATAL        3.0s
-     MISSED  tier 6  B14_enable_resets_to_one         0 UVM_ERROR, 0 UVM_FATAL        3.0s
+     MISSED  tier 1  B01_status_write_clears_all      0 UVM_ERROR, 0 UVM_FATAL        3.6s
+     MISSED  tier 1  B02_irq_ignores_int_en           0 UVM_ERROR, 0 UVM_FATAL        3.6s
+     MISSED  tier 1  B03_route3_readback_swapped      0 UVM_ERROR, 0 UVM_FATAL        3.6s
+     MISSED  tier 1  B04_misaligned_address_accepted  0 UVM_ERROR, 0 UVM_FATAL        3.6s
+     MISSED  tier 6  B14_enable_resets_to_one         0 UVM_ERROR, 0 UVM_FATAL        3.6s
    ------------------------------------------------------------------------
     0 of 5 caught.
    ```
 
-   The scoreboard has compared every register read with its model since Lab 04, and B14 makes
-   `CTRL.EN` reset to 1 instead of 0. Why did none of the 15 reads catch it?
+   `make check`, which grades the first bug in the list, says
+   `VERDICT: FAIL -- your test passes B01_status_write_clears_all too.`
+
+   B14 makes `CTRL.EN` reset to 1 instead of 0. Why doesn't your testbench see it?
 
    <details>
    <summary>Answer</summary>
 
    A wrong reset value shows only between the reset and the first write to the register. A read
-   of `CTRL` in that window would show it, and so would a packet offered then, because the
-   specification says `in_ready` stays 0 after reset until software sets `CTRL.EN`. Neither
-   Lab 04's steps nor Lab 05's do either. Both reset the router, write the routing table and
-   `CTRL` straight away, and later read only `DROP_CNT`, `STATUS` and `LEVEL`. B02 hides for
-   a simpler reason, which the third line of the summary gives: nothing checks `irq` yet.
+   of `CTRL` in that window would show it, and so would a packet offered then, because
+   `in_ready` stays 0 after reset until software sets `CTRL.EN`. Lab 04's steps write `CTRL`
+   before any packet, and nothing reads it: the scoreboard checks only `DROP_CNT` reads. B02 hides
+   for the reason the third `[SB]` line gives: nothing checks `irq`.
 
    </details>
 
@@ -115,26 +140,25 @@ Check: `0 of 5 caught.`, and `irq checked in 0 cycles`.
 What does UVM need to know about each register, and what does the reset sequence do with it?
 
 1. Open `tb/router_ral_pkg.sv` and read `router_reg_ctrl`, `router_reg_int_en` and
-   `router_reg_block::build()`. Each register is a `uvm_reg` whose `build()` creates its fields and
-   configures each one with a width, a position, an access policy, whether it's volatile, and a
-   reset value. The block puts each register at its address in a map. The specification's Register
-   map section has a table that gives each field's UVM access policy, and says which are volatile:
-   the ones the router changes on its own.
+   `router_reg_block::build()`. Each register's `build()` creates its fields and configures each
+   one with a width, a position, an access policy, whether it's volatile (changed by the router on
+   its own), and a reset value; the block puts each register at its address in a map. The
+   specification's Register map section gives each field's policy and volatility, and the
+   [register layer](../reference/register-layer.md#configuring-a-field) page explains each
+   argument of `configure()`.
 
 2. Write `build()` for `router_reg_status`, `router_reg_drop_cnt`, `router_reg_level` and
-   `router_reg_route`, following the `TODO`s and the comment at the top of the file. Pass `is_rand`
-   as 1 only for a field that software sets to a value it chooses, which here is an `RW` field.
+   `router_reg_route`, as their `TODO`s describe. Pass `is_rand` as 1 only for an `RW` field.
 
 3. Write the adapter's two functions at the bottom of the file. `reg2bus()` fills in an `apb_item`
    from a register operation, and `bus2reg()` does the reverse for a finished transfer. A transfer
    that ended with `PSLVERR` has the status `UVM_NOT_OK`.
 
-4. In `tb/router_seq_pkg.sv`, write the Part 2 step of `router_lab06_vseq`: create a
+4. In `tb/router_vseq_pkg.sv`, write the Part 2 step of `router_lab06_vseq`: create a
    `uvm_reg_hw_reset_seq`, set its `model` to `regs`, and start it with `start(null, this)`. It
    reads every register it can check, through the model and so through your adapter, and compares
-   each with its reset value. Run `make lint`, which takes seconds and prints any syntax error with
-   its line. It also lists the width warnings that the build turns off, 24 of them from the shipped
-   files alone, so look for lines that start with `%Error`. Then run `make build` (122 s for us).
+   each with its reset value. Run `make lint`, which takes seconds and prints any syntax error
+   with its line; ours printed `0 warnings`. Then run `make build` (111 s for us).
 
 5. Write down which of the ten registers you expect the reset sequence to read. Then run the test
    and list the ones it did:
@@ -168,13 +192,13 @@ What does UVM need to know about each register, and what does the reset sequence
 
    </details>
 
-6. Run `make check-all`. With the reference code, B14's row became
+6. Run `make check-all`. B14's row becomes
 
    ```text
-     caught  tier 6  B14_enable_resets_to_one         2 UVM_ERROR                     3.0s
+     caught  tier 6  B14_enable_resets_to_one         1 UVM_ERROR                     3.4s
    ```
 
-   and the others stayed `MISSED`, for `1 of 5 caught.`. Look at the two errors:
+   and the other four stay `MISSED`, for `1 of 5 caught.` The error is the register model's:
 
    ```bash
    grep '^UVM_ERROR' build/grade/B14/run.log | grep -o '\[[A-Za-z_]*\] .*'
@@ -182,22 +206,24 @@ What does UVM need to know about each register, and what does the reset sequence
 
    ```text
    [RegModel] Register "regs.CTRL" value read from DUT (0x0000000000000001) does not match mirrored value (0x0000000000000000) (valid bit mask = 0x0000000000000001)
-   [SB] a read of CTRL (04), completing in cycle 4765 returned 00000001; it should return 00000000, the value in cycle 4764 (its first access cycle)
    ```
 
-   The scoreboard reported the read too. So what did the register model add?
+   `router_test` runs `router_lab06_vseq` before Lab 04's steps. What would the reset sequence
+   report on the golden router if it ran after them?
 
    <details>
    <summary>Answer</summary>
 
-   The read itself. The reset sequence made, from the description you wrote, the read of `CTRL`
-   after reset that no hand-written step had made, and then both the model's mirror and the
-   scoreboard saw that it was wrong. The built-in sequences are stimulus that you get from the
-   register description, for every register in it, without writing a step for each one.
+   It would report errors on a router that is right. The sequence resets the model to the reset
+   values and then compares every read with them, but the router is reset only once, at time 0, and Lab 04's
+   steps and your Lab 05 sequence leave `CTRL.EN` at 1 and the routing table set. So `CTRL` and
+   at least some of the `ROUTEn` would read back what those steps wrote, and the sequence would
+   call each one wrong. A reset sequence has to run while the registers still hold their reset
+   values, which in this testbench means first.
 
    </details>
 
-Check: `B14` is `caught`, and the other four are `MISSED`.
+Check: B14 is `caught`, and the other four are `MISSED`.
 
 ## Part 3: The predictor and the bit bash
 
@@ -205,19 +231,17 @@ How does the register model keep its mirror in step with the router, and what do
 sequence test?
 
 1. Write the first half of the Part 3 step: run a `uvm_reg_bit_bash_seq` the way you ran the reset
-   sequence. It works through every bit it can check in every register. For each bit it writes
-   the register twice, each time with that bit the opposite of what the model expects it to hold,
-   reads the register after each write, and compares what it read with what the model says the
-   register should hold. A read-write bit that starts at 0 is written with 1 and then with 0.
+   sequence. The [register layer](../reference/register-layer.md#the-built-in-sequences) page says
+   what it writes and reads for each bit, and what it skips.
 
 2. Write the second half. Lab 04 and Lab 05 set up the router with raw APB transfers, which go
    around the model, and so do `route()` and `ctrl()` here. After the five writes the `TODO`
    lists, read `CTRL` and the four `ROUTEn` with `check_reg()`, which compares each read with the
    model's mirror.
 
-3. The predictor isn't connected yet, and the model's auto-predict is off (`set_auto_predict(0)`
-   in `router_env::connect_phase`). Predict what `router_test` does on the golden router, then
-   build (126 s for us) and run it:
+3. The predictor isn't connected yet, and the model's auto-predict is off
+   (`set_auto_predict(0)` in `router_env::connect_phase`). Predict what `router_test` does on the
+   golden router, then build (104 s for us) and run it:
 
    ```bash
    make build
@@ -225,7 +249,7 @@ sequence test?
    grep '^UVM_ERROR' build/runs/router_test-s1/run.log | grep -o '\[[A-Za-z_]*\] .*'
    ```
 
-   You should see `FAIL: 5 UVM_ERROR   4.71 s` and:
+   You should see `FAIL: 5 UVM_ERROR   4.33 s` from `make run`, and from `grep`:
 
    ```text
    [RegModel] Register "regs.CTRL" value read from DUT (0x0000000000000001) does not match mirrored value (0x0000000000000000) (valid bit mask = 0x0000000000000001)
@@ -250,37 +274,12 @@ sequence test?
    </details>
 
 4. Write the Part 3 `TODO` in `router_env::connect_phase`: give the predictor the map and the
-   adapter, connect `apb.drv.done_ap` to its `bus_in`, and turn on the map's check-on-read, so the
-   predictor compares every read it sees with the mirror.
+   adapter, connect the APB monitor's analysis port, `apb.mon.ap`, to its `bus_in`, and turn on
+   the map's check-on-read, so the predictor compares every read it sees with the mirror. The
+   monitor is the usual place for a predictor, because it sees every transfer on the bus, and the
+   scoreboard listens there too.
 
-   The usual place for a predictor to listen is the monitor, because a monitor sees every transfer
-   on the bus, including those from other masters. Here it listens to the driver. When we
-   connected it to the monitor instead, the run on the golden router failed with 19 `UVM_ERROR`s,
-   18 of them from the bit bash, and the first was:
-
-   ```text
-   [uvm_reg_bit_bash_seq] Writing a 0 in bit #0 of register "regs.CTRL" with initial value 'h0000000000000001 yielded 'h0000000000000000 instead of 'h0000000000000001
-   ```
-
-   Read `apb_driver` in `tb/apb_pkg.sv`: it ends a transfer at the falling edge in the middle of
-   its last cycle, and the monitor reports it at the rising edge after that. Why does half a cycle
-   break the bit bash?
-
-   <details>
-   <summary>Answer</summary>
-
-   The bit bash compares each read with the model's desired value, the one the last write set, and
-   a prediction overwrites that value. With the predictor on the monitor, the read of 1 that ended
-   the previous step was predicted half a cycle late, after the bit bash had already started the
-   write of 0 and set the desired value to 0. The late prediction put it back to 1, and the read of
-   0 then looked wrong. The driver's `done_ap` reports a transfer just before it hands the item back
-   to its sequence, so the mirror is up to date before the sequence moves on. In a testbench whose
-   driver and monitor finish a transfer at the same clock edge, the monitor works and is the usual
-   choice.
-
-   </details>
-
-5. Build (136 s for us) and run:
+5. Build (112 s for us) and run:
 
    ```bash
    make build
@@ -288,10 +287,10 @@ sequence test?
    grep -o 'Verifying bits in register [^ ]*' build/runs/router_test-s1/run.log
    ```
 
-   You should see `ok: 0 UVM_ERROR, 0 UVM_FATAL   4.61 s`, and ten lines, from
-   `Verifying bits in register regs.ID` to `Verifying bits in register regs.ROUTE3`. Every field of
-   `STATUS` is volatile, so the bit bash skips them as the reset sequence did. What does it still
-   test in `STATUS`?
+   You should see `ok: 0 UVM_ERROR, 0 UVM_FATAL   4.45 s`, and ten lines, from
+   `Verifying bits in register regs.ID` to `Verifying bits in register regs.ROUTE3`. Every field
+   of `STATUS` is volatile, so the bit bash skips them, as the reset sequence did. What does it
+   still test in `STATUS`?
 
    <details>
    <summary>Answer</summary>
@@ -303,9 +302,10 @@ sequence test?
 
    </details>
 
-6. Run `make check-all`. You should see `caught` on B03 (6 `UVM_ERROR`s) and B14 (3), and
-   `2 of 5 caught.`. B14 has one error more than in Part 2, because the predictor now checks the
-   reset sequence's read of `CTRL` as well. Look at B03's first two errors:
+6. Run `make check-all`. You should see `caught` on B03 (4 `UVM_ERROR`s) and B14 (2), and the
+   other three `MISSED`, for `2 of 5 caught.` B14 has one error more than in Part 2, because the
+   predictor now checks the reset sequence's read of `CTRL` as well. Look at B03's first two
+   errors:
 
    ```bash
    grep '^UVM_ERROR' build/grade/B03/run.log | grep -o '\[[A-Za-z_]*\] .*' | head -2
@@ -316,46 +316,47 @@ sequence test?
    [uvm_reg_bit_bash_seq] Writing a 1 in bit #0 of register "regs.ROUTE3" with initial value 'h0000000000000000 yielded 'h0000000000000002 instead of 'h0000000000000001
    ```
 
-   Where did the 1 written to `EN` come back, and why did Lab 05's random traffic never notice B03?
+   Where did the 1 written to `EN` come back, and why did your Lab 05 traffic never notice B03?
 
    <details>
    <summary>Answer</summary>
 
    It came back in bit 1, `PORT`: `ROUTE3` reads back with its two fields swapped. The route itself
    works, because B03 is in the read path only, so every packet still went where `ROUTE3` sent it.
-   Lab 04's and Lab 05's steps never read `ROUTE3`, and a bug in a read path is invisible to a test
-   that doesn't read. The bit bash reads after every write, with one bit different each time.
+   Lab 04's steps and your Lab 05 sequence never read a `ROUTEn`, and a bug in a read path is
+   invisible to a test that doesn't read. The bit bash reads after every write, with one bit
+   different each time.
 
    </details>
 
-Check: `2 of 5 caught.`, with B03 and B14 caught.
+Check: B03 and B14 are `caught`, and B01, B02 and B04 are `MISSED`.
 
 ## Part 4: The addresses outside the map
 
 Which part of the bus can the register model never test?
 
-1. The map holds ten registers at ten addresses out of 256. Every other address is bad: the
-   specification says a transfer to one completes with `PSLVERR`, a bad read returns 0, and a bad
-   write changes nothing. The model can't send a transfer to an address it has no register for, so
-   these 246 need raw transfers. Write the Part 4 step: read every bad address with `raw(0, a)`,
-   write every bad address with `raw(1, a, 32'hFFFF_FFFF)`, then read every register with
-   `rd_all_regs()`. `router_model::good_addr(a)` is 1 for the ten good addresses.
+1. The map holds ten registers out of 256 addresses. A transfer to any of the other 246 completes
+   with `PSLVERR`; a bad read returns 0 and a bad write changes nothing. The model can't send a
+   transfer to an address it has no register for, so these need raw transfers. Write the Part 4
+   step: read every bad address with `rd(a)`, write each with `wr(a, 32'hFFFF_FFFF)`, then read
+   every register with `rd_all_regs()`. `good_addr(a)` is 1 for the ten good addresses, and the
+   scoreboard already checks `PSLVERR` and the data of every bad read.
 
-2. Write down what the golden router should return for a read of `0x01`, and what `pslverr` should
-   be. Then build (51 s for us), run `make check-all`, and look at the scoreboard's summary in the
-   golden run, whose log `make check-all` keeps in `build/grade/golden/`:
+2. Write down what the golden router should return for a read of `0x01`, and what `pslverr`
+   should be. Then build (57 s for us), run `make check-all`, and look at the scoreboard's summary
+   in the golden run, whose log `make check-all` keeps in `build/grade/golden/`:
 
    ```bash
    make build
    make check-all
-   grep -o '\[SB\] [0-9i].*' build/grade/golden/run.log
+   grep -o '\[SB\] [0-9a-z].*' build/grade/golden/run.log
    ```
 
-   You should see B04 `caught` with `50 UVM_ERROR` (the run stops at 50) and `3 of 5 caught.`, and
-   the second of the three `[SB]` lines should be:
+   You should see B04 `caught` with `50 UVM_ERROR` (the run stops at 50) and `3 of 5 caught.`,
+   and the last of the three `[SB]` lines should be:
 
    ```text
-   [SB] 865 register reads checked, 849 writes, 492 to bad addresses; 0 assertion failures
+   [SB] registers: 856 reads, 59 of STATUS checked; 492 transfers to bad addresses; irq checked in 0 cycles, wrong in 0
    ```
 
 3. Look at B04's first errors:
@@ -365,8 +366,8 @@ Which part of the bus can the register model never test?
    ```
 
    ```text
-   [SB] a read of a bad address (01), completing in cycle 8883: pslverr is 0, but 01 is a bad address
-   [SB] a read of a bad address (01), completing in cycle 8883 returned d1050001; it should return 00000000, as every bad read does
+   [APB] a read of 01, completing in cycle 4145: pslverr is 0, but 01 is a bad address
+   [APB] a read of 01, completing in cycle 4145 returned d1050001; a read of a bad address returns 0
    ```
 
    `d1050001` is `ID`'s value. Why did a read of `0x01` return it?
@@ -381,8 +382,9 @@ Which part of the bus can the register model never test?
 
    </details>
 
-4. Record the same read in `router_lab06_test`, which runs this lab's steps alone, on the golden
-   router and on B04:
+4. Record the same reads in `router_lab06_test`, which runs your sequence alone. It is the first
+   part of `router_test` cycle for cycle, so the read of `01` completes in cycle 4145 there too.
+   Record it on the golden router and on B04:
 
    ```bash
    make waves UVM_TESTNAME=router_lab06_test
@@ -391,19 +393,19 @@ Which part of the bus can the register model never test?
    ```
 
    Add `clk` from `router_tb_top`, `psel`, `penable`, `pwrite`, `paddr`, `pready`, `pslverr` and
-   `prdata` from `apb`, and `bad_addr` from `dut.u_regs`. With the reference code the read of `01`
-   runs from 41616 to 41645 ns. To find yours, look for the first error in
-   `build/runs/router_lab06_test-s1-B04/run.log`: it's printed at the rising edge after the read
-   completes.
+   `prdata` from `apb`, and `bad_addr` from `dut.u_regs`. Cycle n ends at the rising edge at
+   10n − 5 ns, so the read of `01` takes cycles 4143 to 4145, from 41415 to 41445 ns; the first
+   error in the B04 run's log is printed at 41445000 ps.
 
    ![Reads of 2c, 01, 02 and 03 on the golden router, in Surfer](../assets/img/lab-06-golden-bad-read.png)
 
-   *The golden router, 41560 to 41720 ns. `pslverr` is 1 at the end of the reads of `01`, `02`
-   and `03`, and `prdata` reads 0.*
+   *The golden router, 41360 to 41540 ns. `pslverr` is 1 in the last cycle of the reads of `01`,
+   `02` and `03`, and `prdata` reads 0.*
 
    ![The same reads with B04 switched on, in Surfer](../assets/img/lab-06-b04-bad-read.png)
 
-   *B04. `bad_addr` stays 0, `pslverr` never rises, and the read of `01` returns `d1050001`.*
+   *B04. `bad_addr` stays 0, `pslverr` never rises, and the reads of `01`, `02` and `03` all
+   return `d1050001`.*
 
    How many cycles does each read take, and in which of them does the router decide what `prdata`
    will be?
@@ -413,28 +415,28 @@ Which part of the bus can the register model never test?
 
    Three: a setup cycle (`psel` 1, `penable` 0), a first access cycle with `pready` 0, and a second
    with `pready` 1, in which the read completes. The router copies the register into `prdata` at
-   the edge that ends the first access cycle (rule A8), which is why `prdata` changes in the middle
-   of each read. `pslverr` is 1 only in the cycle a bad transfer completes (rule A7), so it pulses
-   for one cycle in each bad read.
+   the edge that ends the first access cycle (rule A8), so `prdata` changes in the middle of each
+   read, and `pslverr` is 1 only in the cycle a bad transfer completes (rule A7). The cycle with
+   `psel` 0 between reads is the APB driver's: it waits for a clock edge before each transfer.
 
    </details>
 
-Check: `3 of 5 caught.`, with B03, B04 and B14 caught.
+Check: B03, B04 and B14 are `caught`, and B01 and B02 are `MISSED`.
 
 ## Part 5: The interrupt
 
 Does `irq` follow `STATUS` and `INT_EN` in every cycle?
 
-1. The specification's INT_EN section defines `irq` as the OR of `STATUS[i] & INT_EN[i]`, with
-   no delay: it changes in the same cycle as the register bit that changes it. The scoreboard's
-   model already keeps `STATUS` and `INT_EN`, updating them from every write it sees and from
-   every drop, and `router_model::irq()` combines them. Write the two Part 5 `TODO`s in
-   `router_scoreboard::process()`: in a reset cycle `irq` must be 0, and in every other cycle it
-   must equal `m.irq()`.
+1. The specification's INT_EN section defines `irq` as the OR of `STATUS[i] & INT_EN[i]`, with no
+   delay. The scoreboard already keeps both registers cycle by cycle: each drop, oversize packet
+   or write waits in `changes` until `advance()` reaches the cycle it takes effect in, as route
+   writes waited in `pending` in Lab 05, and `irq()` combines the two. Write the two Part 5
+   `TODO`s in `router_scoreboard::write_sys()`, which the sys monitor calls every cycle: in a
+   reset cycle `irq` must be 0, and in every other cycle it must equal `irq()`.
 
-2. You haven't written any stimulus for `irq`. Write down which of B01 and B02 the check will catch
-   with the stimulus you already have, then build (32 s for us), run `make check-all` and look at
-   B02's errors:
+2. You haven't written any stimulus for `irq`. Write down which of B01 and B02 the check will
+   catch with the stimulus you already have, then build (111 s for us), run `make check-all` and
+   look at B02's error:
 
    ```bash
    make build
@@ -442,66 +444,82 @@ Does `irq` follow `STATUS` and `INT_EN` in every cycle?
    grep '^UVM_ERROR' build/grade/B02/run.log | grep -o '\[[A-Za-z_]*\] .*'
    ```
 
-   You should see `4 of 5 caught.`, with B01 still `MISSED` and B02 caught by two errors. You
-   chose the wording of your message; in the reference code's wording the two errors are:
+   You should see `4 of 5 caught.`, with B01 still `MISSED` and B02 caught by one `UVM_ERROR`.
+   You chose the wording of your message; in the reference code's wording it is:
 
    ```text
-   [SB] irq is 1 from cycle 22, but STATUS = 001 and INT_EN = 000 make it 0
-   [SB] irq is 1 from cycle 2369, but STATUS = 100 and INT_EN = 000 make it 0
+   [IRQ] irq is 1 from cycle 5921, but STATUS = 001 and INT_EN = 000 make it 0
    ```
 
    The golden run's scoreboard (the `grep` in Part 4, step 2) now says
-   `[SB] irq checked in 10142 cycles, wrong in 0`. Why does Lab 04's traffic catch B02 in
-   cycle 22, and why does B01 still hide?
+   `irq checked in 14681 cycles, wrong in 0`. Why does B02 show up in Lab 04's traffic, and why
+   does B01 still hide?
 
    <details>
    <summary>Answer</summary>
 
-   Lab 04's and Lab 05's steps never write `INT_EN`, so it is 0 all through them, and `irq` must
-   stay 0 whatever `STATUS` holds. Lab 04's steps disable `DST` 2, so the first packet to it is a
-   NOROUTE drop that sets `STATUS.NOROUTE`, and B02, which ignores `INT_EN`, raises `irq`. B01
-   shows only when a write to `STATUS` clears one bit while another is set. The only writes to
-   `STATUS` so far are the bit bash's, right after a reset, when every bit is 0.
+   Your `router_lab06_vseq` sends no packets yet, so the drop that set `STATUS.NOROUTE` was in
+   Lab 04's traffic. `INT_EN` is 0 all through it: Lab 04's steps and your Lab 05 sequence never
+   write it, and the bit bash puts each bit back the way it found it. So `irq` must stay 0, and
+   B02, which ignores `INT_EN`, raises it at the first NOROUTE drop; every phase of
+   `router_inject_test` disables a route and sends packets to it (the first phase uses `010-`).
+   Nothing clears `STATUS`, so `irq` stays wrong and the check reports it once. B01 shows only when
+   a write to `STATUS` clears one bit while another stays set, and the only writes to `STATUS` so
+   far are the bit bash's, right after reset, when every bit is 0.
 
    </details>
 
 3. Write the Part 5 step of `router_lab06_vseq`:
 
    - disable `DST` 1 with `route(1, 0, 0)` and make both sinks fast with `sink(p, SNK_FAST)`;
-   - with `INT_EN` still 0, set all three `STATUS` bits: one 1-beat packet to `DST` 1 (NOROUTE),
-     one 9-beat packet to `DST` 0 (OVERSIZE), then stall output 0 with `sink(0, SNK_FAST, 1)` and
-     send ten 1-beat packets to `DST` 0, which ends in a FULL drop (`burst()` sends them);
+   - with `INT_EN` still 0, set all three `STATUS` bits: one 1-beat packet to `DST` 1 (NOROUTE)
+     and one 9-beat packet to `DST` 0 (OVERSIZE), then `drain()`, stall output 0 with `stall(0)`
+     and send ten 1-beat packets to `DST` 0, which ends in a FULL drop (`burst()` sends them);
    - read `STATUS`;
    - turn each `INT_EN` bit on by itself, waiting two cycles after each write;
-   - set `INT_EN` to `3'b111`, then clear the `STATUS` bits one at a time by writing `3'b001`,
-     `3'b100` and `3'b010`, and read `STATUS` after each write;
+   - set `INT_EN` to `'b111`, then clear the `STATUS` bits one at a time by writing `'b001`,
+     `'b100` and `'b010`, and read `STATUS` after each write;
    - `drain()`, then `rd_all_regs()`.
 
    Write the registers with `wr_reg()` and read them with `rd_reg()`. The model doesn't check
    `STATUS` when it reads it, since it's volatile, but the scoreboard does.
 
-4. Build (39 s for us) and run `make check-all`. You should see:
+4. Build (28 s for us) and run `make check-all`. You should see:
 
    ```text
-         ok  the golden design                        0 UVM_ERROR, 0 UVM_FATAL        5.3s
+         ok  the golden design                        0 UVM_ERROR, 0 UVM_FATAL        4.8s
    ------------------------------------------------------------------------
-     caught  tier 1  B01_status_write_clears_all      3 UVM_ERROR                     5.3s
-     caught  tier 1  B02_irq_ignores_int_en           3 UVM_ERROR                     5.3s
-     caught  tier 1  B03_route3_readback_swapped      6 UVM_ERROR                     5.3s
-     caught  tier 1  B04_misaligned_address_accepted  50 UVM_ERROR                    5.0s
-     caught  tier 6  B14_enable_resets_to_one         3 UVM_ERROR                     5.3s
+     caught  tier 1  B01_status_write_clears_all      3 UVM_ERROR                     4.8s
+     caught  tier 1  B02_irq_ignores_int_en           1 UVM_ERROR                     4.7s
+     caught  tier 1  B03_route3_readback_swapped      4 UVM_ERROR                     4.7s
+     caught  tier 1  B04_misaligned_address_accepted  50 UVM_ERROR                    1.4s
+     caught  tier 6  B14_enable_resets_to_one         2 UVM_ERROR                     4.7s
    ------------------------------------------------------------------------
     5 of 5 caught.
+    Every bug in the list, each one caught by a check that fired.
    ```
 
    B01's first two errors, with the reference code, are:
 
    ```text
-   [SB] irq is 0 from cycle 10203, but STATUS = 110 and INT_EN = 111 make it 1
-   [SB] a read of STATUS (08), completing in cycle 10205 returned 00000000; it should return 00000006, the value in cycle 10204 (its first access cycle)
+   [IRQ] irq is 0 from cycle 5969, but STATUS = 110 and INT_EN = 111 make it 1
+   [STATUS] a read of 08, completing in cycle 5972 returned 00000000; it should return 00000006, STATUS in cycle 5971
    ```
 
-   The first write of `3'b001` cleared `NOROUTE` and, with B01, `FULL` and `OVERSIZE` too.
+   The first write of `'b001` cleared `NOROUTE` and, with B01, `FULL` and `OVERSIZE` too. B02 is
+   still caught by one error, but now it is `irq is 1 from cycle 5909`, in your own step. Why
+   doesn't Lab 04's traffic catch B02 any more?
+
+   <details>
+   <summary>Answer</summary>
+
+   Your step ends with `INT_EN` at `'b111`, and nothing writes it again, so Lab 04's traffic and
+   your Lab 05 sequence run with every enable on. Then `|(STATUS & INT_EN)` and `|STATUS` are the
+   same thing, and B02 makes no difference to `irq`. That is the hiding place `bugs.py` names for
+   B02: "turning on every interrupt enable before looking at irq". Your step catches it in the
+   cycles before it turns the enables on.
+
+   </details>
 
 5. The register model has a mirror of `INT_EN` and `STATUS` as well. Why does the scoreboard keep
    its own copy of both, instead of reading the mirror?
@@ -510,81 +528,78 @@ Does `irq` follow `STATUS` and `INT_EN` in every cycle?
    <summary>Answer</summary>
 
    The mirror of `STATUS` is out of date most of the time: the router sets its bits on its own,
-   and the model learns their value only when something reads the register. And even for `INT_EN`
-   the mirror changes at the wrong moment. The predictor updates it when the write's transfer
-   finishes, but the router uses the new value only from the next cycle, and the scoreboard works
-   through each cycle after it has ended, so the mirror would hand it the new `INT_EN` for the
-   cycle in which the router still used the old one. A scoreboard that is exact to the cycle has
-   to follow the registers the way the router does.
+   and the model learns their value only when something reads the register. And even for
+   `INT_EN` the mirror changes at the wrong moment. The predictor updates it when the monitor
+   reports the write, at the edge that ends the cycle the write completes in, and the router uses
+   the new value from the next cycle. The scoreboard checks `irq` for a cycle at the same edge, so it
+   would get the old or the new `INT_EN` depending on which monitor the simulator woke first,
+   the same race your Lab 05 scoreboard avoided with cycle stamps on route writes. A scoreboard
+   that is exact to the cycle has to follow the registers the way the router does.
 
    </details>
 
-Check: `5 of 5 caught.`, and `irq checked in` more than 10,000 cycles on the golden router.
+Check: `5 of 5 caught.`, and `irq checked in 14840 cycles, wrong in 0` in the golden run.
 
 ## Part 6: The back door
 
-What can peek and poke do on this simulator?
+What do peek and poke do on this router?
 
-1. A back-door access reads (`peek`) or writes (`poke`) a register by the name of the signal that
-   holds it, with no bus transfer and no simulation time. Read the HDL paths at the end of
-   `router_reg_block::build()`, which say that `CTRL` is `en_q` inside `router_regs`, for example,
-   and `tb/router_regs.vlt`, which marks those five signals public. UVM reaches a signal through
-   VPI, and Verilator lets VPI see only signals marked public. Then read `router_backdoor_vseq` in
-   `tb/router_seq_pkg.sv`.
+1. A back-door access reads (`peek`) or writes (`poke`) a register through the signal that holds
+   it, with no bus transfer and no simulation time. Read the HDL paths at the end of
+   `router_reg_block::build()`, `tb/router_regs.vlt` (the
+   [register layer](../reference/register-layer.md#the-back-door) page says how they fit
+   together), and `router_backdoor_vseq` in `tb/router_vseq_pkg.sv`.
 
-2. The sequence writes `CTRL` with 1 through the front door and peeks it as soon as the write
-   returns, then one rising edge later. It peeks `STATUS` and `DROP_CNT` after a NOROUTE drop, and
-   then pokes `CTRL`, `INT_EN` and `DROP_CNT`, peeking each at once, one rising edge later and two.
-   Write down what you expect each peek to return, then run the test and pull out its lines:
+2. The sequence writes `CTRL` with a raw transfer and peeks it twice, peeks `STATUS` and
+   `DROP_CNT` after a NOROUTE drop, then pokes `CTRL`, `INT_EN` and `DROP_CNT`, peeking each at
+   once, one rising edge later and two. Write down what you expect each peek to return, then run
+   the test and pull out its lines:
 
    ```bash
    make run UVM_TESTNAME=router_backdoor_test
    sed -n 's/.*@ \([0-9]*\): .*\[BACKDOOR\] /\1 ps  /p' build/runs/router_backdoor_test-s1/run.log
    ```
 
-   You should see `ok: 0 UVM_ERROR, 0 UVM_FATAL   0.12 s` and:
+   You should see `ok: 0 UVM_ERROR, 0 UVM_FATAL   0.09 s` and:
 
    ```text
-   90000 ps  peek CTRL as the write of 1 returns:   0     (UVM_IS_OK)
-   95000 ps  peek CTRL one rising edge later:       1     (UVM_IS_OK)
-   155000 ps  peek STATUS after a NOROUTE drop:      1     (UVM_IS_OK)
-   155000 ps  peek DROP_CNT:                         1     (UVM_IS_OK)
-   155000 ps  poke CTRL with                         0     (UVM_IS_OK)
-   155000 ps    peek at once:                        0     (UVM_IS_OK)
-   165000 ps    peek one rising edge later:          0     (UVM_IS_OK)
-   175000 ps    peek two rising edges later:         0     (UVM_IS_OK)
-   175000 ps  poke INT_EN with                       6     (UVM_IS_OK)
-   175000 ps    peek at once:                        6     (UVM_IS_OK)
-   185000 ps    peek one rising edge later:          6     (UVM_IS_OK)
-   195000 ps    peek two rising edges later:         6     (UVM_IS_OK)
-   195000 ps  poke DROP_CNT with                     505   (UVM_IS_OK)
-   195000 ps    peek at once:                        505   (UVM_IS_OK)
-   205000 ps    peek one rising edge later:          505   (UVM_IS_OK)
-   215000 ps    peek two rising edges later:         505   (UVM_IS_OK)
+   65000 ps  peek CTRL as the write of 1 returns:   1     (UVM_IS_OK)
+   75000 ps  peek CTRL one rising edge later:       1     (UVM_IS_OK)
+   125000 ps  peek STATUS after a NOROUTE drop:      1     (UVM_IS_OK)
+   125000 ps  peek DROP_CNT:                         1     (UVM_IS_OK)
+   125000 ps  poke CTRL with                         0     (UVM_IS_OK)
+   125000 ps    peek at once:                        0     (UVM_IS_OK)
+   135000 ps    peek one rising edge later:          0     (UVM_IS_OK)
+   145000 ps    peek two rising edges later:         0     (UVM_IS_OK)
+   145000 ps  poke INT_EN with                       6     (UVM_IS_OK)
+   145000 ps    peek at once:                        6     (UVM_IS_OK)
+   155000 ps    peek one rising edge later:          6     (UVM_IS_OK)
+   165000 ps    peek two rising edges later:         6     (UVM_IS_OK)
+   165000 ps  poke DROP_CNT with                     505   (UVM_IS_OK)
+   165000 ps    peek at once:                        505   (UVM_IS_OK)
+   175000 ps    peek one rising edge later:          505   (UVM_IS_OK)
+   185000 ps    peek two rising edges later:         505   (UVM_IS_OK)
    ```
 
-   Why does the first peek read 0, when the write of 1 has returned?
+   On this router every poke stuck: each poked value is still there two rising edges later. That
+   is what we measured here, on these three registers; before you rely on a poke in another
+   design, peek the register after a rising edge, as this test does. `CTRL` and `INT_EN` change
+   only on a write or a reset, but the router assigns both `DROP_CNT` counters at every rising
+   edge. Why does the poked `505` survive?
 
    <details>
    <summary>Answer</summary>
 
-   A write takes effect at the rising edge that ends its access cycle, and `wr_reg()` returns half
-   a cycle before that edge, when the driver sees `pready` at the falling edge. So at 90000 ps
-   `en_q` still holds 0, and at the edge at 95000 ps it becomes 1. The peek read the signal
-   correctly both times; it's the testbench's timing, not the back door, that makes the first
-   value look wrong.
+   `router_regs.sv` computes each counter's next value from its present one, in the function
+   `bump()`: it clears the counter only on a write to `DROP_CNT`, and adds one only on a drop.
+   With neither, the next value is the present value, and after a poke the present value is the
+   poked one.
 
    </details>
 
-   On this router the pokes stick: every poked value is still there two rising edges later, in
-   `CTRL`, which changes only on a write, and in `DROP_CNT`, which the router rewrites from its own
-   value in every cycle. The course's earlier research saw a poke on a different design read back
-   its old value at the next front-door read, so before you rely on a poke in another design,
-   peek the register after a rising edge, as this test does.
-
 3. The test pokes every register back as it was before anything reads it through the front door.
-   `+BACKDOOR_READBACK` adds one front-door read of `INT_EN` first, while it still holds the poked
-   6:
+   `+BACKDOOR_READBACK` adds one front-door read of `DROP_CNT` first, while it still holds the
+   poked `505`:
 
    ```bash
    make run UVM_TESTNAME=router_backdoor_test PLUSARGS="+verilator+error+limit+100000 +BACKDOOR_READBACK"
@@ -593,14 +608,14 @@ What can peek and poke do on this simulator?
    The `sed` command now prints one more line,
 
    ```text
-   260000 ps  front-door read of INT_EN:             6     (UVM_IS_OK)
+   225000 ps  front-door read of DROP_CNT:           505   (UVM_IS_OK)
    ```
 
-   and `make run` ends with:
+   and `make run` prints:
 
    ```text
-    FAIL: 1 UVM_ERROR   0.12 s   log: build/runs/router_backdoor_test-s1/run.log
-      UVM_ERROR [SB] a read of INT_EN (0c), completing in cycle 27 returned 00000006; it should return 00000000, the
+    FAIL: 1 UVM_ERROR   0.09 s   log: build/runs/router_backdoor_test-s1/run.log
+      UVM_ERROR [DROP_CNT] read 00000505, expected 00000001 (FULL_CNT 0, NOROUTE_CNT 1)
    ```
 
    The router returned what was poked. Why does the scoreboard call it wrong?
@@ -609,38 +624,37 @@ What can peek and poke do on this simulator?
    <summary>Answer</summary>
 
    The scoreboard learns register values only from the transfers it sees on the bus, and a poke
-   isn't one, so as far as the scoreboard knows, `INT_EN` is still 0. The register model's mirror
-   does hold 6, because a poke updates it. A testbench that sets registers up through the back door
-   has to tell every model that keeps its own copy, or it reports the design as wrong. Reading
-   through the back door has no such cost, which makes `peek` the safer half: it shows you the
-   volatile registers, such as `STATUS` and `DROP_CNT`, without a bus transfer and without
+   isn't one. It has seen one NOROUTE drop and no write to `DROP_CNT`, so as far as it knows
+   `DROP_CNT` holds `00000001`. A testbench that sets registers through the back door has to tell
+   every model that keeps its own copy. Reading through it has no such cost, which makes `peek`
+   the safer half: it shows you `STATUS` and `DROP_CNT` without a bus transfer and without
    disturbing anything.
 
    </details>
 
-Check: the sixteen lines above and `ok` from the shipped test, and the one `[SB]` error with
-`+BACKDOOR_READBACK`.
+Check: the sixteen lines above and `ok` from the shipped test, and the one `[DROP_CNT]` error
+with `+BACKDOOR_READBACK`.
 
 ## Finishing
 
 You're done when `make check-all` prints `5 of 5 caught.` with the register fields, adapter,
-predictor connections, `irq` check and `router_lab06_vseq` steps you wrote in `tb/`.
+predictor connections, `irq` check and `router_lab06_vseq` steps you wrote in `tb/`, and
+`make seeds SEEDS="1 2 3 4 5"` prints `5 ok  (5 runs)`.
 
 Questions:
 
-1. Before this lab, the scoreboard already compared every register read with its own model. What
-   did the register model add, and what did it leave for you to do by hand?
+1. Before this lab, the scoreboard checked one register, `DROP_CNT`. What did the register model
+   add, and what did it leave for the scoreboard and for raw transfers?
 
    <details>
    <summary>Answer</summary>
 
-   It added stimulus made from the register description: the reset sequence read every register
-   it could check, and the bit bash wrote and read every bit it could check, which caught B14 and
-   B03 without a step written for either. It added access by name (`wr_reg(regs.int_en, ...)`
-   instead of an address), a mirror that checks reads of the registers that don't change on their
-   own, and the back door. It left the 246 bad addresses (B04), the volatile registers, and
-   everything the registers do to the rest of the router, such as `irq` (B01 and B02), to raw
-   transfers and the scoreboard.
+   Stimulus made from the register description: the reset sequence and the bit bash read and
+   wrote every register and bit they could check, which caught B14 and B03 without a step written
+   for either. It also added access by name (`wr_reg(regs.int_en, ...)`), a mirror that checks
+   reads of the registers that don't change on their own, and the back door. It left the 246 bad
+   addresses (B04), the volatile registers, and what the registers do to the rest of the router,
+   such as `irq` (B01 and B02), to raw transfers and the scoreboard.
 
    </details>
 
@@ -654,8 +668,17 @@ Run your testbench against every bug in the catalogue:
 make check-all BUG_LIST="B01 B02 B03 B04 B05 B06 B07 B08 B09 B10 B11 B12 B13 B14 B15"
 ```
 
-The reference solution catches 14 of the 15. The one it misses is B15, which hides behind
-"resetting only at time 0, when every buffer is already empty"; you'll meet it in Lab 07.
+The reference solution catches 14 of the 15:
+
+```text
+  caught  tier 6  B14_enable_resets_to_one         2 UVM_ERROR                     4.8s
+  MISSED  tier 6  B15_output_valid_survives_reset  0 UVM_ERROR, 0 UVM_FATAL        4.9s
+------------------------------------------------------------------------
+ 14 of 15 caught.
+```
+
+The one it misses is B15, which hides behind "resetting only at time 0, when every buffer is
+already empty"; you'll meet it in Lab 07.
 
 Next on the [Course path](../index.md#course-path): the reading on verification plans and sign-off
 and on writing the verification report, then Lab 07: Capstone.
