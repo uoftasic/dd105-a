@@ -61,7 +61,7 @@ virtual sequence from `tb/router_seq_pkg.sv`, and each of those starts with a re
 
 ## Checks
 
-None of the sequences checks anything itself. Three things watch every cycle of every test:
+None of the sequences checks anything itself. Three checkers run in every test:
 
 - The scoreboard (`router_scoreboard` in `tb/router_env_pkg.sv`) runs `router_model` on what the
   monitors saw. Every monitor stamps its transactions with the cycle number, and the reset/irq
@@ -151,20 +151,18 @@ Makefile raises the error limit for the assertions, and the register model uses 
 more turned up while this environment was written. Each has a probe in `probes/` (`bash run.sh`
 there, in the course image, builds and runs all four), and the output below is from that script.
 
-**Clocking-block inputs read through a typedef of a virtual interface read 0.** A class in a
-package that reaches an interface through `typedef virtual pif pif_vif;` reads 0 from every
-clocking-block input, at every edge, with no warning; the same class reading through
-`virtual pif` sees the right values. So the packages here write the interface types out in full.
+**A typedef of a virtual interface.** A class in a package that reaches an interface through
+`typedef virtual pif pif_vif;` reads 0 from every clocking-block input, at every edge, with no
+warning; the same class reading through `virtual pif` sees the right values. So the packages here write the interface types out in full.
 
 ```
 edge 1: through virtual pif, mon_a.cycle = 1; through the typedef, mon_b.cycle = 0
 edge 2: through virtual pif, mon_a.cycle = 2; through the typedef, mon_b.cycle = 0
 ```
 
-**A clocking-block drive issued after an NBA-region wait lands a cycle late.** `try_next_item()`
-waits for the NBA region before it returns. A drive through the clocking block issued after that
-wait, in the same time step as the edge, takes effect at the next edge plus the skew instead of
-this one:
+**A clocking-block drive after an NBA-region wait.** `try_next_item()` waits for the NBA region
+before it returns. A drive through the clocking block issued after that wait, in the same time
+step as the edge, takes effect at the next edge plus the skew instead of this one:
 
 ```
 5000: drive r
@@ -179,8 +177,8 @@ what the next cycle holds; right after the rising edge they drive it. This is al
 APB driver run transfers back to back: `router_regs_test` on seed 1 started 835 transfers in the
 cycle after the previous one completed.
 
-**An array of bins on a crossed coverpoint becomes one bin.** `bins a[] = {[0:3]}` gives four bins
-on a coverpoint that isn't crossed, and one bin, named `a`, on one that is:
+**An array of bins on a crossed coverpoint.** `bins a[] = {[0:3]}` gives four bins on a coverpoint
+that isn't crossed, and one bin, named `a`, on one that is:
 
 ```
 __vlAnonCG_cg.cp_crossed.a 8
@@ -189,8 +187,9 @@ __vlAnonCG_cg.cp_alone.b[0] 2
 
 So every coverpoint in a cross here has its bins written out one by one.
 
-**`dist` gets the distribution wrong when its values are named constants.** With weights 20/50/20/10
-on a selector, 1,000 draws each:
+**`dist` with named constants.** `dist` gets the distribution wrong when its values are enum names
+or localparams, and right when they are literals. With weights 20/50/20/10 on a selector, 1,000
+draws each:
 
 ```
 enum values, dist:       0 0 0 1000
