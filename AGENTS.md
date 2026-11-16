@@ -62,7 +62,7 @@ In DD105-A:
 
 - Every guide page ends with "Check yourself", and each answer is in a collapsed `<details>` block.
 - Every SystemVerilog example that a page says compiles, or prints something, has its source in `guide-examples/<slug>/` with a Makefile that includes `labs/common/uvm.mk`, and its run command in `guide-examples/README.md`. The output on the page is copied from a run in the course image.
-- A fact about how Verilator behaves comes from a run, or from Verilator's own documentation or source. The labs measured several (for example, that `solve...before` is ignored); a page agrees with them.
+- A fact about how Verilator behaves comes from a run, or from Verilator's own documentation or source. The labs measured several (for example, that a `dist` and another constraint on the same variable can make `randomize()` fail); a page agrees with them.
 - ChipVerify pages appear only as further reading at the end of a guide page, with a one-line correction beside any page that is wrong for Verilator or wrong in general. Never copy ChipVerify's text or code.
 
 ### Lab writeups
