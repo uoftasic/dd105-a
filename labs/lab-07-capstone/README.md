@@ -52,7 +52,7 @@ until you add them.
 |---|---|---|
 | `Makefile` | the sources and `TESTS`; includes `../common/uvm.mk` | Parts 5 and 6: add two tests to `TESTS` |
 | `PLAN-template.md` | the verification plan, with the specification's rules as rows | copy to `PLAN.md` (Part 2) |
-| `REPORT-template.md` | the verification report | copy to `REPORT.md` (Part 8) |
+| `REPORT-template.md` | the verification report | copy to `REPORT.md` (Part 4), fill in (Part 8) |
 | `tb/router_sva.sv` | assertions for the stream and APB rules, each with a failure counter | Part 5: the reset rules |
 | `tb/router_seq_pkg.sv` | the virtual sequences, and `router_all_vseq`, which runs them all | Part 5: `router_reset_vseq` and the random resets; Part 6: `router_saturate_vseq` |
 | `tb/router_test_pkg.sv` | one test per virtual sequence, and the base test with its watchdog | no |

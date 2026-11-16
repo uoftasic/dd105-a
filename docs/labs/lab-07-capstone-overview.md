@@ -33,7 +33,7 @@ Package: [`labs/lab-07-capstone/`](https://github.com/uoftasic/dd105-a/tree/main
   ```
 
 Time: about 3 h 30 min. About 20 minutes of that is the machine working, which we measured on the
-course's 2 CPUs: the first build took 142 s, the three rebuilds after your edits took 129 to
+course's 2 CPUs: the first build took 135 s, the three rebuilds after your edits took 129 to
 141 s each, a regression takes 2 to 3 minutes and `make check-all` about 65 s. Most of the rest
 is writing: the plan, two sequences, eight assertions and the report.
 
@@ -45,14 +45,14 @@ is writing: the plan, two sequences, eight assertions and the report.
    make build
    ```
 
-   The banner says a cold build takes 5 to 6 minutes. Ours, with an empty ccache, took 142 s and
+   The banner says a cold build takes 5 to 6 minutes. Ours, with an empty ccache, took 135 s and
    ended with:
 
    ```text
-   - Verilator: Walltime 141.346 s (elab=0.912, cvt=3.588, bld=135.977); cpu 5.792 s on 2 threads; allocated 391.227 MB
+   - Verilator: Walltime 134.065 s (elab=0.912, cvt=3.600, bld=128.625); cpu 5.787 s on 2 threads; allocated 391.230 MB
    ```
 
-   and then a line saying it built `build/sim` in 142 s.
+   and then a line saying it built `build/sim` in 135 s.
 
 2. While it builds, make the repository. On GitHub, create a new repository under your own
    account named `dd105-capstone`, with a README so that it starts with one commit. It can be
@@ -536,10 +536,15 @@ Can someone else check your claim without redoing your work?
 2. Copy your testbench and its outputs into the repository, and push:
 
    ```bash
-   cp -r Makefile tb results /foss/designs/projects/dd105-capstone/
-   cd /foss/designs/projects/dd105-capstone
+   R=/foss/designs/projects/dd105-capstone
+   mkdir -p $R/tb $R/results
+   cp Makefile $R/ && cp tb/*.sv $R/tb/ && cp results/*.txt $R/results/
+   cd $R
    git add -A && git commit -m "The capstone environment, its results and the report" && git push
    ```
+
+   The copy is safe to repeat, so run it again whenever you change a file and want the
+   repository to have it.
 
 3. Open the repository on GitHub, and check that a reader who has only that page could find the
    command behind every number in your report.

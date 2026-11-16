@@ -86,7 +86,7 @@ The hunts behind the example report's table, all on seed 1:
 
 | What | Time |
 |---|---|
-| first build of the starter, empty ccache | 142 s |
+| first build of the starter, empty ccache | 135 s |
 | rebuild of the starter after adding the Part 5 assertions | 141 s |
 | rebuild after the Part 5 sequences | 133 s |
 | rebuild after the Part 6 sequence | 129 s |
