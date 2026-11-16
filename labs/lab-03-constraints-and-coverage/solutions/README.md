@@ -24,9 +24,9 @@ make check-all
 cp mine/* tb/
 ```
 
-On 2 CPUs, swapping the solution into a starter build rebuilt in 99 s, with a ccache that held
-no build of the solution. Swapping the starter files back took 11 s, because the ccache still
-held the starter's build.
+On 2 CPUs, swapping the solution into a starter build rebuilt in 99 s (92 s in a second
+measurement), with a ccache that held no build of the solution. Swapping the starter files back
+took 11 s (16 s in the second measurement), because the ccache still held the starter's build.
 
 ## The covergroup
 
