@@ -30,7 +30,8 @@ Package: [`labs/lab-04-the-same-testbench-in-uvm/`](https://github.com/uoftasic/
   | After Part 4 | | |
 
 Time: about 2 h 30 min. About 7 minutes of that is building: on the course's 2 CPUs the first
-build took us 104 s, and the rebuilds after each part's edits took 24, 26, 102, 33 and 111 s.
+build took us 104 s, and the rebuilds after each part's edits took 24 to 32 s and 26 to 36 s in
+Part 2, then 102, 33 and 111 s.
 
 ## Part 1: Build the port
 
@@ -187,7 +188,8 @@ What does it take to watch output 1, when an output agent is a class you can mak
    make run UVM_TESTNAME=router_rand_test
    ```
 
-   The rebuild took us 24 s. The run should fail on the golden router, with 50 errors that start:
+   The rebuild took us 24 to 32 s. The run should fail on the golden router, with 50 errors that
+   start:
 
    ```text
    UVM_ERROR labs/lab-04-the-same-testbench-in-uvm/tb/router_env_pkg.sv(157) @ 255000: uvm_test_top.env.sb [OUT] output 1: got c0 in cycle 26, and no beat was expected
@@ -208,14 +210,17 @@ What does it take to watch output 1, when an output agent is a class you can mak
    </details>
 
 4. Do the Part 2 TODO in `router_scoreboard::write_in`: queue every forwarded beat on
-   `expected[in_port]`. Rebuild (26 s for us) and run `router_rand_test` again. You should see:
+   `expected[in_port]`. Rebuild (26 to 36 s for us) and run `router_rand_test` again. You should
+   see:
 
    ```text
    UVM_INFO labs/lab-04-the-same-testbench-in-uvm/tb/router_env_pkg.sv(206) @ 18245000: uvm_test_top.env.sb [SB] 243 packets in: 120 to output 0, 122 to output 1, 1 NOROUTE, 0 FULL
    UVM_INFO labs/lab-04-the-same-testbench-in-uvm/tb/router_env_pkg.sv(208) @ 18245000: uvm_test_top.env.sb [SB] beats checked: 574 on output 0, 532 on output 1; 1 DROP_CNT reads checked
    ```
 
-   and `ok`. The 532 beats that went unwatched in Part 1 are now checked.
+   and `ok`. The 532 beats that went unwatched in Part 1 are now checked. The number in brackets
+   after each file name is a line in that file, so yours can differ by a few if your edit kept the
+   TODO comment or added lines.
 
 5. Predict whether `make check-all` catches B06 or B13 now, then run it.
 
@@ -254,7 +259,7 @@ What does B13 need from the stimulus, and does the scoreboard know enough to jud
    handles, and each `out_ready_driver` reads its `ready_pct` again every cycle, so a change takes
    effect at the next clock edge.
 
-3. Rebuild with `make build`. It took us 102 s, against 24 s and 26 s in Part 2, because the Part 2
+3. Rebuild with `make build`. It took us 102 s, against 24 to 36 s in Part 2, because the Part 2
    edits were inside existing function bodies and this one adds a function to a class, which
    changes most of the C++ that Verilator generates (Lab 01, Part 5 measured the same thing).
    Before you run it, look at `level()` again. Phase 1 stalls output 1: what will the scoreboard
