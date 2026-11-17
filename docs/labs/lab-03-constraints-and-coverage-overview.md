@@ -1,19 +1,21 @@
 # Lab 03: Constraints and coverage
 
-You'll add a covergroup to your Lab 02 testbench and use it to see what the testbench's random
-stimulus really sends the router. Then you'll constrain the packet so that the simulator produces
-the length distribution you ask for, and write the stimulus that reaches two coverage holes, which
-is where this lab's two planted bugs are.
+You'll add a covergroup to the Lab 02 testbench and use it to see what the testbench's random
+stimulus sends the router and what it never sends. Then you'll constrain the packet so that the
+simulator produces the length distribution you ask for. Last, you'll write stimulus that reaches
+the two coverage holes where this lab's two planted bugs are.
 
 Package: [`labs/lab-03-constraints-and-coverage/`](https://github.com/uoftasic/dd105-a/tree/main/labs/lab-03-constraints-and-coverage)
 
 ## Before you start
 
 - Finish [Lab 02](lab-02-a-class-testbench-without-uvm-overview.md). This lab's package is the
-  Lab 02 testbench, with our solution's `monitor.svh` and `scoreboard.svh` in `tb/` and some new
-  pieces around them, which Part 1 walks through. If your own monitor and scoreboard passed
-  Lab 02's `make check-all`, you can copy them over ours (the error counts quoted on this page come
-  from ours, so yours may differ):
+  Lab 02 testbench with our solution's `monitor.svh` and `scoreboard.svh` in `tb/`. Around them
+  it adds a packet that `randomize()` makes, a sink that can stall, an APB read, a tracker that
+  predicts each packet's fate, and a check on `DROP_CNT`. Part 1 walks through each of them.
+  If your own monitor and scoreboard passed Lab 02's `make check-all`, you can copy them over ours
+  (the error counts quoted on this page come from ours, so yours may differ). Run the copy from
+  the lab folder, which the last step of this list takes you to:
 
   ```bash
   cp ../lab-02-a-class-testbench-without-uvm/tb/monitor.svh ../lab-02-a-class-testbench-without-uvm/tb/scoreboard.svh tb/
@@ -22,8 +24,8 @@ Package: [`labs/lab-03-constraints-and-coverage/`](https://github.com/uoftasic/d
 - Read [Constrained random on Verilator](../guide/constrained-random-on-verilator.md) and
   [Functional coverage you can read](../guide/functional-coverage-you-can-read.md).
 - Keep the [router specification](../reference/router-spec.md) open, and read its
-  [Routing](../reference/router-spec.md#routing) section again: this lab is about the level of an
-  output and what the router does with a packet at each level.
+  [Routing](../reference/router-spec.md#routing) section again, because this lab is about the level
+  of an output and what the router does with a packet at each level.
 - In a terminal on the workbench desktop, load the course and go to the lab folder:
 
   ```bash
@@ -32,8 +34,8 @@ Package: [`labs/lab-03-constraints-and-coverage/`](https://github.com/uoftasic/d
   cd labs/lab-03-constraints-and-coverage
   ```
 
-Time: about 1 h 30 min. The builds in it took us 107 s (the first), 4 s (the one that stops in
-Part 2), 100 s, 89 s and 89 s on 2 CPUs, and `make traps` took 9 s.
+Time: about 1 h 30 min. On 2 CPUs, the lab's five builds took us 107 s (the first), 4 s (the one
+that stops in Part 2), 100 s, 89 s and 89 s, and `make traps` took 9 s.
 
 ## Part 1: The testbench you start from
 
@@ -59,9 +61,9 @@ What does the starting testbench check, and does it catch this lab's two bugs?
     /w/labs/lab-03-constraints-and-coverage/build/sim is up to date.
    ```
 
-   We ran it with the course folder mounted at `/w`, so your paths start with
-   `/foss/designs/modules/dd105-a` instead. Your ccache already holds the builds of Labs 01 and
-   02, so its counts will be higher than ours.
+   We ran it with the course folder mounted at `/w`; your paths start with
+   `/foss/designs/modules/dd105-a` instead. The ccache counts add up over every build in your
+   clone, and yours already include the builds of Labs 01 and 02, so they'll be higher than ours.
 
 2. While it builds, read the files in `tb/`. Most of them are Lab 02's:
 
@@ -69,11 +71,11 @@ What does the starting testbench check, and does it catch this lab's two bugs?
    |---|---|
    | `stream_if.sv`, `apb_if.sv`, `router_tb_top.sv` | Lab 02's interfaces and top module, with the same code |
    | `monitor.svh`, `scoreboard.svh` | Lab 02's monitor and scoreboard: our solution, or yours |
-   | `driver.svh` | Lab 02's driver, sink and APB master, with two additions: `sink.stall`, which holds `out_ready` at 0, from the next rising edge on, for as long as `stall` is 1, and `apb_master.read()` |
-   | `packet.svh` | Lab 02's `packet` and `router_cfg`, and a new `rand_packet`, whose DST (`hdr_dst`) and length kind (`kind`) come from `randomize()`. Its constraint `c_dst` keeps a packet on an enabled route. Part 3 adds the rest. `router_cfg` still reads `+N`, `+ROUTES` and `+SHOW`, but not Lab 02's `+DSTS` or `+LEN`, because the constraints now choose the DST and the length. |
+   | `driver.svh` | Lab 02's driver, sink and APB master, with two additions: `apb_master.read()`, and `sink.stall`, which holds `out_ready` at 0 from the next rising edge on, for as long as `stall` is 1 |
+   | `packet.svh` | Lab 02's `packet` and `router_cfg`, and a new `rand_packet`, whose DST (`hdr_dst`) and length kind (`kind`) come from `randomize()`. Its constraint `c_dst` keeps a packet on an enabled route. Part 3 adds the weights on `kind` and the constraint that picks the length from `kind`. `router_cfg` still reads `+N`, `+ROUTES` and `+SHOW`, but not Lab 02's `+DSTS` or `+LEN`, because the constraints now choose the DST and the length. |
    | `generator.svh` | randomizes `rand_packet`s, where Lab 02's generator called `$urandom` |
    | `tracker.svh` | new: follows output 0's level and decides each packet's fate |
-   | `coverage.svh` | empty: Part 2 fills it in |
+   | `coverage.svh` | new: the class `router_coverage`, with an empty `sample_pkt()` and no covergroup yet. Part 2 adds the covergroup. |
    | `env.svh` | Lab 02's `env`, with `run()` split into steps a test can call one by one, and a `DROP_CNT` check |
    | `router_test_pkg.sv` | `router_rand_test`, `router_fill_test` and Lab 02's `router_class_test`. `close_holes()` is empty: Part 4 fills it in. |
 
@@ -83,13 +85,13 @@ What does the starting testbench check, and does it catch this lab's two bugs?
    decides each packet's fate: NOROUTE, FULL, or forwarded to output 0 or 1. Nothing watches
    output 1, and its sink is always ready, so its level never comes near 8 and the tracker takes it
    as 0. It counts the drops it predicts, and `env.check_drops()` reads `DROP_CNT` over APB and
-   reports a `$error` if the two disagree. Lab 02's scoreboard checks the packets that come out;
-   the `DROP_CNT` check is the only one that looks at the router's counters.
+   reports a `$error` if the two disagree. Lab 02's scoreboard still checks the packets that come
+   out of output 0.
 
    `router_rand_test` sets `CTRL.EN` and runs four phases. Each phase writes a random routing table
    with at least one disabled route and an enabled route to each output, sends 200 random packets
-   with both sinks ready, waits for the outputs to drain and checks `DROP_CNT`. Then it calls
-   `close_holes()` and checks `DROP_CNT` once more.
+   with both sinks ready, waits for the outputs to drain, checks `DROP_CNT` and then clears it.
+   After the last phase it calls `close_holes()` and checks `DROP_CNT` once more.
 
 3. Run the test:
 
@@ -120,11 +122,12 @@ What does the starting testbench check, and does it catch this lab's two bugs?
    The routes are written as Lab 02's `+ROUTES` was: one character per route, `0` or `1` for the
    output, `-` for disabled.
 
-4. This lab's bugs are B07, which counts a packet for a disabled route as a FULL drop as well when
-   the output its route names holds more than 8 beats, and B08, which drops a packet that arrives
-   when its output holds exactly 8 beats. B07 changes no packet that comes out, only `FULL_CNT`
-   (and `STATUS.FULL`), which is why the package reads `DROP_CNT`: no other check in it could see
-   B07. Write down whether you expect `router_rand_test` to catch them, then run it against both:
+4. This lab's two bugs are B07 and B08. B07 counts a packet for a disabled route as both a
+   NOROUTE drop and a FULL drop when the output its route names holds more than 8 beats. B08 drops
+   a packet that arrives when its output holds exactly 8 beats, although an output at 8 still has
+   room for it. B07 changes no packet that comes out, only `FULL_CNT` (and `STATUS.FULL`), so the
+   `DROP_CNT` check is the only check in the package that could see it. Write down whether you
+   expect `router_rand_test` to catch the two bugs, then run it against both:
 
    ```bash
    make check-all
@@ -153,11 +156,11 @@ What does the starting testbench check, and does it catch this lab's two bugs?
    <summary>Answer</summary>
 
    Both sinks are always ready, so every beat leaves its output within a couple of cycles of
-   arriving and beats don't pile up: in 800 packets the highest level a header saw was 2. B08
-   needs a header that arrives at exactly 8. B07 needs a NOROUTE drop while the output its route
-   names holds more than 8, and `c_dst` keeps every random packet on an enabled route, so there
-   isn't a NOROUTE drop at all (`0 NOROUTE`). The seed changes the packets and the routing tables,
-   but not the sinks or `c_dst`.
+   arriving, and beats don't pile up. In 800 packets the highest level a header saw was 2. B08
+   needs a header that arrives while its output holds exactly 8 beats. B07 needs a NOROUTE drop
+   while the output its route names holds more than 8 beats, but `c_dst` keeps every random packet
+   on an enabled route, so there are no NOROUTE drops at all (`0 NOROUTE`). The seed changes the
+   packets and the routing tables, but not the sinks or `c_dst`.
 
    </details>
 
@@ -165,16 +168,17 @@ Check: `ok` on the golden design and `0 of 2 caught.`
 
 ## Part 2: A covergroup you can read
 
-What does `router_rand_test` actually send the router, and where does it never go?
+What does `router_rand_test` send the router, and which fates and levels does it never reach?
 
 1. Read `post_randomize()` in `tb/packet.svh`, and how `kind` is declared. No constraint names
    `kind`. Write down how many of the 800 packets you expect to be 1 beat long, and how many 8.
 
 2. Open `tb/coverage.svh`. The tracker calls `sample_pkt()` once for every packet, with a
-   `pkt_fate` (in `tracker.svh`) that holds its length, its DST, its fate (`FATE_NOROUTE`,
-   `FATE_FULL`, `FATE_OUT0` or `FATE_OUT1`, which are 0 to 3) and the level of the output its route
-   names in the cycle its header was accepted. Write a covergroup `cg_pkt` with these coverpoints
-   and bins, using these names, because the outputs below use them:
+   `pkt_fate` record, which is declared in `tracker.svh`. The record holds the packet's length, its
+   DST, its fate (`FATE_NOROUTE`, `FATE_FULL`, `FATE_OUT0` or `FATE_OUT1`, which are 0 to 3), and
+   the level of the output its route names in the cycle its header was accepted. Write a
+   covergroup `cg_pkt` with these coverpoints and bins. Use these names, because the outputs below
+   use them:
 
    | Coverpoint | Bins |
    |---|---|
@@ -207,9 +211,10 @@ What does `router_rand_test` actually send the router, and where does it never g
    ```
 
    with your own line and column. Verilator 5.050 doesn't support a coverpoint that reads a member
-   of the class the covergroup is in, and the warning says what it does instead: it ignores the
-   whole covergroup. The course's build stops on any warning it hasn't been told to ignore, so you
-   find out here rather than from a coverage report with no bins in it.
+   of the class the covergroup is in, and, as the warning says, it ignores the whole covergroup
+   instead. The course's build stops on any warning that it hasn't been told to ignore. If it
+   didn't, the build would finish without the covergroup, and you'd only find out from a coverage
+   report with no bins in it.
 
 4. Rewrite it so the values arrive as arguments of `sample()`:
 
@@ -223,8 +228,8 @@ What does `router_rand_test` actually send the router, and where does it never g
    cg_pkt.sample(f.len, f.dst, int'(f.fate), f.level);
    ```
 
-   Delete the `rec` member. Then `make build` again: adding a covergroup changes the class, and
-   the rebuild took 100 s.
+   Delete the `rec` member, then run `make build` again. Adding a covergroup changes what the class
+   holds, so expect a rebuild that costs close to a full build; ours took 100 s.
 
 5. Every run writes the hit count of every bin to `coverage.dat` in its run folder, and `make cov`
    merges every `coverage.dat` under `build/runs`, so delete the old runs first and then run the
@@ -280,10 +285,9 @@ What does `router_rand_test` actually send the router, and where does it never g
    The standard makes an unconstrained `rand` enum uniform over its named values, so each of the
    three kinds should come out about 267 times, and here they came out 260, 270 and 270. The six
    lengths from 2 to 7 share `LEN_MID`'s 270, so each is about 45. The simulator did what the
-   standard says for this enum, but line 1 of Part 3's experiments shows an enum for which it
-   doesn't. Nobody chose this mix, though: a third of the packets are single beats and a third are
-   8 beats long only because the enum has three names. In Part 3 you give the kinds weights of
-   your own.
+   standard says for this enum, although line 1 of Part 3's experiments shows an enum for which it
+   doesn't. A third of the packets are single beats and a third are 8 beats long only because the
+   enum has three names, and in Part 3 you give the kinds weights of your own.
 
    </details>
 
@@ -294,20 +298,22 @@ What does `router_rand_test` actually send the router, and where does it never g
    <details>
    <summary>Answer</summary>
 
-   B08 needs a packet admitted to output 0 at exactly 8: `out0_x_at_8`. B07 needs a NOROUTE drop
-   while the output its route names holds more than 8: `noroute_x_at_9` or `noroute_x_high`.
+   B08 needs a packet admitted to output 0 at a level of exactly 8, which is `out0_x_at_8`. B07
+   needs a NOROUTE drop while the output its route names holds more than 8 beats, which is
+   `noroute_x_at_9` or `noroute_x_high`.
 
-   Seven bins are impossible by the specification: a FULL drop happens only at 9 or more
-   (`full_x_empty`, `full_x_low`, `full_x_at_8`), and a packet is admitted only at 8 or less
-   (`out0_x_at_9`, `out0_x_high`, `out1_x_at_9`, `out1_x_high`). Two more are out of this
-   testbench's reach, because the tracker takes output 1's level as 0: `out1_x_low` and
-   `out1_x_at_8`. And three could be hit on the router, but no test in this lab makes a FULL drop
-   (Part 4 says why): `cp_fate.full`, `full_x_at_9` and `full_x_high`. That leaves 29 of 41.
+   Seven bins are impossible by the specification, because a FULL drop happens only at a level of
+   9 or more (`full_x_empty`, `full_x_low`, `full_x_at_8`), and a packet is admitted only at 8 or
+   less (`out0_x_at_9`, `out0_x_high`, `out1_x_at_9`, `out1_x_high`). This testbench can't hit two
+   more, `out1_x_low` and `out1_x_at_8`, because the tracker takes output 1's level as 0. Three
+   more, `cp_fate.full`, `full_x_at_9` and `full_x_high`, need a FULL drop, which the router can
+   make but no test in this lab asks for (Part 4 says why). So this testbench can reach 29 of the
+   41 bins.
 
    Bins that this lab can't hit still count in the percentage, which is why you read the list of
-   bins rather than the percentage. Verilator's 46.3% is hit bins over all bins, crosses
-   included. The standard's formula averages the five items instead (100, 100, 50, 40 and 15%),
-   which gives 61%.
+   bins rather than the percentage. Verilator's 46.3% is the number of bins hit over all 41 bins,
+   the cross's included. The standard's formula instead averages the coverage of the five items
+   (100, 100, 50, 40 and 15%), which gives 61%.
 
    </details>
 
@@ -318,9 +324,10 @@ Check: `covergroup : 46.3% (19/41)`, and `len1` at 260.
 How do you get the length distribution you ask for on this simulator, and how do you know you got
 it?
 
-1. Open `traps/traps.sv`. It has six small experiments, each a class randomized many times. Lines
-   1 to 3 use the shapes of this lab's packet, and lines 4 to 6 shapes a test might use. For each
-   line it prints, write down what the SystemVerilog standard says it should show.
+1. Open `traps/traps.sv`. It has six small experiments, numbered 1 to 6, and each one randomizes
+   two or three small classes many times. Lines 1 to 3 use the shapes of this lab's packet, and
+   lines 4 to 6 use shapes that a test might use. For each line it prints, write down what the
+   SystemVerilog standard says it should show.
 
 2. Run it. It builds with plain Verilator, without UVM, in seconds:
 
@@ -357,34 +364,35 @@ it?
    <details>
    <summary>Answer</summary>
 
-   1. The standard makes an unconstrained enum uniform over its names: about 333 each for three
-      names, 250 for four. The packet's three-name enum came out 313, 348 and 339. The enum whose
-      four names fill its two bits came out as its first name 809 times in 1000, with no warning,
-      and a constraint that names it, here `inside` with all four values, gave 254, 244, 269 and
-      233. So give every `rand` enum a constraint that names it, even one that allows every value.
+   1. The standard makes an unconstrained enum uniform over its names, so about 333 each for
+      three names and 250 each for four. The packet's three-name enum came out 313, 348 and 339.
+      The enum whose four names fill its two bits came out as its first name 809 times in 1000,
+      with no warning. With a constraint that names it, here an `inside` that allows all four
+      values, it came out 254, 244, 269 and 233 times. So give every `rand` enum a constraint that
+      names it, even one that allows every value.
    2. Both should give about 250, 500 and 250. Written with the enum's names, the weight of 50
       went to `LEN_MAX` (522) instead of `LEN_MID` (227); written as numbers, the weights landed
       where they were written.
-   3. None of the four should fail: `len != 7` leaves a value in every weighted range, and with
-      `len == 3` the solver should choose `kind` 1. Here a `dist` behaves as if it draws its value
-      first and only then solves the other constraints, so a draw that another constraint rules
-      out fails. On `len` itself, `len != 7` rules out one of the six values that share the weight
-      of 50, and 72 calls failed. With the weights on a selector, `kind`, the length is solved
-      inside whichever range was drawn, and none failed. But `len == 3` rules out two kinds that
-      hold half the weight, and 478 calls failed. Turning the `dist` off for that call stops the
-      failures.
-   4. With `solve big before len`, the standard decides `big` first, at 50/50, so about 500.
-      Without it, each of the 8 solutions is equally likely and `big` is 1 in 8, about 125. Here
-      they gave 33 and 41, so in this experiment `solve...before` didn't move `big` toward 500, and
-      the solver doesn't choose evenly among the solutions either.
+   3. None of the four should fail, because `len != 7` leaves a value in every weighted range, and
+      with `len == 3` the solver should choose `kind` 1. Here a `dist` behaves as if it draws its
+      value first and only then solves the other constraints, so the call fails whenever another
+      constraint rules out the value it drew. On `len` itself, `len != 7` rules out one of the six
+      values that share the weight of 50, and 72 calls failed. With the weights on a selector,
+      `kind`, the length is solved inside whichever range was drawn, and none failed. But
+      `len == 3` rules out two kinds that hold half the weight, and 478 calls failed. Turning the
+      `dist` off with `c_kind.constraint_mode(0)` stops the failures.
+   4. With `solve big before len`, the standard has the solver choose `big` first, at 50/50, so
+      about 500. Without it, each of the 8 solutions is equally likely and `big` is 1 in 8, so
+      about 125. Here they gave 33 and 41, so in this experiment `solve...before` didn't move `big`
+      toward 500, and the solver doesn't choose evenly among the solutions either.
       [Constrained random on Verilator](../guide/constrained-random-on-verilator.md) tries a
       different shape, in which `solve...before` did change how often the variable it names first
       came out, though not to the standard's numbers.
    5. Both should work. `sum()` on a dynamic array can't be solved here and fails every time; on a
       fixed-size array it works.
-   6. Neither should repeat a value. `unique` on an array isn't enforced: 315 of 1000 is about the
-      one draw in three that four random 4-bit values repeat with no constraint at all. On separate
-      variables it works.
+   6. Neither should repeat a value. Here `unique` on an array isn't enforced. A value repeated in
+      315 of 1000 draws, about one in three, which is how often four random 4-bit values include a
+      repeat with no constraint at all. On separate variables `unique` works.
 
    </details>
 
@@ -409,7 +417,8 @@ it?
    grep cp_len build/coverage/bins.txt
    ```
 
-   The rebuild took 89 s. With the reference solution you should see:
+   The rebuild took 89 s. With the reference solution's `coverage.svh` and `packet.svh` you should
+   see:
 
    ```text
           189  __vlAnonCG_cg_pkt.cp_len.len1
@@ -436,8 +445,8 @@ it?
 
    The standard makes each of the six equally likely, about 68 each. This simulator's solver
    favours some of them, as line 4 of the experiments also showed. A constraint says which values
-   are allowed, but on this simulator you can't rely on it for how often each one comes, so you
-   count them in the coverage.
+   are allowed, but on this simulator you can't rely on it for how often each one comes out, so
+   you count them in the coverage.
 
    </details>
 
@@ -481,12 +490,12 @@ What stimulus reaches B07's and B08's bins, and does the testbench catch the bug
    - `e.send()` with the queue, which returns when the last packet has gone in; then
      `e.snk0.stall = 0;` and `e.drain();`.
 
-   `router_rand_test` checks `DROP_CNT` after `close_holes()` returns, so `close_holes()` itself
-   checks nothing. The fill packets come from `rand_packet::make()` rather than
-   `randomize() with { len == n; }`, because with the weights from Part 3 on, such a call fails
-   whenever the `dist` draws a kind whose range doesn't hold `n`: in line 3 of the experiments the
-   call with `len == 3` failed 478 times in 1000. A `$display` that prints the plan's lengths will
-   help you read the waveform later.
+   Both tests that call `close_holes()` check `DROP_CNT` after it returns, so `close_holes()`
+   doesn't need a check of its own. Build the fill packets with `rand_packet::make()`, not with
+   `randomize() with { len == n; }`. With Part 3's weights on, such a call fails whenever the
+   `dist` draws a kind whose range doesn't hold `n`, and in line 3 of the experiments the call
+   with `len == 3` failed 478 times in 1000. A `$display` that prints the plan's lengths will help
+   you read the waveform later.
 
 4. The list stops after the packet for DST 1, with output 0 still stalled and holding 9 to 16
    beats. Suppose it sent one more random packet for DST 0 there. What would the golden router do
@@ -497,8 +506,8 @@ What stimulus reaches B07's and B08's bins, and does the testbench catch the bug
 
    The router drops it as FULL, because output 0 holds more than 8 beats. The tracker predicts
    that, so the `DROP_CNT` check passes. But Lab 02's scoreboard expects every packet for an
-   enabled route with `PORT` 0 to come out of output 0, so it reports the packet missing, on the
-   golden router. We tried it (a 7-beat packet, which cost an 89 s rebuild), and
+   enabled route with `PORT` 0 to come out of output 0, so it reports the packet missing, even on
+   the golden router. We tried it (a 7-beat packet, which cost an 89 s rebuild), and
    `router_fill_test` printed
 
    ```text
@@ -507,11 +516,13 @@ What stimulus reaches B07's and B08's bins, and does the testbench catch the bug
    ```
 
    To check FULL drops, the scoreboard has to model the levels itself, which is what Lab 04's
-   scoreboard does. In this lab, keep every packet for output 0 out of a full output.
+   scoreboard does. In this lab, don't send a packet for output 0 while output 0 holds more than 8
+   beats.
 
    </details>
 
-5. Build, then run the short test that does nothing but `close_holes()`:
+5. Build, then run the short test, which calls `close_holes()` on its own and then checks
+   `DROP_CNT`:
 
    ```bash
    make build
@@ -532,7 +543,7 @@ What stimulus reaches B07's and B08's bins, and does the testbench catch the bug
    ```
 
    and `ok: 0 UVM_ERROR, 0 UVM_FATAL   0.03 s`. If the golden router doesn't pass here, read the
-   first error in the log: with the golden router, it points at your stimulus.
+   first error in the log. The router is the golden one, so the error points at your stimulus.
 
 6. Run the graded test too, and read the coverage of both runs:
 
@@ -548,11 +559,11 @@ What stimulus reaches B07's and B08's bins, and does the testbench catch the bug
    <details>
    <summary>Answer</summary>
 
-   `cp_level.at_9` and `noroute_x_at_9`, which the packet for DST 1 would hit if the random packet
-   for DST 0 before it were 1 beat long, so that output 0 held 9 beats; and `noroute_x_empty`,
-   `noroute_x_low` and `noroute_x_at_8`, which a packet for a disabled route would hit if it
-   arrived while output 0 held 0, 1 to 7 or 8 beats. Our packet for DST 1 arrived at a level of
-   11, so it hit `noroute_x_high`.
+   The packet for DST 1 would hit `cp_level.at_9` and `noroute_x_at_9` if the random packet for
+   DST 0 before it were 1 beat long, so that output 0 held 9 beats. A packet for a disabled route
+   would hit `noroute_x_empty`, `noroute_x_low` or `noroute_x_at_8` if it arrived while output 0
+   held 0, 1 to 7 or 8 beats. Our packet for DST 1 arrived at a level of 11, so it hit
+   `noroute_x_high`.
 
    </details>
 
@@ -584,7 +595,7 @@ What stimulus reaches B07's and B08's bins, and does the testbench catch the bug
    On B08, the same `DROP_CNT` line comes first, and the scoreboard then reports the packet that
    was dropped at level 8 as never delivered.
 
-8. Record both routers running `router_fill_test` and open them:
+8. Record the waveforms of `router_fill_test` on both routers and open them:
 
    ```bash
    make waves UVM_TESTNAME=router_fill_test
@@ -615,7 +626,7 @@ What stimulus reaches B07's and B08's bins, and does the testbench catch the bug
    <details>
    <summary>Answer</summary>
 
-   The edge at 295 ns, with `level0` at 08 in the cycle that edge ends: the four beats of
+   The edge at 295 ns. In the cycle that edge ends, `level0` is 08, because the four beats of
    `00 7a a9 ad`, the three of `01 f9 0c` and the one of `02` have gone in, and none has left.
    The specification admits a packet at a level of 8 or less, so the golden router writes `03`
    into output 0 at that edge, and `level0` reads 09 in the next cycle. B08 drops the packet, so
@@ -640,11 +651,11 @@ Questions:
    <details>
    <summary>Answer</summary>
 
-   That the checks never had anything to check in the places the bugs were. A pass says the
-   router agreed with the scoreboard and the tracker on everything the stimulus did; the empty
-   bins said that no header ever arrived while its output held 8 beats or more, and that the
-   stimulus never made a NOROUTE or FULL drop. B07 and B08 sat in two of those empty bins, and
-   once the stimulus reached them, the existing checks caught both.
+   A pass says that the router agreed with the scoreboard and the tracker on everything the
+   stimulus did. The empty bins showed that no header ever arrived while its output held 8 beats
+   or more, and that the stimulus never made a NOROUTE or FULL drop. B07 and B08 sat in two of
+   those empty bins, so the checks never had a chance to see them, and once the stimulus reached
+   them, the same checks caught both.
 
    </details>
 
