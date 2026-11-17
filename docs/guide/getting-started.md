@@ -37,7 +37,7 @@ cwd: /foss/designs/modules/dd105-a
 
 Nothing else needs installing. Verilator, Icarus, cocotb, the Yices constraint solver and Surfer
 are all in the image. The image has no UVM library, so the course carries its own copy in
-`third_party/uvm`, and `mod add` cloned it along with everything else.
+`third_party/uvm`, and `mod add` clones it along with everything else.
 
 Each lab's makefile works out its own paths, so every lab also runs with `make` alone, in a plain
 `git clone` of the course inside the image, without `.designinit` or `mod`. If a setup step fails
