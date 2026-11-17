@@ -84,9 +84,9 @@ that between them do what four lines of `alu()` do (its three `.value =` lines a
 
 **Build.** Verilator turns the testbench, the ALU and the whole UVM library into C++, and g++
 compiles it. Lab 01's build report says the sources came to 24 MB in 386 modules, and that g++
-spent 98.5 s of the 102. The ALU is 34 lines of those 24 MB. The lab's optional last part runs the
-cocotb test on Verilator instead of Icarus. There Verilator compiles only the ALU, and the build
-took 13.3 s, so most of the 102 s goes to the UVM library rather than to the design.
+spent 98.5 s of the 102. The ALU's file is 94 lines of those 24 MB. The lab's optional last part
+runs the cocotb test on Verilator instead of Icarus. There Verilator compiles only the ALU, and
+the build took 13.3 s, so most of the 102 s goes to the UVM library rather than to the design.
 
 **Rebuilds.** A change to a Python test costs nothing before the next run. A change to a
 SystemVerilog class costs a rebuild, and how long it takes depends on what you changed. The course
