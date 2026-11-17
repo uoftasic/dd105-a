@@ -1,9 +1,10 @@
 # Lab 01: One ALU, two testbenches
 
-You'll test SimProc's ALU from DD104 twice: once with the cocotb test from DD104 Lab 03, and once
-with a UVM testbench written in SystemVerilog. You'll measure what each one costs in lines, build
-time and run time, see what each one reports on three planted bugs, and then extend the UVM
-scoreboard until it catches the flags bug that the shipped one misses.
+You'll test SimProc's ALU from DD104 with two testbenches, the cocotb test from DD104 Lab 03 and a
+UVM testbench written in SystemVerilog. You'll measure what each one costs in lines, build time and
+run time, and see what each one reports on three planted bugs. Then you'll extend the UVM
+scoreboard to check the flags as well, so that it catches A03, a zero-flag bug that the shipped
+scoreboard misses.
 
 Package: [`labs/lab-01-one-alu-two-testbenches/`](https://github.com/uoftasic/dd105-a/tree/main/labs/lab-01-one-alu-two-testbenches)
 
@@ -13,7 +14,9 @@ Package: [`labs/lab-01-one-alu-two-testbenches/`](https://github.com/uoftasic/dd
   [Lab 03](https://uoftasic.com/dd104/labs/lab-03-three-blocks-before-the-processor-overview.html)
   in particular. You don't need its files, because this lab ships the ALU and a reference copy of
   the finished Lab 03 test, but you'll get more from the comparison if you wrote that test yourself.
-- Read [Getting started](../guide/getting-started.md).
+- Read [Getting started](../guide/getting-started.md),
+  [What a framework buys you](../guide/what-a-framework-buys-you.md) and
+  [From cocotb to SystemVerilog classes](../guide/from-cocotb-to-systemverilog-classes.md).
 - Copy this table into your notes. You'll fill it in as you go, and the questions at the end ask
   you to compare the two columns.
 
@@ -31,8 +34,8 @@ Time: about 1 h 30 min.
 
 ## Part 1: Load the course
 
-Can you reach DD105-A's files, on the tool versions this lab's outputs were recorded with? If you
-haven't set up the workbench yet, do
+Can you reach DD105-A's files, and are your tools the versions that this lab's outputs were
+recorded with? If you haven't set up the workbench yet, do
 [IC101 Lab 03](https://uoftasic.com/ic101/labs/lab-03-launch-the-workbench-overview.html) first.
 
 1. From your `workspace` clone, start the desktop (`./scripts/start_vnc.sh`, or
@@ -53,7 +56,7 @@ haven't set up the workbench yet, do
    cwd: /foss/designs/modules/dd105-a
    ```
 
-3. Check the tool versions, because every exact number in this lab depends on them:
+3. Check the tool versions:
 
    ```bash
    verilator --version
@@ -73,8 +76,10 @@ haven't set up the workbench yet, do
    surfer 0.7.0 (git: v0.7.0)
    ```
 
-   Yices is the constraint solver Verilator runs for every constrained `randomize()` in a
-   SystemVerilog testbench, and the course's makefile tells Verilator to use it.
+   The outputs in this lab were recorded with these versions. On other versions the log lines can
+   differ, and so can the random vectors that the UVM test sends and the error counts that follow
+   from them. Yices is the constraint solver that Verilator runs for every constrained
+   `randomize()` in a SystemVerilog testbench, and the course's makefile tells Verilator to use it.
 
 | If you see | Do this |
 |---|---|
@@ -131,7 +136,7 @@ What does the cocotb test cost to build and run, and what does it report on each
    make cocotb
    ```
 
-   It takes about 25 seconds, and Icarus runs it, as in DD104. You should see, at the end:
+   Icarus runs it, as in DD104, and it takes about 25 seconds. At the end you should see:
 
    ```text
    393224.00ns INFO     cocotb.regression                  ********************************************************************************************************
@@ -149,11 +154,11 @@ What does the cocotb test cost to build and run, and what does it report on each
    ========================================================================
    ```
 
-   The line between the last two rules is the lab's makefile timing the two halves. The build is
-   Icarus compiling a 34-line module, which takes well under a second (a build with nothing to do
-   took 0.4 s, all of it `make` itself). The run is mostly `t02` driving all 393,216 vectors, and
-   the rest is starting Python and cocotb. Write both times in your table. Times are ballpark, but
-   the counts in this lab are exact.
+   The line between the last two rules is the lab's makefile reporting how long the build and the
+   run each took. The build is Icarus compiling `rtl/alu.sv`, a 94-line file, which takes well
+   under a second (a build with nothing to do took 0.4 s, all of it `make` itself). The run is
+   mostly `t02` driving all 393,216 vectors, and the rest is starting Python and cocotb. Write both
+   times in your table. Times are ballpark, but the counts in this lab are exact.
 
 5. Before you run the test against the bugs, write down which of `t01`, `t02` and `t03` you expect
    to fail on each one. Then run it on all three:
@@ -230,8 +235,8 @@ What does the same job cost when it's built the UVM way?
    make build
    ```
 
-   The banner that the build starts with estimates 1.5 to 2.5 minutes for a cold build, and on
-   the course's 2 CPUs it took us 102 s. It ends with:
+   The build starts with a banner that estimates 1.5 to 2.5 minutes for a cold build. On the
+   course's 2 CPUs it took us 102 s, and it ended with:
 
    ```text
    - V e r i l a t i o n   R e p o r t: Verilator 5.050 2026-07-01 rev v5.050
@@ -244,10 +249,12 @@ What does the same job cost when it's built the UVM way?
     /foss/designs/modules/dd105-a/labs/lab-01-one-alu-two-testbenches/build/sim is up to date.
    ```
 
-   Verilator turned the three testbench files, the ALU and the whole UVM library (24 MB of
-   source in 386 modules) into C++, and `bld=98.503` says that g++ spent almost all of the 102 s
-   compiling it. The ALU is 34 lines of that. The ccache keeps the compiled C++ in your clone, so
-   a later build can reuse whatever didn't change. Write the build time in your table.
+   Verilator turned the whole UVM library, the course's shared files in `labs/common/uvm/`, the
+   three testbench files and the ALU into C++, and `bld=98.503` says that g++ spent almost all of
+   the 102 s compiling that C++. Verilator's report counts 24 MB of source in 386 modules for all
+   of it, nearly all from the UVM library, while the ALU's file is 94 lines. ccache keeps what g++
+   compiled in `.ccache` at the top of your clone, so a later build can reuse whatever didn't
+   change. Write the build time in your table.
 
 2. While it builds, read `tb/alu_pkg.sv`, `tb/alu_if.sv` and `tb/alu_tb_top.sv`. Most pieces of
    the UVM testbench do a job that the cocotb test also does:
@@ -259,18 +266,20 @@ What does the same job cost when it's built the UVM way?
    | `alu_rand_seq`, `alu_directed_seq` | make the vectors | the loops in `t02`, the list in `t01` |
    | `alu_driver` | puts each vector on the pins | the three `.value =` lines in `alu()` |
    | `alu_monitor` | reads the pins back into an `alu_item` | the `return` line of `alu()` |
-   | `alu_scoreboard` | `predict()` and the comparison | `spec()` and `if got != want` |
-   | `alu_agent`, `alu_env` | create the pieces and connect them | nothing |
+   | `alu_scoreboard` | `predict()` and the comparison | `spec()`, and the comparisons in `t01` and `t02` |
+   | `alu_agent`, `alu_env` | create the pieces and connect them; `alu_env` also checks that the scoreboard saw every vector the driver sent | nothing |
    | `alu_rand_test`, `alu_directed_test` | choose the stimulus | the `@cocotb.test()` functions |
    | `alu_tb_top` | the clock, the ALU, the interface and `run_test()` | cocotb's makefile |
 
    The ALU is combinational, so the cocotb test sets the inputs and waits 1 ns. A UVM driver and
    monitor work in clock cycles instead, so the interface adds a clock and a `valid` signal, and
    neither of them goes to the ALU. The driver writes through the interface's clocking block, which
-   is how this course drives every design. Two comments in `alu_item` explain how its constraints
-   work around Verilator 5.050's random number generation. The tests extend `dd105_base_test`,
-   which turns any `UVM_ERROR` into a nonzero exit status, because on this simulator a UVM run
-   that reports errors otherwise still exits with status 0.
+   is how this course drives every design. Two comments in `alu_item` explain why its constraints
+   are written the way they are. On Verilator 5.050, an enum that no constraint names can come out
+   skewed, and a `dist` on a variable that another constraint also names can make `randomize()`
+   fail. The tests extend `dd105_base_test`, which turns any `UVM_ERROR` into a nonzero exit
+   status, because on this simulator a UVM run that reports errors otherwise still exits with
+   status 0.
 
 3. When the build has finished, run the random test, which sends 2000 random vectors:
 
@@ -295,8 +304,8 @@ What does the same job cost when it's built the UVM way?
    ------------------------------------------------------------------------
    ```
 
-   UVM prints times in picoseconds here, so `@ 20025000` is 20 µs: 2000 vectors, one per 10 ns
-   clock cycle. Write the run time in your table.
+   UVM prints times in picoseconds here, so `@ 20025000` is 20 µs, the time that 2000 vectors take
+   at one per 10 ns clock cycle. Write the run time in your table.
 
 4. Run the other test, without rebuilding:
 
@@ -306,8 +315,8 @@ What does the same job cost when it's built the UVM way?
 
    It sends DD104's six `t01` vectors. You should see `[SB] 6 vectors checked: 0 value mismatches`
    and `ok: 0 UVM_ERROR, 0 UVM_FATAL   0.04 s`, and the whole command took 0.17 s when we timed
-   it. The test is picked by `+UVM_TESTNAME` when the simulator starts, so trying another test,
-   seed or bug never rebuilds anything, and every lab in the course works this way.
+   it. The test is picked by `+UVM_TESTNAME` when the simulator starts, so in this lab and every
+   later one, trying another test, seed or bug never rebuilds anything.
 
 5. Count each testbench's lines:
 
@@ -336,10 +345,11 @@ What does the same job cost when it's built the UVM way?
    <details>
    <summary>Answer</summary>
 
-   Mostly into pieces the cocotb test doesn't need. The agent and the environment only create and
-   connect the other pieces, every class has a constructor and a `` `uvm_component_utils `` or
-   `` `uvm_object_utils `` line, and the driver and monitor do in two classes what `alu()` does in
-   four lines, because cocotb reads and writes the design's signals directly from Python.
+   Mostly into pieces that the cocotb test doesn't need. The agent only creates and connects the
+   other pieces, and the environment does the same plus one check, that the scoreboard saw every
+   vector that the driver sent. Every class has a constructor and a `` `uvm_component_utils `` or
+   `` `uvm_object_utils `` line. The driver and monitor take two classes to do what the five lines
+   of `alu()` do, because cocotb reads and writes the design's signals directly from Python.
 
    </details>
 
@@ -423,11 +433,13 @@ Which bugs does the UVM testbench catch, and why?
    ```
 
    The `%Fatal` line is `dd105_base_test` making the exit status nonzero, as Part 3 described.
-   UVM's report server has counted the errors by their ID, `[VALUE]`, which you'll use in Part 5.
+   UVM's report server has also counted the errors by their ID, `[VALUE]`, and in Part 5 you'll use
+   that count by ID to keep flag errors apart from value errors.
 
-4. The cocotb test drove all 65,536 `SUB` vectors to find A01, and the UVM test caught it on its
-   second vector (`@ 25000` is 25 ns) out of 2000 random ones. Why does a random sample find A01
-   and A02 so easily, when no number of random vectors would find A03 with this scoreboard?
+4. The cocotb test's `t02` drove all 65,536 `SUB` vectors and found 65,024 of them wrong. The UVM
+   test caught A01 on the second of its 2000 random vectors (`@ 25000` is 25 ns). Why does a
+   random sample find A01 and A02 so easily, when no number of random vectors would find A03 with
+   this scoreboard?
 
    <details>
    <summary>Answer</summary>
@@ -466,9 +478,9 @@ What does it take to make the UVM scoreboard catch A03, and what does the change
    already works out `n` and `z`, and the monitor already fills in `t.N` and `t.Z`, so you only
    need to compare them. Count flag mismatches separately from value mismatches, with a counter and
    a per-operation array like `n_bad_value` and `bad_value`, report each one with
-   `` `uvm_error("FLAGS", ...) ``, and add the flag count to the line `report_phase` prints. Use a
-   different ID from `"VALUE"`, because UVM's report summary counts by ID, and that gives you
-   DD104's two separate counts without any code of your own.
+   `` `uvm_error("FLAGS", ...) ``, and add the flag count to the line that `report_phase` prints.
+   Use a different ID from `"VALUE"`. UVM's report summary counts messages by ID, so it will then
+   give you DD104's two separate counts without any code of your own.
 
 3. You changed one file, and the ccache holds everything from the first build. Write down how long
    you expect the rebuild to take, then run it:
@@ -491,15 +503,16 @@ What does it take to make the UVM scoreboard catch A03, and what does the change
    <details>
    <summary>Answer</summary>
 
-   Because the edit adds members, the new counters, to a class. We timed two one-line edits to
-   compare. A change inside a function body, `repeat (3)` to `repeat (4)` in `alu_base_test`,
-   rebuilt in 26 s, with 35 of the 36 compiled files taken from the ccache. Adding one
-   `int unsigned` member to the scoreboard rebuilt in 93 s, with 10 of 36 from the ccache. Adding a
-   member changes the class's layout, and most of the C++ that Verilator generates changes with
-   it. So iterate on function bodies and plusargs where you can, and expect a change to what a
-   class holds to cost close to a full build. If your own edit changed only function bodies, your
-   rebuild was closer to 26 s. A cocotb test needs no build at all when you change it, because
-   Python isn't compiled.
+   It cost almost a full build because the edit adds members, the new counters, to a class. We
+   timed two one-line edits to compare. A change inside a task's body, `repeat (3)` to
+   `repeat (4)` in the `run_phase` of `alu_base_test`, rebuilt in 26 s, with 35 of the 36 compiled
+   files taken from the ccache. Adding one `int unsigned` member to the scoreboard rebuilt in 93 s,
+   with 10 of 36 from the ccache. Adding a member changes the class's layout, and most of the C++
+   that Verilator generates changes with it. So where you can, iterate by changing plusargs or the
+   bodies of tasks and functions, and expect a change to what a class holds to cost close to a
+   full build. If your own edit changed only the bodies of tasks and functions, your rebuild was
+   closer to 26 s. A cocotb test needs no build at all when you change it, because Python isn't
+   compiled.
 
    </details>
 
@@ -531,9 +544,10 @@ What does it take to make the UVM scoreboard catch A03, and what does the change
    make check-all
    ```
 
-   You should see `3 of 3 caught`. With the reference solution, which reports one `[FLAGS]` error
-   for each vector whose flags are wrong, the counts are 564, 394 and 131 `UVM_ERROR`s for A01, A02
-   and A03, so A01 and A02 went up from 282 and 255. Why is A01's exactly double, when A02's isn't?
+   You should see `3 of 3 caught`. The reference solution reports one `[FLAGS]` error for each
+   vector whose flags are wrong, and with it the counts are 564, 394 and 131 `UVM_ERROR`s for A01,
+   A02 and A03. Before your change, A01 and A02 had 282 and 255. Why is A01's count exactly double,
+   when A02's isn't?
 
    <details>
    <summary>Answer</summary>
@@ -541,9 +555,10 @@ What does it take to make the UVM scoreboard catch A03, and what does the change
    A wrong value can bring wrong flags with it, and then the vector is reported twice, once as
    `[VALUE]` and once as `[FLAGS]`. Under A01 the ALU returns `B - A`, the negative of the right
    answer, and a byte and its negative differ in bit 7 unless the byte is `0x00` or `0x80`, which
-   are the cases A01 gets right. So every wrong `SUB` also has a wrong `N`: 282 and 282. Under A02,
-   bit 7 of `~(A | B)` and `~(A & B)` differ only when exactly one of `A[7]` and `B[7]` is 1, so
-   only some of the 255 wrong `NAND` values also have wrong flags.
+   are the cases A01 gets right. So every wrong `SUB` also has a wrong `N`, and A01's 282 `[VALUE]`
+   errors come with 282 `[FLAGS]` errors. Under A02, bit 7 of `~(A | B)` and `~(A & B)` differ
+   only when exactly one of `A[7]` and `B[7]` is 1, so only some of the 255 wrong `NAND` values
+   also have wrong flags.
 
    </details>
 
@@ -556,12 +571,12 @@ What does it take to make the UVM scoreboard catch A03, and what does the change
 
    ![The same vectors on the ALU with A03 switched on, in Surfer](../assets/img/lab-01-a03-zero-flag.png)
 
-   *A03. The vectors are the same as in Part 3's picture, because the seed is the same, and `Z`
-   goes high at 26 ns and again at 106 ns, where `ALUout` is `10`.*
+   *A03. The seed is the same as in Part 3's picture, so the vectors are the same too. `Z` goes
+   high at 26 ns and again at 106 ns, where `ALUout` is `10`.*
 
-   The first `[FLAGS]` error is stamped `@ 35000`, which is 35 ns: the monitor sampled the
-   `SHL A=62 B=93` vector just before the rising edge at 35 ns, after the driver had written it at
-   26 ns. Compare it with Part 3's picture, where `Z` stays low once the first vector arrives at
+   The first `[FLAGS]` error is stamped `@ 35000`, which is 35 ns. The driver wrote the
+   `SHL A=62 B=93` vector at 26 ns, and the monitor sampled it just before the rising edge at
+   35 ns. Compare this with Part 3's picture, where `Z` stays low once the first vector arrives at
    6 ns.
 
 7. `alu_directed_test` sends the same six vectors as `t01`, and it now goes through your flag
@@ -572,8 +587,8 @@ What does it take to make the UVM scoreboard catch A03, and what does the change
    ```
 
    You should see `[SB] 6 vectors checked: 0 value mismatches, 0 flag mismatches` and
-   `MISSED: 0 UVM_ERROR, 0 UVM_FATAL`. It misses A03 for the reason `t01` does, which you worked
-   out at the end of Part 2.
+   `MISSED: 0 UVM_ERROR, 0 UVM_FATAL`. It misses A03 for the same reason that `t01` does, which you
+   worked out at the end of Part 2.
 
 Check: `VERDICT: PASS` from `make check BUG=A03`, and `3 of 3 caught` from `make check-all`.
 
@@ -592,16 +607,17 @@ Questions:
 
    It cost about three times the code (282 lines against 94), a first build of about 100 s
    against under a second, and a rebuild of 26 to 99 s every time you changed the testbench,
-   against nothing for a Python test. It isn't faster per vector either: 2000 vectors in about
-   1.2 s is about 0.6 ms each, and cocotb's 393,216 in about 17 s is about 0.04 ms each.
+   against nothing for a Python test. It isn't faster per vector either, since 2000 vectors in
+   about 1.2 s is about 0.6 ms each, and cocotb's 393,216 in about 17 s is about 0.04 ms each.
 
    You saw what it gave you in Part 5. The flag check went into one class, and both tests used it
-   without being edited, because stimulus and checking are separate pieces; in `test_alu.py`,
-   `t01` and `t02` each do their own comparison. `alu_directed_test` is one sequence and one short
-   test class that reuse the driver, monitor and scoreboard, and it's chosen when you run, without a
-   rebuild. The report server counted your two kinds of mismatch by ID for you. On one
-   combinational block that's a modest return. The router you'll test from Lab 02 on has a register bus, an input stream and two
-   output streams, and that's the kind of design the structure is for.
+   without being edited, because stimulus and checking are separate pieces. In `test_alu.py`, by
+   contrast, `t01` and `t02` each do their own comparison. `alu_directed_test` is one sequence and
+   one short test class that reuse the driver, monitor and scoreboard, and it's chosen when you
+   run, without a rebuild. The report server counted your two kinds of mismatch by ID for you. On
+   one combinational block that's a modest return. The structure is meant for designs like the
+   router that you'll test from Lab 02 on, which has a register bus, an input stream and two output
+   streams.
 
    </details>
 
@@ -612,9 +628,10 @@ Questions:
    <summary>Answer</summary>
 
    131 of 2000 is 6.6%, and 25,726 of 393,216 is 6.5%, so the random run estimates the fraction of
-   vectors A03 breaks, from whichever 2000 vectors its seed picked. Only the sweep gives the exact
-   count, which you can derive from the bug by hand, as you did in DD104 Lab 03, Part 6. Both runs
-   agree on the part that diagnoses the bug: no value mismatches, and some flag mismatches.
+   vectors that A03 breaks, from whichever 2000 vectors its seed picked. Only the sweep gives the
+   exact count, which you can derive from the bug by hand, as you did in DD104 Lab 03, Part 6. Both
+   runs report no value mismatches and some flag mismatches, and that combination is what tells you
+   the bug is in the flag logic.
 
    </details>
 
