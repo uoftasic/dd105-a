@@ -9,7 +9,7 @@ flag checks to one of them, `alu_scoreboard`. In
 and scoreboard, two plain SystemVerilog classes with no UVM in them. This page covers what those two
 classes need: objects that are made while the simulation runs, the handles that point at them, and
 the difference between functions and tasks. Static members and inheritance with virtual methods
-come last. Lab 02's classes use neither, but Lab 01's tests shared one `run_phase` through
+come last. The two classes you'll write use neither, but Lab 01's tests shared one `run_phase` through
 inheritance, and UVM calls your `build_phase` and `run_phase` through virtual methods.
 
 We ran every example on this page in the course image. The source is in
@@ -98,8 +98,8 @@ a == b is 1, a == c is 0, pkt::n_made is 1
 ![The objects that handles_test and reuse_test leave behind](../assets/img/dd105-handles.svg){fig-alt="Two drawings. On the left, small squares labelled a and b both have arrows to one box reading pkt 0: 80 11 22, and a square labelled c has an arrow to a separate box reading pkt 0: 80 11 22 33. On the right, under kept_once, three squares labelled [0], [1] and [2] all have arrows to one box reading pkt 0: 02 a2. Under kept_new, three squares labelled [0], [1] and [2] each have an arrow to its own box: pkt 1: 00 a0, pkt 2: 01 a1 and pkt 3: 02 a2."}
 
 *Left, `handles_test`: `a` and `b` point at one object, and `c` points at a copy of it. Right,
-`reuse_test`: the first queue, `kept_once`, holds three handles to one reused object, and the second,
-`kept_new`, holds three handles to three objects. The values are the ones the tests printed.*
+`reuse_test`: `kept_once` holds three handles to one reused object, and `kept_new` holds three
+handles to three objects. The values are the ones the tests printed.*
 
 `b = a` gave the one object a second name, so the `22` pushed through `b` shows up when you print
 `a`. `a == b` compares the handles, and it's 1 because they point at the same object. Two different
@@ -286,9 +286,9 @@ you leave the `super` call out, the check doesn't run, and no message tells you 
    <details>
    <summary>Answer</summary>
 
-   `run()` is `base_test`'s code. Inside it, `name()` is called through `this`, which there is a
-   `base_test` handle, and because `name()` isn't virtual, the call was bound to `base_test::name()`
-   when the class was compiled. The type of the handle you called `run()` through doesn't come into
+   `run()` is `base_test`'s code. Inside it, `name()` is called through `this`, and in `base_test`'s
+   code `this` is a `base_test` handle. Because `name()` isn't virtual, the call was bound to
+   `base_test::name()` when the class was compiled. The type of the handle you called `run()` through doesn't come into
    it. If `name()` were virtual, the call would go to the object's own class, and both lines would
    read `run() of rand_test`.
 
