@@ -5,19 +5,19 @@ know I got it?*
 
 Lab 02's generator chose each packet's DST and length itself, with calls to `$urandom_range`
 written into its loop. In [Lab 03](../labs/lab-03-constraints-and-coverage-overview.md) the
-packet becomes a class with `rand` fields and constraints, and the generator calls
-`randomize()`, which hands the constraints to a solver and lets it choose. That moves the
-decisions about what the stimulus looks like out of the generator's code and into one class,
-where a test can change them. It also means the values now depend on how the simulator's solver
-chooses among the values your constraints allow, and Verilator 5.050 doesn't always choose the
-way the SystemVerilog standard says it should.
+generator works on a `rand_packet` instead, a class that adds `rand` fields and constraints to
+Lab 02's `packet`. It calls `randomize()`, which hands the constraints to a solver and lets the
+solver choose the values. That moves the decisions about what the stimulus looks like out of the
+generator's code and into one class, where a test can change them. It also means that what comes
+out depends on how the simulator chooses among the values your constraints allow, and Verilator
+5.050 doesn't always choose the way the SystemVerilog standard says it should.
 
-This page explains what the standard says `randomize()` does, where Verilator 5.050 does the
-same and where it doesn't, and why you count what came out instead of trusting the constraints.
-The examples are small classes built on SimProc's ALU operations, in
-[`guide-examples/constrained-random-on-verilator/`](https://github.com/uoftasic/dd105-a/tree/main/guide-examples/constrained-random-on-verilator),
-and they build with the course's `uvm.mk` like every lab. You'll run the same kind of experiment
-on the router's packet in
+This page explains what the standard says `randomize()` does, where Verilator 5.050 does the same
+and where it doesn't, and how to check your own constraints by counting what comes out. The
+examples are in
+[`guide-examples/constrained-random-on-verilator/`](https://github.com/uoftasic/dd105-a/tree/main/guide-examples/constrained-random-on-verilator).
+They're small classes, most of them built on SimProc's ALU operations, and they build with the
+course's `uvm.mk` like every lab. You'll run the same kind of experiment on the router's packet in
 [Lab 03, Part 3](../labs/lab-03-constraints-and-coverage-overview.md#part-3-constraints-the-simulator-honours).
 
 ## rand fields, constraints and randomize()
@@ -38,11 +38,11 @@ endclass
 
 SimProc's shifts use only `B[1:0]`, so `c_shift` keeps `B` below 4 whenever the operation is a
 shift, and leaves it free otherwise. A call to `v.randomize()` asks for values of `op`, `A` and
-`B` that satisfy every constraint block that is switched on, all at once, and returns 1 if it
-found some. A call can add constraints of its own with `with { ... }`, which apply to that call
-only and are added to the class's constraints rather than replacing them. A block can be
-switched off with `constraint_mode(0)`. The standard also says how the values are chosen: every
-combination of values that satisfies the constraints is equally likely.
+`B` that satisfy every constraint block that is switched on, all at once. It returns 1 if it found
+such values and 0 if it didn't. A call can add constraints of its own with `with { ... }`, which
+apply to that call only, on top of the class's own constraints. A block can be switched off with
+`constraint_mode(0)`. The standard also says that every combination of values that satisfies the
+constraints is equally likely to be chosen.
 
 `cr_item_test` randomizes one `alu_vec` a few times:
 
@@ -59,14 +59,15 @@ combination of values that satisfies the constraints is equally likely.
 ```
 
 The call with `{ op == SHL; B == 5; }` can't be satisfied, because `c_shift` says a shift has
-`B` below 4. It returned 0, and the run printed an `UNSATCONSTR` warning
-naming both constraints. The standard says a failed call leaves the variables as they were, but
-here `A` changed from `35` to `e5`, so after a failed call the object holds a mixture you didn't
-ask for. With `c_shift` switched off, the same call succeeds.
+`B` below 4. It returned 0, and the run printed an `UNSATCONSTR` warning naming both constraints.
+The standard says a failed call leaves the variables as they were, but here `A` changed from `35`
+to `e5`. So after the failed call the object held the old `op` and `B` with a new `A`, which is a
+combination that no call asked for. With `c_shift` switched off, the same call succeeds.
 
-That's why every `randomize()` in this course's code checks what it returned, usually as
-`` if (!p.randomize()) `uvm_fatal("RAND", ...) ``, and why the course's `make run` treats a
-failed call as a broken run even when the test itself passed. This run's verdict was:
+That's why every `randomize()` in Labs 01 to 07 and in the guide examples checks what it
+returned, and most of them stop the run when it's 0, as in
+`` if (!p.randomize()) `uvm_fatal("RAND", ...) ``. It's also why the course's `make run` calls a
+run BROKEN when any call failed, even if the test itself passed. This run's verdict was:
 
 ```text
  BROKEN: randomize() failed   0.02 s   log: build/runs/cr_item_test-s1/run.log
@@ -76,10 +77,12 @@ failed call as a broken run even when the test itself passed. This run's verdict
 
 Verilator doesn't solve constraints itself. It writes them out in the SMT-LIB language for a
 separate solver program, which the environment variable `VERILATOR_SOLVER` names. The course
-image has `yices-smt2`, and the course's `uvm.mk` sets `VERILATOR_SOLVER` to
-`yices-smt2 --incremental` for every build and every run. Before it runs anything, `make` checks
-that the solver it names is installed. Asked to use `z3`, which the image doesn't have, it stops
-with:
+image has `yices-smt2`. The course's `uvm.mk` sets `VERILATOR_SOLVER` to
+`yices-smt2 --incremental` in the environment of every run, and it also builds that command into
+the simulator as the default, which the simulator uses when you start it by hand without the
+variable. Before it builds or runs anything, `make` checks that the program that
+`VERILATOR_SOLVER` names is on your PATH. Asked to use `z3`, which the image doesn't have, it
+stops with:
 
 ```text
  VERILATOR_SOLVER is "z3 --in", and z3 is not on PATH.
@@ -88,8 +91,9 @@ with:
  randomized, and the run still passes. Are you in the course image?
 ```
 
-As a last guard, `dd105_base_test` randomizes a small probe class in its `build_phase`. Here is
-the simulator run by hand, without `make`, with `VERILATOR_SOLVER` naming `z3`:
+As a last check, `dd105_base_test` randomizes a small probe class in its `build_phase` and stops
+the run if that fails. Here is the simulator run by hand, without `make`, with `VERILATOR_SOLVER`
+naming `z3`:
 
 ```text
 VlRProcess::open: execvp(z3): No such file or directory
@@ -100,30 +104,34 @@ UVM_INFO @ 0: reporter [RNTST] Running test cr_item_test...
 UVM_FATAL labs/common/uvm/dd105_pkg.sv(51) @ 0: reporter [SOLVER] a constrained randomize() failed, so this run cannot randomize anything. Verilator needs VERILATOR_SOLVER="yices-smt2 --incremental" in the environment. Run the test with make, which sets it, or export it before running the simulator by hand.
 ```
 
-Verilator's runtime (`verilated_random.cpp` in the image) turns the solver's answer into a random
-one like this. It picks a random target value for every bit of every `rand` variable and asks the
-solver for a solution that matches all of those bits. If the targets break a constraint, it gives
-up one bit's target and asks again, until the constraints can be met. A target that lands on an
-allowed value comes out as it is. A target that lands on a forbidden value comes out as an allowed
-value a bit or two away from it, so the allowed values next to forbidden ones come out more often
-than the others. (A class with an array in it goes through a different method in the same file.)
-`alu_op_e` has six names in three bits, so two of its eight codes, `110` and `111`, are forbidden.
-With `op inside {[ADD:SHR]}` and 1,000 draws (`cr_enum_test`):
+To get random values out of the solver, Verilator's runtime (`verilated_random.cpp` in the image)
+picks a random target value for every bit of every `rand` variable, and asks the solver for a
+solution that matches all of those bits. If the targets break a constraint, it gives up one bit's
+target and asks again, and it keeps doing that until the remaining targets fit the constraints. A
+target that lands on an allowed value comes out as it is. A target that lands on a forbidden value
+comes out as an allowed value that differs from it in a bit or two, so the allowed values next to
+forbidden ones come out more often than the others. (A class with an array in it goes through a
+different method in the same file.)
+
+`alu_op_e` has six names in three bits, so `op inside {[ADD:SHR]}` forbids two of its eight
+codes, `110` and `111`. With that constraint, 1,000 draws in `cr_enum_test` gave:
 
 ```text
 [ENUM] op inside {[ADD:SHR]}:             ADD  127  SUB  109  OR  148  NAND  124  SHL  234  SHR  258
 ```
 
-The constraint was obeyed every time: no draw came out as 6 or 7. But the standard would give
-each operation about 167, and `SHL` (`100`) and `SHR` (`101`) got about twice the share of the
-others. Those are the codes one bit away from `110` and `111`, so the draws that aimed at the
-forbidden codes landed there. A constraint says which values are allowed; on this simulator it
-doesn't promise how often each one comes out.
+The six counts add up to 1,000, so every draw obeyed the constraint and none came out as 6 or 7.
+The standard would give each operation about 167, but `SHL` (`100`) and `SHR` (`101`) got about
+twice the share of the others. You get those two codes from `110` and `111` by giving up the
+middle bit's target, so the draws that aimed at the forbidden codes landed there. A constraint
+decides which values can come out, and on this simulator you can't rely on it for how often each
+one does.
 
 ## Shapes that come out differently here
 
-Lab 03's experiments (`make traps`) and the examples here found five shapes of constraint that
-don't do on Verilator 5.050 what the standard says. Each has a way around it that the labs use.
+Lab 03's experiments (`make traps`) and the examples here found five shapes of class and
+constraint for which Verilator 5.050 doesn't do what the standard says. Each section below gives
+a way around it.
 
 ### A rand enum that no constraint names
 
@@ -138,42 +146,45 @@ holds for some enums and not others:
 [ENUM] 4 names, v inside {[N4_A:N4_D]}:       245  237  247  271
 ```
 
-The enums whose names fill every code of their bits (four names in two bits, eight in three)
-came out as their first name 813 and 890 times in 1,000, with no warning. Lab 03's line 1 gives
-809 for its four-name enum. The three-name and six-name enums were even. So the course names
-every `rand` enum in a constraint. For an enum whose names fill its bits, `inside` with every
-name is enough, as the last line shows. For one whose names don't, `inside` makes the spread
-uneven, as the previous section showed, and what gave an even spread was a `dist` with one range
-and equal weights, which is how Lab 01's `alu_item` writes it:
+Four names in two bits, and eight names in three, fill every code of their bits. Those two enums
+came out as their first name 813 and 890 times in 1,000, with no warning. Line 1 of Lab 03's
+experiments gives 809 for its four-name enum. The three-name and six-name enums came out even. So
+the course names every `rand` enum in a constraint, except the `kind` of Lab 03's starter packet,
+which you weight yourself in Part 3. For an enum whose names fill its bits, `inside` with every
+name is enough, as the last line above shows. For an enum whose names don't fill its bits,
+`inside` gives an uneven spread, as the previous section showed. A `dist` with one range and
+equal weights gave an even one, and that's how Lab 01's `alu_item` writes its `op`:
 
 ```text
 [ENUM] op dist {[ADD:SHR] := 1}:          ADD  161  SUB  166  OR  163  NAND  173  SHL  176  SHR  161
 ```
 
-The same test printed one more line, for a shape that no lab writes. When the enum's type is a
-parameter of the class (`class free_param #(type T = e3_t); rand T v;`), the three-name enum
-took the unused code 3 in 256 draws of 1,000:
+No lab writes a class that takes the enum's type as a parameter, but the same test tried one
+(`class free_param #(type T = e3_t); rand T v;`). In that class the three-name enum took the
+unused code 3 in 256 draws of 1,000:
 
 ```text
 [ENUM] 3 names, in a parameterized class:     235  247  262   and 256 values that aren't names
 ```
 
-`randomize()` returned 1 every time, so nothing failed and nothing was printed.
+`randomize()` returned 1 every time, and the run printed no warning.
 
 ### A dist written with enum names
 
-A `dist` gives each value or range a weight. Under the standard it makes no difference whether
-you write the values as enum names or as numbers, but on this simulator it does:
+A `dist` gives each value or range a weight, and under the standard it makes no difference
+whether you write the values as enum names or as numbers. Here are weights of 10, 20, 30 and 40
+written both ways:
 
 ```text
 [DIST] weights 10/20/30/40 by name:    K_ZERO  229  K_ONES  256  K_SAME  267  K_ANY  248
 [DIST] weights 10/20/30/40 by number:  K_ZERO   93  K_ONES  212  K_SAME  291  K_ANY  404
 ```
 
-Written with the names, the weights were lost; written as the numbers 0 to 3, they landed where
-they were written. Lab 03's line 2 shows the same thing with weights of 25, 50 and 25, where the
-50 went to the wrong name. So the course writes `dist` values as numbers, as in
-`kind dist {0 := w_one, 1 := w_mid, 2 := w_max}`.
+Written with the names, the weights had no effect, and each kind came out about a quarter of the
+time. Written as the numbers 0 to 3, the kinds came out close to 10, 20, 30 and 40 percent. In
+line 2 of Lab 03's experiments, weights of 25, 50 and 25 written with names went wrong in a
+different way, with the 50 on the wrong name. So wherever a `dist` gives values different weights,
+the course writes the values as numbers, as in `kind dist {0 := w_one, 1 := w_mid, 2 := w_max}`.
 
 ### A dist and another constraint on the same variable
 
@@ -188,12 +199,14 @@ the rest. If the other constraints rule out the entry it picked, the call fails:
 [DIST] op dist {[ADD:SHR] := 1}, then with { op == SUB; }:  randomize() failed 0 times in 1000
 ```
 
-The weights themselves came out right. But asking for `SUB` with the `dist` switched on failed
-921 times in 1,000, about the nine draws in ten that picked an entry other than `SUB`. Lab 01's
-single-range `dist` has only one entry, and asking it for `SUB` failed 0 times in 1,000.
+The weights came out right. But asking for `SUB` with the `dist` switched on failed 921 times in
+1,000, which is about the nine draws in ten that picked an entry other than `SUB`. Lab 01's
+`dist` is a single range, which counts as one entry. Whatever it picks allows `SUB`, so asking
+for `SUB` failed 0 times in 1,000.
 
-The same happens through a second variable. This class puts the `dist` on a selector, `kind`,
-and lets implications choose `A` from it, which is the pattern the labs use:
+The same thing happens when the call constrains a different variable, one that depends on the
+variable with the `dist`. This class puts the `dist` on a selector, `kind`, and uses implications to choose `A` from
+`kind`, which is the pattern the labs use:
 
 ```systemverilog
 class vec_kind;
@@ -213,11 +226,13 @@ endclass
 ```
 
 `A < 8'h10` rules out `K_ONES`, which has a fifth of the weight, and a fifth of the calls failed.
-A selector is still the right place for a `dist`, because the data constraints stay ordinary
-constraints. For a call that pins the data, switch the `dist` off with `constraint_mode(0)`, or
-build the item without the solver. Lab 03's `close_holes()` builds its fill packets with
-`rand_packet::make()` for that reason: with the packet's weights on, `randomize() with { len == 3; }`
-failed 478 times in 1,000 (line 3 of its experiments).
+A selector is still the better place for a `dist`, because a call then fails only when its
+constraint rules out a whole kind. In line 3 of Lab 03's experiments, `len != 7` made 72 calls in
+1,000 fail with the `dist` on `len` itself, and none with the `dist` on `kind` and `len` chosen
+from it. For a call whose constraint does rule out a kind, switch the `dist` off with
+`constraint_mode(0)`, or build the item without the solver. Lab 03's `close_holes()` builds its
+fill packets with `rand_packet::make()`, because with the packet's weights on,
+`randomize() with { len == 3; }` failed 478 times in 1,000 (also line 3 of its experiments).
 
 ### solve...before
 
@@ -232,46 +247,53 @@ between the two shifts and the four other operations:
 [SOLVE] without solve...before:    is_shift in 512 of 1000;   ADD   69  SUB  178  OR   58  NAND  183  SHL   64  SHR  448
 ```
 
-The standard gives about 500 and 333. Verilator's runtime has a separate pass for
-`solve...before`, and in this shape the count moved, but in neither experiment did it come out
-at the standard's numbers, so don't use `solve...before` to shape a distribution on this
-simulator. If you want `is_shift` half the time, say so with a `dist`, which it does honour:
+For `is_shift`, the standard gives about 500 with `solve...before` and about 333 without, because
+two of the six operations are shifts. Verilator's runtime has a separate pass for
+`solve...before`, and in this shape it moved the count from 512 to 665, but neither experiment
+came out at the standard's numbers. So don't use `solve...before` to shape a distribution on this
+simulator. If you want `is_shift` half the time, ask for it with a `dist`, which gave 502 in
+1,000:
 
 ```text
 [SOLVE] is_shift dist {0:=1, 1:=1}: is_shift in 502 of 1000;   ADD   56  SUB   53  OR  196  NAND  193  SHL   59  SHR  443
 ```
 
-The operations within each half still aren't even (`SHR` 443 against `SHL` 59), for the reason
-given under "The solver" above, so if that matters, give `op` its own `dist` too.
+The operations within each half still aren't even (`SHR` 443 against `SHL` 59). As in
+"The solver" above, this simulator doesn't choose evenly among the values a constraint allows, although
+giving up one bit's target at a time doesn't by itself explain why `SHR` wins over `SHL` here. If
+the spread of the operations matters to your test, count it.
 
 ### unique and sum() on arrays
 
-`unique {a}` on an array is accepted and not enforced: in Lab 03's line 6, four random 4-bit
-values repeated a value in 315 draws of 1,000, which is about what no constraint at all gives.
-On separate variables, `unique {w, x, y, z}`, it works. And `lens.sum() == 8` on a dynamic array
-can't be solved at all (20 failures in 20), while the same constraint on a fixed-size array
-works, which is why Lab 03's `fill_plan` has `lens[8]` with a 0 meaning "no packet".
+Verilator accepts `unique {a}` on an array but doesn't enforce it. In line 6 of Lab 03's
+experiments, four random 4-bit values repeated a value in 315 draws of 1,000, which is about the
+one draw in three that you'd get with no constraint at all. On four separate variables, as
+`unique {w, x, y, z}`, it works, and no value repeated in 1,000 draws. `lens.sum() == 8` on a
+dynamic array can't be solved at all and failed 20 times in 20, while the same constraint on a
+fixed-size array works. That's why Lab 03's `fill_plan` has `lens[8]`, with a 0 meaning
+"no packet".
 
 ## Seeds
 
 Every run starts the random number generators from a seed, which `make` passes as
-`+verilator+seed+N` from its `SEED` variable (1 unless you say otherwise). The same seed gives
-the same values: running `cr_item_test` twice with seed 1 printed the same nine lines both times,
-and seed 2 gave a different first line, `SHR A=2d B=02`. That's what lets you rerun a failing
-test and watch the same failure, and what lets `make seeds` try ten different ones.
+`+verilator+seed+N` from its `SEED` variable (1 unless you set it). The same seed gives the same
+values. We ran `cr_item_test` twice with seed 1 and got the same nine lines both times, and seed 2
+gave a different first line, `SHR A=2d B=02`. So you can rerun a failing test and watch the same
+failure happen again, and `make seeds` can run a test on seeds 1 to 10.
 
-A seed reproduces a run of the same testbench. Lab 03 warns that your own constraints may give
-different counts from ours with the same seed, because a different class asks the solver
-different questions.
+A seed reproduces a run only when the testbench is the same, because a different class asks the
+solver different questions. That's why Lab 03 says your own constraints may give different counts from
+ours with the same seed.
 
 ## Counting what came out
 
-Every finding on this page came from counting what came out. The four-name enum that came out
-as its first name 813 times broke no constraint and printed no warning, and the run passed, so
-a check on the design's answers had nothing to report. In Lab 03 you count with a covergroup
-instead of a histogram in the test, and its first run shows about a third of the router's
-packets 1 beat long and a third 8 beats long, because the packet's length comes from a
-three-name enum that nobody had weighted.
+The four-name enum that came out as its first name 813 times in 1,000 broke no constraint and
+printed no warning, and its run passed. In a testbench with a design in it, the scoreboard
+wouldn't have noticed either, because it checks the design's answers and not how often each input
+was sent. The tests on this page found it by counting the values in arrays of their own. In Lab 03
+you count with a covergroup instead, and its first run shows about a third of the router's
+packets 1 beat long and a third 8 beats long (260 and 270 of 800), because the packet's length
+comes from a three-name enum, `kind`, that no constraint weighted.
 [Functional coverage you can read](functional-coverage-you-can-read.md) explains how to read
 those counts.
 
@@ -284,10 +306,11 @@ those counts.
    <details>
    <summary>Answer</summary>
 
-   The first name about four times in five (813 and 809 in the runs above), with no warning. Add
-   a constraint that names `mode`. With four names in two bits, `mode inside {...}` with all four
-   gave an even spread; for an enum whose names don't fill their bits, a `dist` with one range and
-   equal weights, as Lab 01's `alu_item` has.
+   Expect the first name about four times in five (813 here and 809 in Lab 03), with no warning.
+   Add a constraint that names `mode`. Because its four names fill its two bits, `mode inside {...}`
+   with all four names is enough, and that gave an even spread above. For an enum whose names
+   don't fill their bits, use a `dist` with one range and equal weights, as Lab 01's `alu_item`
+   does.
 
    </details>
 
@@ -298,22 +321,23 @@ those counts.
    <details>
    <summary>Answer</summary>
 
-   Most calls fail: the simulator picks an entry of the `dist` first, and only the entry for 3
-   (`NAND`), with a seventh of the weight, satisfies `op == NAND`. Either switch the `dist` off
-   for the call with `req.c_op.constraint_mode(0)`, or set `op` by hand without calling
-   `randomize()`, as Lab 01's directed sequence does.
+   About six calls in seven fail. The simulator picks an entry of the `dist` first, and only the
+   entry for 3 (`NAND`), which has a seventh of the weight, satisfies `op == NAND`. Either switch
+   the `dist` off for the call with `req.c_op.constraint_mode(0)`, or set `op` by hand without
+   calling `randomize()`, as Lab 01's directed sequence does.
 
    </details>
 
-3. A run of Lab 03's test passes, and the log has one `UNSATCONSTR` warning in it. Why does
+3. A run of your Lab 03 test passes, and the log has one `UNSATCONSTR` warning in it. Why does
    `make run` call it BROKEN rather than ok?
 
    <details>
    <summary>Answer</summary>
 
-   A failed `randomize()` means at least one item wasn't what the test asked for, and on this
-   simulator its fields may even have changed (`A` went from `35` to `e5` above). A pass then says
-   only that the router handled whatever was sent, which isn't the stimulus the test describes.
+   A failed `randomize()` means that at least one item wasn't what the test asked for. On this
+   simulator the failed call can also change some of the item's fields (`A` went from `35` to
+   `e5` above), so the item may hold a mix of old and new values. A pass then says only that the
+   router handled whatever was sent, and that isn't the stimulus the test describes.
 
    </details>
 
@@ -327,16 +351,19 @@ and in Lab 03.
 - [Constraint Blocks](https://chipverify.com/systemverilog/systemverilog-constraint-blocks)
 - [Inline Constraints](https://chipverify.com/systemverilog/systemverilog-inline-constraints).
   On Verilator 5.050, an inline constraint on a variable that has a `dist` fails whenever the
-  `dist` picked an entry the inline constraint rules out; see above.
-- [Constraints](https://chipverify.com/systemverilog/systemverilog-constraints). Its `dist`
-  example names a variable `priority`, which is a keyword, so it doesn't compile; on Verilator,
-  write `dist` values as numbers.
-- [solve before](https://chipverify.com/systemverilog/systemverilog-solve-before) explains what
-  the standard means correctly. Verilator 5.050 doesn't produce those distributions.
+  `dist` picked an entry that the inline constraint rules out (see "A dist and another constraint
+  on the same variable" above).
+- [Constraints](https://chipverify.com/systemverilog/systemverilog-constraints). One of its
+  `dist` examples names a variable `priority`, which is a SystemVerilog keyword, so that example
+  doesn't compile. Another gives its weights to enum names, and on Verilator you should write
+  those values as numbers.
+- [solve before](https://chipverify.com/systemverilog/systemverilog-solve-before) explains
+  correctly what the standard means, but Verilator 5.050 doesn't produce the distributions it
+  shows.
 - [Soft Constraints](https://chipverify.com/systemverilog/systemverilog-soft-constraints). It
-  says the solver decides which of two conflicting soft constraints wins; the standard fixes the
-  order (a later one beats an earlier one, a derived class beats its base, and an inline `with`
-  beats the class).
+  says that the solver decides which of two conflicting soft constraints wins. The standard fixes
+  the order: a later one beats an earlier one, a derived class beats its base, and an inline
+  `with` beats the class.
 - [Disable Constraints](https://chipverify.com/systemverilog/systemverilog-disable-constraints),
   for `constraint_mode()`.
 
