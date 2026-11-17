@@ -1,12 +1,14 @@
 # Lab 04: The same testbench in UVM
 
-You'll finish a UVM port of the Lab 03 testbench for the router. We've taken our solution to Lab 03
-and rewritten it as UVM classes, with four pieces missing, and you'll add them: a second copy of
-the output agent so the testbench watches output 1, the scoreboard lines that check output 1, a
-test that stalls one output at a time, and a factory override that sends packets to disabled
-routes without touching the sequence that makes them. With them in place the testbench catches B06
-and B13, which the port misses as shipped, and at the end you'll count what the UVM structure cost
-in lines against your Lab 03 testbench.
+In this lab you'll finish our port of the Lab 03 testbench to UVM. We wrote it from our own
+solution to Lab 03. As shipped, it watches only output 0, as Lab 03's testbench did, and it misses
+B06 and B13. You'll add a second `out_agent`, so that the testbench watches output 1, and change
+the scoreboard so that it checks output 1's beats. Then you'll write a test that stalls one output
+at a time, and make the scoreboard track output 1's level, which the new test needs. After that
+you'll write a packet class that goes to a disabled route one time in four, and a factory override
+that puts it in place of `router_pkt` without any edit to the sequence that makes the packets.
+With those pieces in place the testbench catches both bugs. At the end you'll count the lines in
+the port and in your Lab 03 testbench, and work out what the extra lines bought you.
 
 Package: [`labs/lab-04-the-same-testbench-in-uvm/`](https://github.com/uoftasic/dd105-a/tree/main/labs/lab-04-the-same-testbench-in-uvm)
 
@@ -19,8 +21,8 @@ Package: [`labs/lab-04-the-same-testbench-in-uvm/`](https://github.com/uoftasic/
   [Monitors, analysis ports and scoreboards](../guide/monitors-analysis-ports-and-scoreboards.md)
   and [The factory and config_db](../guide/the-factory-and-config-db.md).
 - Keep [the router's specification](../reference/router-spec.md) open, or
-  [the router in one page](../reference/the-router-in-one-page.md). Parts 3 and 4 use its Routing
-  section.
+  [the router in one page](../reference/the-router-in-one-page.md). Parts 3 and 4 use the
+  specification's Routing section, which the one-page version covers under Packets and routing.
 - Copy this table into your notes and fill it in as you go:
 
   | | Build time | `make check-all` |
@@ -55,23 +57,24 @@ Does the port do what the Lab 03 testbench did, and which of this lab's bugs doe
    ```
 
    and then a line saying it built `build/sim` in 116 s, and a ccache line. Our ccache was empty
-   (`Hits: 0 / 38`); yours already holds the builds of Labs 01 to 03, so its count will be higher.
-   Write your build time in your table.
+   (`Hits: 0 / 38`). Yours already holds the builds of Labs 01 to 03, so the counts on your ccache
+   line will be higher. Write your build time in your table.
 
 2. While it builds, open the files in `tb/`. Apart from the top module, `router_tb_top.sv`, every
-   piece of the Lab 03 testbench is in one of these four, rewritten as a UVM class:
+   piece of the Lab 03 testbench is in one of these four files, and most of its classes are now UVM
+   classes:
 
    | File | What's in it |
    |---|---|
    | `router_ifs.sv` | the three interfaces, with a driver's and a monitor's clocking block each |
    | `router_agents_pkg.sv` | the packet, `router_pkt`, which is Lab 03's `rand_packet` with the same fields and the same constraints (`c_dst`, `c_kind`, `c_len`); an agent for the input, one for the APB port, and one output agent class, `out_agent`; the sequences |
-   | `router_env_pkg.sv` | the scoreboard, which is Lab 03's scoreboard and tracker in one class; the coverage, `cg_pkt` as you wrote it in Lab 03; and `router_env`, which builds and connects everything |
-   | `router_tests_pkg.sv` | `fill_plan`; the base test, with the steps Lab 03's `env` had (`write_routes`, `send_random`, `check_drops` and the rest) and `close_holes()`; the tests, from `router_class_test` (Lab 02's), `router_rand_test` and `router_fill_test` (Lab 03's) to the two this lab adds |
+   | `router_env_pkg.sv` | the scoreboard, which is Lab 03's scoreboard and tracker in one class; the coverage, which is Lab 03's `cg_pkt` from our solution; and `router_env`, which builds and connects everything |
+   | `router_tests_pkg.sv` | `fill_plan`; the base test, with the steps Lab 03's `env` had (`write_routes`, `send_random`, `check_drops` and the rest) and `close_holes()`; and the tests, which are `router_class_test` (Lab 02's), `router_rand_test` and `router_fill_test` (Lab 03's), and the two that this lab adds, `router_stall_test` and `router_inject_test` |
 
-   Your Lab 02 and Lab 03 testbenches watched only output 0, and so does the port: `router_env`
-   makes only one `out_agent`, the scoreboard queues only output 0's beats, and its `level()`
-   takes output 1's level as 0, as Lab 03's tracker did. Find the `TODO (Part n)` comments: four
-   in `router_env_pkg.sv` and three in `router_tests_pkg.sv`.
+   Your Lab 02 and Lab 03 testbenches watched only output 0, and so does the port. `router_env`
+   makes only one `out_agent`, the scoreboard queues only output 0's beats, and the scoreboard's
+   `level()` takes output 1's level as 0, as Lab 03's tracker did. Find the `TODO (Part n)`
+   comments. There are four in `router_env_pkg.sv` and three in `router_tests_pkg.sv`.
 
 3. Run Lab 02's test, then the default test, then Lab 03's test with more packets:
 
@@ -109,13 +112,13 @@ Does the port do what the Lab 03 testbench did, and which of this lab's bugs doe
    UVM_INFO labs/lab-04-the-same-testbench-in-uvm/tb/router_env_pkg.sv(224) @ 57655000: uvm_test_top.env.sb [SB] 1799 beats went to output 1, which nothing watches
    ```
 
-   ending in `ok: 0 UVM_ERROR, 0 UVM_FATAL   1.48 s`. The routes are written as in Lab 03: one
-   character per route, `0` or `1` for the output, `-` for disabled. The `[DROP]` lines are Lab
-   03's `DROP_CNT` check, which the scoreboard now does: it compares every read of `DROP_CNT` with
-   the drops it predicted and prints a line when they agree. The whole `make run` took us 1.6 s,
-   because `+UVM_TESTNAME` picks the test when the simulator starts and nothing is rebuilt. A
-   plusarg costs no rebuild either: the third run, with `+N=400` packets in each phase, sends
-   1605 packets in 3.03 s.
+   ending in `ok: 0 UVM_ERROR, 0 UVM_FATAL   1.48 s`. The routes are written as in Lab 03, with
+   one character per route: `0` or `1` for the output, `-` for disabled. The `[DROP]` lines come
+   from Lab 03's `DROP_CNT` check, which the scoreboard now does. It compares every read of
+   `DROP_CNT` with the drops it predicted, and prints a line when they agree. That `make run` took
+   us 1.6 s in all, because nothing was rebuilt. `+UVM_TESTNAME` picks the test when the simulator
+   starts, and the simulator reads the other plusargs then too, so the third run, with `+N=400`
+   packets in each phase, needed no rebuild either. It sent 1605 packets in 3.03 s.
 
 4. Look at the coverage of the runs you've made so far:
 
@@ -131,7 +134,8 @@ Does the port do what the Lab 03 testbench did, and which of this lab's bugs doe
    - `cp_fate.full`, `full_x_at_9` and `full_x_high`: no packet was dropped as FULL;
    - `out1_x_low` and `out1_x_at_8`: the scoreboard takes output 1's level as 0;
    - `cp_level.high`, `noroute_x_empty`, `noroute_x_low`, `noroute_x_at_8` and `noroute_x_high`:
-     the only NOROUTE drop is `close_holes()`'s packet for DST 1, which met a level of 9.
+     the only NOROUTE drops are `close_holes()`'s packets for DST 1, one in each of the last two
+     runs, and they met a level of 9.
 
    Keep the second and third groups in mind for Part 3.
 
@@ -144,7 +148,7 @@ Does the port do what the Lab 03 testbench did, and which of this lab's bugs doe
 
    You should see `4 of 4 caught.`, with 50, 1, 2 and 50 `UVM_ERROR`s.
 
-6. Now the two bugs this lab is about:
+6. Now check this lab's two bugs, B06 and B13:
 
    ```bash
    make check-all
@@ -173,18 +177,18 @@ Does the port do what the Lab 03 testbench did, and which of this lab's bugs doe
    <details>
    <summary>Answer</summary>
 
-   `router_pkt`'s `c_dst` constraint sends random packets only to enabled routes. The one packet
-   the test sends to a disabled route is `close_holes()`'s packet for DST 1, and it arrives when
+   `router_pkt`'s `c_dst` constraint sends random packets only to enabled routes. The only packet
+   the test sends to a disabled route is `close_holes()`'s packet for DST 1. It arrives when
    output 0 already holds 9 to 16 beats (9 on this seed: the fill of 3, 4 and 1 beats, then a
-   1-beat packet for DST 0), so there's no room and B06 drops it just as the golden router does.
+   1-beat packet for DST 0), so there's no room, and B06 drops it just as the golden router does.
 
    B13 changes a packet's fate only when one output holds more than 8 beats and the other 8 or
    fewer. In the random phases both outputs are always ready, so neither holds more than a beat
    or two (Lab 02's test reports a highest level of 1). In `close_holes()` output 0 fills, but the
    packet for DST 0 arrives at exactly 8, which B13 admits too because output 1 is empty, and the
-   last packet goes to a disabled route, which is a NOROUTE drop either way. That's also why
-   `cp_fate.full` was never hit: no packet for an enabled route met an output holding more than 8
-   beats.
+   last packet goes to a disabled route, which is a NOROUTE drop either way. No packet for an
+   enabled route met an output holding more than 8 beats, which is also why `cp_fate.full` was
+   never hit.
 
    </details>
 
@@ -195,10 +199,11 @@ Check: `4 of 4 caught.` for Lab 02's and Lab 03's bugs, and `0 of 2 caught.` for
 What does it take to watch output 1, when an output agent is a class you can make twice?
 
 1. Read `out_agent`, `out_monitor` and `out_ready_driver` in `router_agents_pkg.sv`. Nothing in
-   them says which output they're on: each gets its interface (`"vif"`) and its knobs (an
-   `out_cfg`, with `port` and `ready_pct`) from `config_db`. The top module sets the interfaces for
-   `uvm_test_top.env.out0*` and `uvm_test_top.env.out1*`, and `router_base_test` sets an `out_cfg`
-   for each, so output 1's are already waiting for an agent named `out1`.
+   them says which output they're on. The monitor and the driver each get their interface
+   (`"vif"`) and their knobs (an `out_cfg`, with `port` and `ready_pct`) from `config_db`. The top
+   module sets the interfaces for `uvm_test_top.env.out0*` and `uvm_test_top.env.out1*`, and
+   `router_base_test` sets an `out_cfg` for each, so output 1's interface and `out_cfg` are already
+   set for an agent named `out1`.
 
 2. In `router_env`, do the two Part 2 TODOs: make `out[1]` with the name `"out1"`, and connect its
    monitor's `ap` to `sb.out_export`, as `out[0]` is. Leave the scoreboard alone for now. Before you
@@ -240,16 +245,17 @@ What does it take to watch output 1, when an output agent is a class you can mak
    ```
 
    and `ok`. The 1799 beats that went unwatched in Part 1 are now checked. The number in
-   parentheses after each file name is a line in that file, so yours can differ by a few if your edit kept the
-   TODO comment or added lines.
+   parentheses after each file name is a line in that file, so yours can differ by a few lines if
+   your edit kept the TODO comment or added lines.
 
 5. Predict whether `make check-all` catches B06 or B13 now, then run it.
 
    <details>
    <summary>Answer</summary>
 
-   Neither: `0 of 2 caught.` again. The scoreboard now sees both outputs, but the stimulus hasn't
-   changed, so the router never gets a packet that either bug would treat differently.
+   Neither. `make check-all` says `0 of 2 caught.` again. The scoreboard now sees both outputs,
+   but the stimulus hasn't changed, so the router never gets a packet that either bug would treat
+   differently.
 
    </details>
 
@@ -261,30 +267,30 @@ says `0 of 2 caught.`
 What does B13 need from the stimulus, and does the scoreboard know enough to judge the result?
 
 1. Read the Routing section of the specification, and `level()` and `write_in` in the scoreboard.
-   Then write down the situation in which B13, which judges an output's room from the other
-   output's level, does something different from the golden router.
+   Then write down the situation in which B13 does something different from the golden router,
+   given that it judges an output's room from the other output's level.
 
    <details>
    <summary>Answer</summary>
 
-   The two outputs' levels have to be on opposite sides of 8 when a header arrives. A packet for
-   the output with room is then dropped as FULL, because B13 looks at the full one, and a packet
-   for the full output is admitted, because B13 looks at the one with room.
+   When a header arrives, one output has to hold more than 8 beats and the other 8 or fewer. A
+   packet for the output with room is then dropped as FULL, because B13 looks at the full one, and
+   a packet for the full output is admitted, because B13 looks at the one with room.
 
    </details>
 
 2. Do the Part 3 TODO in `router_tests_pkg.sv`: in `router_stall_test`, override `set_sinks(k)` so
    that in phase `k` one output is ready in 5% of cycles and the other in 100%, output 0 stalling
    in phases 1 and 3 and output 1 in phases 2 and 4. `router_rand_test` calls `set_sinks(k)` at
-   the start of each phase, with `k` from 1 to 4. Set `ocfg[p].ready_pct`: the test made those
+   the start of each phase, with `k` from 1 to 4. Set `ocfg[p].ready_pct`. The test made those
    `out_cfg` objects and kept the handles, and each `out_ready_driver` reads its `ready_pct` again
-   every cycle, so a change takes effect at the next clock edge. This is Lab 03's `sink.stall`
-   grown into a percentage: 0 is a stall, 100 is a sink that is always ready.
+   every cycle, so a change takes effect at the next clock edge. `ready_pct` is Lab 03's
+   `sink.stall` grown into a percentage, where 0 is a stall and 100 is a sink that is always ready.
 
 3. Rebuild with `make build`. It took us 105 s, against 30 s and 31 s in Part 2, because the Part
    2 edits were inside existing function bodies and this one adds a function to a class. That
    changes most of the C++ that Verilator generates, as adding members to a class did in Lab 01,
-   Part 5. Before you run it, look at `level()` again. Phase 2 stalls output 1: what will the
+   Part 5. Before you run it, look at `level()` again. Phase 2 stalls output 1. What will the
    scoreboard predict for the packets routed there?
 
 4. Run the stall test on the golden router:
@@ -303,8 +309,9 @@ What does B13 need from the stimulus, and does the scoreboard know enough to jud
    ```
 
    `FULL_CNT` is bits 15:8 of `DROP_CNT`, so phase 1 dropped 0x25, or 37, packets as FULL, and
-   the scoreboard predicted every one of them. The grader won't accept this test yet.
-   `make check BUG=B13 UVM_TESTNAME=router_stall_test` stops at the golden run:
+   the scoreboard predicted every one of them. The grader can't use this test yet, because it fails
+   on the golden router. `make check BUG=B13 UVM_TESTNAME=router_stall_test` stops after the
+   golden run:
 
    ```text
        FAIL  the golden design                        50 UVM_ERROR                    0.8s
@@ -320,10 +327,10 @@ What does B13 need from the stimulus, and does the scoreboard know enough to jud
 
    `level()` returns 0 for output 1, a shortcut that was safe while output 1 was always ready, as
    it was in every test before this one. With output 1 ready in only 5% of cycles it fills past 8,
-   and the router drops its next packets as FULL, as the specification says. The scoreboard still
-   expected them: the packet starting `4d` (`DST` 1, routed to output 1 by `-110`) was dropped,
-   and the next header to come out of output 1, `a1` (`DST` 2, also routed to output 1), was
-   compared with it. Output 0's level was right all along, which is why phase 1 passed.
+   and the router drops its next packets as FULL, as the specification says, but the scoreboard
+   still expected them. The packet starting `4d` (`DST` 1, routed to output 1 by `-110`) was
+   dropped, so the next header to come out of output 1, `a1` (`DST` 2, also routed to output 1),
+   was compared with `4d`. Output 0's level was right all along, which is why phase 1 passed.
 
    </details>
 
@@ -336,8 +343,8 @@ What does B13 need from the stimulus, and does the scoreboard know enough to jud
    ```
 
    and `ok`, with 373 FULL drops where the random test had none. The four phases' `DROP_CNT` reads
-   were `00002500`, `00007700`, `00007e00` and `00005b00`: 37, 119, 126 and 91 FULL drops, each
-   one predicted.
+   were `00002500`, `00007700`, `00007e00` and `00005b00`, which are 37, 119, 126 and 91 FULL
+   drops, and the scoreboard predicted each one.
 
 6. Ask for the verdict on B13:
 
@@ -358,15 +365,15 @@ What does B13 need from the stimulus, and does the scoreboard know enough to jud
    ```
 
    Phase 1 stalls output 0 and routes `DST` 1 and 2 to output 1 (`011-`). The first error is on
-   output 0, in cycle 142: `e5` came out where the scoreboard expected `3f`. Which of B13's two
+   output 0 in cycle 142, where `e5` came out and the scoreboard expected `3f`. Which of B13's two
    wrong decisions from step 1 puts a wrong beat on output 0?
 
    <details>
    <summary>Answer</summary>
 
-   Admitting a packet for output 0 while output 0 holds more than 8 beats, because B13 judges its
-   room from output 1, which is nearly empty. We read the waves of this run: the header `0d`
-   (`DST` 0) arrived in cycle 114 with output 0 holding 15 beats and output 1 none. The golden
+   B13 admits a packet for output 0 while output 0 holds more than 8 beats, because it judges
+   output 0's room from output 1, which is nearly empty. In the waves of this run, the header `0d`
+   (`DST` 0) arrived in cycle 114, when output 0 held 15 beats and output 1 none. The golden
    router dropped it as FULL. B13 admitted it and wrote its six beats into a buffer that holds 16
    and already held 15, so they overran the buffer and wrote over beats that were still waiting
    in it. `e5` is the second beat of that packet.
@@ -392,27 +399,28 @@ makes them or the driver that sends them?
    without knowing it. Then read `router_pkt`'s `c_dst` constraint, which is Lab 03's.
 
 2. Do the first Part 4 TODO: write `router_noroute_pkt`, which extends `router_pkt` and sends one
-   packet in four to a disabled route. Give it its own constraint named `c_dst`: a constraint with
-   the same name as one in the parent class replaces it, and Verilator 5.050 does that as the
-   standard says. Decide which packets go to a disabled route with a non-random bit that
-   `pre_randomize()` sets with `$urandom_range`, not with a `dist`. A `dist` on this simulator
-   draws its value first and fails when another constraint rules that value out (Lab 03, Part 3,
-   line 3 of the experiments, and
+   packet in four to a disabled route. Give it its own constraint named `c_dst`. A constraint with
+   the same name as one in the parent class replaces the parent's, and Verilator 5.050 does that
+   as the standard says. Decide which packets go to a disabled route with a non-random bit that
+   `pre_randomize()` sets with `$urandom_range`, not with a `dist`. On this simulator a `dist`
+   draws its value first, and `randomize()` fails when another constraint rules that value out
+   (Lab 03, Part 3, line 3 of the experiments, and
    [Constrained random on Verilator](../guide/constrained-random-on-verilator.md)). Every routing
-   table `random_routes()` writes has at least one disabled route, so the constraint can always be
-   met.
+   table that `random_routes()` writes has at least one disabled route, so the constraint can
+   always be met.
 
 3. Do the second Part 4 TODO: in `router_inject_test`, add a `build_phase` that calls
    `router_pkt::type_id::set_type_override(router_noroute_pkt::get_type())` and then
    `super.build_phase(phase)`. Nothing else in the test changes, so it's still the stall test,
    with different packets.
 
-   The override reaches every packet the factory makes, wherever it's made. `close_holes()` needs
-   its two random packets exactly as `router_pkt` defines them, so it makes them with `new()` in
-   `new_packet()`. When we made them through the factory instead, `router_inject_test` failed on
-   4 of 5 seeds with `UVM_FATAL [RAND]`: the packet for `DST` 1 was a `router_noroute_pkt`, and
-   when `close_holes()` switched `c_dst` off through a `router_pkt` handle, the subclass's `c_dst`
-   stayed on.
+   The override reaches every packet the factory makes, wherever it's made. `close_holes()` picks
+   the `DST` of its two random packets itself, and switches `c_dst` off for the one it sends to
+   `DST` 1, so it needs both to be plain `router_pkt`s. It makes them with `new()`, in
+   `new_packet()`, where the override can't reach them. When we made them through the factory
+   instead, `router_inject_test` failed on 4 of 5 seeds with `UVM_FATAL [RAND]`. The packet for
+   `DST` 1 was then a `router_noroute_pkt`, and when `close_holes()` switched `c_dst` off through
+   a `router_pkt` handle, the subclass's `c_dst` stayed on.
 
 4. Write down what you expect the golden run's `[SB]` line to say about NOROUTE drops. Then rebuild
    (105 s for us) and run the default test:
@@ -429,14 +437,14 @@ makes them or the driver that sends them?
    UVM_INFO labs/lab-04-the-same-testbench-in-uvm/tb/router_env_pkg.sv(211) @ 61465000: uvm_test_top.env.sb [SB] beats checked: 648 on output 0, 799 on output 1; 5 DROP_CNT reads checked
    ```
 
-   and `ok`. The scoreboard already knew what to do with a packet for a disabled route, since it
-   was written from the specification's Routing table; until now no test sent one with room in
-   its output. Which packets go to disabled routes depends on how your `pre_randomize()` draws
-   its bit. A version of ours that wrote the constraint differently but drew the bit the same way
-   gave the same counts, so if yours differ, compare your draw with the reference solution's once
-   step 5 says `2 of 2 caught.`
+   and `ok`. You didn't have to change the scoreboard for this. It was written from the
+   specification's Routing table, so it already predicts a NOROUTE drop for a packet to a disabled
+   route; until now, no test had sent one while its output had room. Which packets go to disabled
+   routes depends on how your `pre_randomize()` draws its bit. A version of ours that wrote the
+   constraint differently but drew the bit the same way gave the same counts, so if yours differ,
+   compare your draw with the reference solution's once step 5 says `2 of 2 caught.`
 
-5. Run the lab's verdict:
+5. Ask for the lab's verdict:
 
    ```bash
    make check-all
@@ -453,8 +461,8 @@ makes them or the driver that sends them?
     2 of 2 caught.
    ```
 
-6. A factory override doesn't need a test class at all. Apply yours to Lab 03's test from the
-   command line, on the golden router and then on B06, and time the first:
+6. You can also apply a factory override from the command line, without a test class. Apply yours
+   to Lab 03's test that way, on the golden router and then on B06, and time the first run:
 
    ```bash
    time make run UVM_TESTNAME=router_rand_test PLUSARGS=+uvm_set_type_override=router_pkt,router_noroute_pkt
@@ -492,9 +500,9 @@ makes them or the driver that sends them?
 
    ![The same packet with B06 on, in Surfer](../assets/img/lab-04-b06-noroute-forwarded.png)
 
-   *B06. The router counts the same NOROUTE drop, and then puts `c6 c8 8d e6 da 32 3f` on output 0
-   from the cycle ending at 705 ns, two cycles after the header, as rule O8 says a forwarded beat
-   appears.*
+   *B06. The router counts the same NOROUTE drop, and then puts `c6 c8 8d e6 da 32 3f` on output 0,
+   starting in the cycle that ends at 705 ns. That's two cycles after the header's cycle, which is
+   when rule O8 says a forwarded beat first appears on the output.*
 
    Both pictures have the same input and the same register values, because the seed is the same and
    this is the first packet for a disabled route in the run, so B06 has changed nothing before it.
@@ -505,13 +513,15 @@ makes them or the driver that sends them?
    make regress SEEDS="1 2 3 4 5"
    ```
 
-   You should see `25 ok  (25 runs)` and `covergroup : 82.9% (34/41)`. The bins from Part 1's
-   second and third groups are hit now: `cp_fate.full`, `full_x_at_9` and `full_x_high` by the
-   stall test's FULL drops, and `out1_x_low` and `out1_x_at_8` because `level()` gives output 1's
-   real level. The seven bins left empty are the seven that no test can hit, so this is as far as
-   the percentage goes. Read the coverage that `make regress` prints rather than `make cov`'s:
-   `make regress` reports only its own runs, while `make cov` merges every run in `build/runs`,
-   and runs made before an edit moved the covergroup's lines show each bin a second time.
+   You should see `25 ok  (25 runs)` and `covergroup : 82.9% (34/41)`. The stall test's FULL
+   drops hit the three bins of Part 1's second group: `cp_fate.full`, `full_x_at_9` and
+   `full_x_high`. The two bins of the third group, `out1_x_low` and `out1_x_at_8`, are hit because
+   `level()` now gives output 1's real level. The five bins of the fourth group are hit too, now
+   that `router_inject_test` sends packets to disabled routes while one output is stalled. The
+   seven bins left empty are the seven that no test can hit, so this is as far as the percentage
+   goes. Read the coverage that `make regress` prints, not `make cov`'s. `make regress` reports
+   only its own runs, while `make cov` merges every run in `build/runs`, and the runs you made
+   before an edit moved the covergroup's lines show each bin a second time.
 
 Check: `2 of 2 caught.` from `make check-all`, and `cp_fate.full` hit.
 
@@ -539,14 +549,14 @@ Where did the lines go, compared with your Lab 03 testbench, and what did they b
      total                      1345     942
    ```
 
-   As shipped it was 1330 lines and 921 code lines, so the four parts added 21 code lines.
-   With our Lab 03 solution in Lab 03's `tb/`, the `FILES:` part totals 1206 lines and 789 code
-   lines. Write your two totals, for this lab's testbench and for your Lab 03 testbench, in your
-   notes.
+   As shipped it was 1330 lines and 921 code lines, so the reference solution's edits added 21
+   code lines. With our Lab 03 solution in Lab 03's `tb/`, the `FILES:` part totals 1206 lines
+   and 789 code lines. Write your two totals, for this lab's testbench and for your Lab 03
+   testbench, in your notes.
 
 2. For each piece of your Lab 03 testbench, find the UVM piece that does its job, and write down
-   whether its code moved across nearly unchanged, changed shape, or had no Lab 03 counterpart
-   at all.
+   whether its code moved across nearly unchanged or changed shape. Then list the UVM pieces that
+   have no Lab 03 counterpart at all.
 
    <details>
    <summary>Answer</summary>
@@ -562,14 +572,16 @@ Where did the lines go, compared with your Lab 03 testbench, and what did they b
    | `router_coverage` and `cg_pkt` | `router_coverage` as a subscriber | moved: the same covergroup, sampled from the scoreboard's `fate_ap` |
    | `apb_master` with `write()` and `read()` | `apb_agent`, `apb_rw_seq`, `write_reg`, `read_reg` | grew: a driver, a monitor and a sequence, and the monitor reports every transfer to the scoreboard |
    | `env` and its steps (`write_routes`, `send_random`, `check_drops`, ...) | `router_env`, and the steps as tasks of `router_base_test` | changed shape: `build_phase` and `connect_phase` instead of a constructor that makes the mailboxes |
-   | `fill_plan` and `close_holes()` | the same, in `router_tests_pkg.sv` | moved: the same rows in the same order, on the agents' sequences |
+   | `fill_plan` and `close_holes()` | the same, in `router_tests_pkg.sv` | moved: the same steps in the same order, now sent through the agents' sequences |
    | `router_cfg` and its plusargs | plusargs read in the tests | moved, except `+SHOW`, which is gone |
    | `$error` and `n_errors` | `` `uvm_error `` | changed: UVM counts the errors and stops the run at 50 |
    | `router_base_test` and its three tests | `router_base_test` and five tests | moved: the three tests' `body()`s call the same steps, and two tests are new; `+UVM_TESTNAME` picks one at run time, as it did in Lab 03 |
    | nothing | the agent classes, `out_cfg` and `config_db`, the factory registration lines | new |
 
    The code that touches the router (the drives, the sampling, the prediction) does the same work
-   in both testbenches. What UVM changed is how the pieces find and talk to each other.
+   in both testbenches. UVM changed how the pieces find each other and pass data between them:
+   through `config_db` and the factory instead of the environment's constructor, and through
+   sequencers and analysis ports instead of mailboxes.
 
    </details>
 
@@ -578,14 +590,16 @@ Where did the lines go, compared with your Lab 03 testbench, and what did they b
    <details>
    <summary>Answer</summary>
 
-   Watching output 1 took two lines in `router_env`, because `out_agent` is a class that
-   `config_db` tells which output it's on, and one in the scoreboard, which Lab 03 had written for
-   output 0 alone. Stalling one output was a short function in a new test, chosen at run time,
-   because the test holds the `out_cfg` handles the drivers read. And the factory override changed
-   every packet the sequence made, in every phase, without editing the sequence or the driver,
-   from a test class or from the command line in 1.70 s, where any edit to the testbench cost 30
-   to 105 s of rebuilding. Lab 03's testbench could have done each of these, but each would have
-   meant editing the classes that already worked.
+   Watching output 1 took two lines in `router_env` and one in the scoreboard, which Lab 03 had
+   written for output 0 alone. Two lines were enough in `router_env` because the output agent's
+   driver and monitor get from `config_db` everything that differs between the two outputs.
+   Stalling one output took a short function in a new test, which you pick at run time, and it
+   works because the test holds the `out_cfg` handles that the drivers read. The factory override
+   changed every packet that the sequence made, in every phase, without an edit to the sequence or
+   the driver. You could apply it from a test class, or from the command line, where it took
+   1.70 s with no rebuild; any edit to the testbench cost 30 to 105 s of rebuilding. Lab 03's
+   testbench could have done each of these, but each would have meant editing the classes that
+   already worked.
 
    </details>
 
@@ -609,7 +623,7 @@ Questions:
    `make check` runs the golden router first and stops if your test fails it (Part 3, step 4),
    because a test that fails on a correct design tells you nothing about a broken one. The
    shortcut predicted the wrong fate for output 1's packets in phases 2 and 4, where output 1
-   stalls, and that fired on the golden router.
+   stalls, so the scoreboard reported errors on the golden router.
 
    </details>
 
@@ -618,9 +632,9 @@ Questions:
    <details>
    <summary>Answer</summary>
 
-   B06 changes only whether the packet is written to its output; the router still counts it as a
-   NOROUTE drop. So at this point the counters agree, and the bug shows as beats on an output that
-   should have stayed idle, which is where the scoreboard looks.
+   B06 changes only whether the packet is written to its output, and the router still counts it
+   as a NOROUTE drop. So at this point the counters agree, and the bug shows as beats on an output
+   that should have stayed idle, which the scoreboard checks.
 
    </details>
 
