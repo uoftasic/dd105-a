@@ -1,12 +1,12 @@
 # Lab 05: Protocol rules and backpressure
 
-In this lab you'll write assertions for the router's output rules and bind them into the design,
-finish a sink driver that answers each output beat in its own time, and write a virtual sequence
-that changes the routing table, the traffic and the backpressure together. The package is the
-Lab 04 testbench, and it already catches two of this lab's three planted bugs, B10 and B12. Your
-assertions name the rule that the router broke and the cycle it broke it in, and your virtual
-sequence catches the third bug, B11, by sending packets of more than 8 beats, which no Lab 04 test
-sends.
+In this lab you'll write assertions for the router's output rules and bind them into the router,
+finish a sink driver whose sequence chooses, for each output beat, how long the sink waits before
+taking it, and write a virtual sequence that changes the routing table, the traffic and the
+backpressure together. You start from the Lab 04 testbench, which already catches two of this
+lab's three planted bugs, B10 and B12. Your assertions name the rule that the router broke and the
+cycle it broke it in. The third bug, B11, shows only on packets of more than 8 beats, which no
+Lab 04 test sends, and your virtual sequence sends them.
 
 Package: [`labs/lab-05-protocol-rules-and-backpressure/`](https://github.com/uoftasic/dd105-a/tree/main/labs/lab-05-protocol-rules-and-backpressure)
 
@@ -18,25 +18,25 @@ Package: [`labs/lab-05-protocol-rules-and-backpressure/`](https://github.com/uof
   [Virtual sequences](../guide/virtual-sequences.md).
 - Keep the router specification open in another tab, at
   [Valid/ready rules](../reference/router-spec.md#validready-rules). The rule names on this page
-  (O1, O2, O6, O7) are the ones there.
+  (I1, I2, O1, O2, O6, O7 and O8) are the ones defined there.
 
 The package is Lab 04's testbench with our solution to Lab 04 in it: the second output agent, the
 scoreboard lines for output 1, the real `level()`, `router_stall_test`, `router_noroute_pkt` and
 the factory override. If your own Lab 04 printed `2 of 2 caught.`, your code did the same job,
-but keep ours: your Lab 04 edits were in `router_env_pkg.sv` and `router_tests_pkg.sv`, and this
-lab adds to both. What we added for you:
+but use ours anyway, because your Lab 04 edits were in `router_env_pkg.sv` and
+`router_tests_pkg.sv`, and this lab adds to both files. What we added for you:
 
 | File | What Lab 05 adds |
 |---|---|
 | `tb/router_sva.sv`, `tb/router_sva_bind.sv` | the assertion module and the `bind` that puts it in the router; you write three of its assertions (Part 2) |
 | `tb/router_ifs.sv`, `tb/router_tb_top.sv` | `router_sva_if`, which carries the assertions' failure count to the scoreboard |
-| `tb/router_agents_pkg.sv` | an output agent whose driver can answer each beat from a sequence (you finish it in Part 3); an oversize length kind in `router_pkt`, switched off; each output beat's wait; the cycle in which each APB transfer completed; and `gap_pct` and `w_over` on `router_rand_seq`, which `send_rand` sets (Part 4) |
-| `tb/router_env_pkg.sv` | `cg_wait`, a virtual sequencer, and three scoreboard changes: it reports the assertion count, it follows route writes made while packets are coming in, and it fails a test that checked nothing |
+| `tb/router_agents_pkg.sv` | an output agent whose driver can answer each beat from a sequence (you finish it in Part 3); an oversize length kind in `router_pkt`, switched off until a sequence gives it a weight; how long each output beat waited, which the output monitor records; the cycle in which each APB transfer completed; and `gap_pct` and `w_over` on `router_rand_seq`, which `send_rand` sets (Part 4) |
+| `tb/router_env_pkg.sv` | `cg_wait`, a virtual sequencer, and three scoreboard changes: it reports the assertions' failure count, it follows route writes made while packets are coming in, and it fails a test that checked nothing |
 | `tb/router_vseq_pkg.sv` | the virtual sequences; you write `router_lab05_vseq` (Part 4) |
 | `tb/router_tests_pkg.sv` | `router_test` (Lab 04's `router_inject_test`, then your virtual sequence), `router_lab05_test` (the sequence alone) and `router_sink_test` (Part 3) |
 
 Time: about 2 h. On the course's 2 CPUs our first build took 106 s, and the rebuilds after
-each part's edits took 103 s, 32 s and 105 s.
+the edits in Parts 2, 3 and 4 took 103 s, 32 s and 105 s.
 
 ## Part 1: The Lab 04 testbench against this lab's bugs
 
@@ -75,13 +75,13 @@ the cycle where the router went wrong?
    ```
 
    The two `[SB]` lines are the ones `router_inject_test` printed at the end of Lab 04, Part 4,
-   number for number, so the stimulus is unchanged. (The line numbers in brackets differ, because
-   the files have grown.) The `[SVA]` line is new.
+   number for number, so the stimulus is unchanged. (The line numbers after `router_env_pkg.sv`
+   differ, because the file has grown.) The `[SVA]` line is new.
 
 3. Look at how long the output beats waited. `cg_wait` records, for each packet an output
    delivers, the longest any of its beats waited for `ready`: `none` is 0 cycles, `short_wait` 1
    to 3, `long_wait` 4 to 20 and `stalled` more than 20. `cp_len.oversize` counts packets of 9
-   beats or more.
+   beats or more on the input, before the router cuts them.
 
    ```bash
    make cov
@@ -174,23 +174,25 @@ Check: `make check-all` printed `2 of 3 caught.`, and you've written down a cycl
 Which rule did B10 break, and in which cycle?
 
 1. Open `tb/router_sva.sv`. The module `router_sva` has two assertions written for you, `a_I1`
-   and `a_I2`, for the source's rules I1 and I2, so they check your own source driver. Read `a_I1`
-   with the specification's I1 beside it. The part left of `|=>` (the antecedent) picks the
-   cycles the rule talks about, `|=>` means "then, in the next cycle", and `disable iff (!rst_n)`
-   switches the check off during reset, which ends a beat without a handshake. A failure adds one
-   to `n_I1` and calls `$error`.
+   and `a_I2`, for the source's rules I1 and I2, so they check the testbench's own source driver.
+   Read `a_I1` with the specification's I1 beside it. The part left of `|=>` (the antecedent)
+   picks the cycles the rule talks about, and `|=>` means "then, in the next cycle".
+   `disable iff (!rst_n)` switches the check off while `rst_n` is 0, because a reset ends a beat
+   without a handshake and that doesn't break the rule. A failure adds one to `n_I1` and calls
+   `$error`.
 
 2. In `router_sva_out`, which is instantiated once per output, write the three assertions the
    TODOs describe:
    - `a_O1`: once `out_valid` is 1, it stays 1 until the handshake;
    - `a_O2`: while `out_valid` is 1 and `out_ready` is 0, `out_data` and `out_last` don't change;
-   - `a_O6`: a beat taken when `beats` is 7 has `out_last` = 1. This one is about the cycle of the
-     handshake itself, so it uses `|->` (the same cycle).
+   - `a_O6`: a beat taken when `beats` is 7 has `out_last` = 1. (`beats` counts the beats of the
+     current output packet already taken, and the file keeps it for you.) This one is about the
+     cycle of the handshake itself, so it uses `|->` (the same cycle).
 
    Count each one's failures in its own counter (`n_O1`, `n_O2`, `n_O6`) and give each one an
-   `$error` message, as `a_I1` does. The outputs on this page show our messages, which are
-   `a_I1`'s and `a_I2`'s with `out_` in place of `in_` for O1 and O2, and
-   `O6: an output packet is longer than 8 beats`.
+   `$error` message, as `a_I1` does. The outputs on this page show our messages. For O1 and O2
+   they are `a_I1`'s and `a_I2`'s with `O1` and `O2` in place of `I1` and `I2`, and `out_` in place
+   of `in_`. For O6 it is `O6: an output packet is longer than 8 beats`.
 
 3. Open `tb/router_sva_bind.sv`. Why does the testbench attach the assertions with `bind`
    instead of instantiating `router_sva` in `router_tb_top`?
@@ -200,7 +202,8 @@ Which rule did B10 break, and in which cycle?
 
    `bind` puts an instance of `router_sva` inside every `router`, wired to the router's own ports,
    without editing the router's RTL or the top module. The same file works on the golden design
-   and on the faulty build, and the checker sees the same pins that the rules are written about.
+   and with any planted bug switched on, and the checker sees the same pins that the rules are
+   written about.
    The top module reads the failure count back out through the router instance,
    `dut.u_sva.n_fail`, and hands it to the scoreboard through `router_sva_if`.
 
@@ -238,9 +241,10 @@ Which rule did B10 break, and in which cycle?
    ```
 
    The line number is the line of the `$error` call in your `a_O2`, so yours may differ, here
-   and later. The time is in picoseconds: 475 ns. The clock's period is 10 ns and its first
-   rising edge is at 5 ns, so the edge that ends cycle $n$ is at $10n - 5$ ns, and this failure
-   was sampled at the edge that ends cycle 48. Compare it with your prediction from Part 1.
+   and later. The time, 475000, is in picoseconds, so the failure was at 475 ns. The clock's
+   period is 10 ns and its first rising edge is at 5 ns, so the edge that ends cycle $n$ is at
+   $10n - 5$ ns, and this failure was sampled at the edge that ends cycle 48. Compare it with your
+   prediction from Part 1.
 
    Verilator's default error limit is 1, so the first failing assertion ends the run with exit
    status 1, and nothing after it is checked. That's why the Makefile raises the limit. With the
@@ -310,24 +314,23 @@ Which rule did B10 break, and in which cycle?
 
    The one assertion on B12 is `a_O6`, on output 1, at the edge at 635 ns (cycle 64); the
    scoreboard's first error was in cycle 24. Run `grep -m1 "%Error" build/grade/B12/run.log` to see
-   it. Your O6 is about B11, yet it passes on B11 and fails on B12. Why does it pass on one and
-   fail on the other?
+   it. B11 is the bug that breaks O6, but your `a_O6` passes on B11 and fails on B12. Why?
 
    <details>
    <summary>Answer</summary>
 
-   An assertion checks only what the stimulus makes happen. O6 can fail only on the 8th beat of
-   a packet that has a 9th, and nothing in `router_test` sends a packet longer than 8 beats, so
-   on B11 the router never has a packet to cut.
+   An assertion can only fail on something that the stimulus makes the router do. Under B11, O6
+   can fail only on the 8th beat of a packet that has a 9th, and nothing in `router_test` sends a
+   packet longer than 8 beats yet, so on B11 the router never has a packet to cut.
 
    B12 moves output 1 on `out0_ready`. In phase 1 output 0 is ready in 5% of cycles and output
-   1 in all of them, so output 1's buffer holds its beat while its own sink takes that beat in
-   every cycle. The pins show a handshake in each of those cycles with the same data, which is
-   what the scoreboard saw in cycle 24 (`got 80 ... and no beat was expected`). Each repeat is
-   one more beat of the packet on output 1's pins, so once eight beats in a row have had no
-   `out_last`, O6 fails. O1 and O2 are about cycles where `out_ready` is 0, and `out1_ready` is 1
-   all through phase 1; the run stops at 50 errors in cycle 73, long before phase 2 stalls
-   output 1.
+   1 in all of them, so in most cycles output 1's sink takes the beat on its pins, but the buffer
+   behind them doesn't move on to the next beat. The pins show a handshake in each of those
+   cycles with the same data, which is what the scoreboard saw in cycle 24
+   (`got 80 ... and no beat was expected`). Each repeat is one more beat of the packet on output
+   1's pins, so once eight beats in a row have had no `out_last`, O6 fails. O1 and O2 are about
+   cycles where `out_ready` is 0, and `out1_ready` is 1 all through phase 1; the run stops at 50
+   errors in cycle 73, long before phase 2 stalls output 1.
 
    </details>
 
@@ -357,8 +360,9 @@ cycle?
    `get_next_item()` blocks until the sequence hands over an item. The source driver can wait,
    because nothing happens on the input until it has a packet. The sink driver can't wait like
    that, because it has to drive `out_ready` in every cycle, and the router may put a beat on the
-   output whether or not an item is ready. `try_next_item()` returns at once, with no item if there isn't one, and the driver
-   keeps `ready` at 0 for that cycle.
+   output whether or not an item is ready. `try_next_item()` returns in the same time step, with
+   no item if the sequence hasn't handed one over, and the driver then keeps `ready` at 0 for the
+   next cycle.
 
    </details>
 
@@ -385,16 +389,18 @@ cycle?
             1  __vlAnonCG_cg_wait.cp_wait.stalled
    ```
 
-   Those are the numbers `router_rand_test` printed in Lab 04, Part 2, because as shipped the
-   driver is always ready in the per-beat modes, whatever the item says. The one `stalled` packet
-   is from `close_holes()`, which stalls output 0 in Lab 04's mode.
+   The `[SB]` line is the one `router_rand_test` printed in Lab 04, Part 2, and 803 of the 804
+   packets that came out never waited, because as shipped the driver is always ready in the
+   per-beat modes, whatever the item says. The one `stalled` packet is from `close_holes()`, which
+   stalls output 0 in Lab 04's mode, `SNK_PCT`.
 
 3. Fill in the two TODOs in `out_ready_driver::run_phase`: the countdown while a beat waits, and
    the expression for `rdy`, the next cycle's `ready`. `rdy` must be 0 while the driver has no
-   item. The countdown stops at 0. A beat whose wait is over can still be waiting when a virtual
-   sequence stalls its output (Part 4), and `wait_left` is unsigned, so one more count would wrap
-   it round to about four billion, and in the per-beat modes the sink would never raise `ready`
-   for that beat.
+   item. The countdown has to stop at 0. A beat whose wait is over can still be on offer if a
+   virtual sequence then stalls its output (Part 4), and the countdown goes on running in every
+   cycle the beat waits. `wait_left` is unsigned, so one more count would wrap it round to about
+   four billion, and once the sink was back in a per-beat mode it would never raise `ready` for
+   that beat.
 
 4. Before you rebuild, predict what happens to the `[SB]` line's `FULL` count and to the four
    `cp_wait` bins.
@@ -432,9 +438,9 @@ cycle?
             1  __vlAnonCG_cg_wait.cp_wait.stalled
    ```
 
-   Lab 04's sinks gave 2 short waits in the whole of `router_test`, and yours give 305 in one run
-   of `router_sink_test`. The run passed, so every phase's `DROP_CNT` read matched the scoreboard's
-   count, which means the scoreboard predicted all 86 FULL drops.
+   Lab 04's sinks put 2 packets in `short_wait` in the whole of `router_test`, and your driver puts
+   305 there in one run of `router_sink_test`. The run passed, so every phase's `DROP_CNT` read
+   matched the scoreboard's count, which means the scoreboard predicted all 86 FULL drops.
 
 6. Run the grader:
 
@@ -466,8 +472,10 @@ place?
    <summary>Answer</summary>
 
    Each sink's `out_ready_seq` is started by its agent and runs for the whole test, one item per
-   beat. A virtual sequence steers the backpressure by changing `mode` and `ready_pct`, which
-   the sequence reads for every item and the driver every cycle. Starting another sequence on a
+   beat. A virtual sequence steers the backpressure by changing `mode` and `ready_pct` in
+   `out_cfg`. The sequence reads `mode` for every item, and the driver reads `mode` every cycle,
+   and `ready_pct` too while the mode is `SNK_PCT`.
+   Starting another sequence on a
    sink's sequencer would compete with the one already running there.
 
    </details>
@@ -555,14 +563,15 @@ place?
    ```
 
    The rebuild took us 105 s. You should see `ok` from both runs and `oversize` above 0. The
-   counts depend on your sequence. Ours were 77 for `oversize`, and `router_test` said:
+   counts depend on your sequence. Ours were 77 for `oversize`, over the two runs, and
+   `router_test` said:
 
    ```text
    UVM_INFO labs/lab-05-protocol-rules-and-backpressure/tb/router_env_pkg.sv(257) @ 87215000: uvm_test_top.env.sb [SB] 1122 packets in: 240 to output 0, 270 to output 1, 194 NOROUTE, 418 FULL; the highest level a header saw was 16
    UVM_INFO labs/lab-05-protocol-rules-and-backpressure/tb/router_env_pkg.sv(259) @ 87215000: uvm_test_top.env.sb [SB] beats checked: 1108 on output 0, 1219 on output 1; 6 DROP_CNT reads checked
    ```
 
-   The first 805 packets are Lab 04's, as in Part 1; your sequence sent the other 317.
+   The first 805 packets are Lab 04's, as in Part 1, and our sequence sent the other 317.
 
 7. Run the grader:
 
@@ -586,15 +595,16 @@ place?
    On B11 our `a_O6` failed at the edge that ends cycle 6265, and the scoreboard reported the same
    beat in the same cycle (`output 0: got a7 in cycle 6265, expected a7 last`). At the end of the
    run the scoreboard added `[SVA] the bound assertions (router_sva.sv) counted 26 failures`.
-   What did O6 add?
+   What did O6 add that the scoreboard's error didn't already give you?
 
    <details>
    <summary>Answer</summary>
 
-   It names the rule, and it needs no model: it checks one line of the specification against the
-   pins, so it would catch B11 in any testbench that binds the file, including one whose
-   scoreboard didn't know that the router cuts long packets. The scoreboard knows what every
-   beat should be, so it catches far more, but its message says only that a beat was wrong.
+   O6 names the rule, and it needs no model of the router. It checks one line of the
+   specification against the pins, so it would catch B11 in any testbench that binds the file and
+   sends an oversize packet, including one whose scoreboard didn't know that the router cuts long
+   packets. The scoreboard knows what every beat should be, so it catches far more, but its message
+   gives only the beat that was wrong and what it expected instead.
 
    </details>
 
@@ -648,8 +658,8 @@ and your virtual sequence in `tb/`, and `make seeds SEEDS="1 2 3 4 5"` prints `5
 
 Questions:
 
-1. B12 breaks rule O7: output 1 depends on `out0_ready`. Your file has no `a_O7`. Which checks
-   caught B12, and why is there no assertion for O7?
+1. B12 breaks rule O7, because it makes output 1 depend on `out0_ready`. Your file has no
+   `a_O7`. Which checks caught B12, and why is there no assertion for O7?
 
    <details>
    <summary>Answer</summary>
