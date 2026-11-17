@@ -5,10 +5,11 @@ Build a UVM testbench in SystemVerilog on Verilator, and find out what the frame
 Part of the UofT ASIC Team education materials (`uoftasic`).
 Course site: <https://uoftasic.com/dd105-a/> · Education hub: <https://edu.uoftasic.com/>
 
-DD105-A comes after [DD104](https://uoftasic.com/dd104/). Students verify a small packet router
-written for the course, with fifteen planted bugs behind a run-time switch: first with a class
-testbench and no UVM, and finally with a full UVM environment, a verification plan and a
-verification report. Lab 01 compares DD104's cocotb test with a UVM testbench on SimProc's ALU.
+DD105-A comes after [DD104](https://uoftasic.com/dd104/). Lab 01 compares DD104's cocotb test with
+a UVM testbench on SimProc's ALU. From Lab 02 on, students verify a small packet router that was
+written for the course and has fifteen bugs planted behind a run-time switch. They finish a class testbench
+without UVM in Lab 02, and a UVM version of it in Lab 04. In Lab 07 their UVM environment
+catches all fifteen bugs, and they write a verification plan and a verification report.
 
 ## Quick start
 

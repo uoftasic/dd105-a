@@ -1,8 +1,10 @@
 # DD105-A — Testbenches with UVM
 
-In this course you build a testbench as a structure rather than as one long test: first as plain
-SystemVerilog classes, then in UVM, the framework the verification industry uses, on the
-open-source tools you already have.
+In this course you build testbenches for a small packet router from separate parts: a driver that
+sends packets into the router, a monitor that turns the handshakes on each stream into packets, and
+a scoreboard that predicts what comes out and checks it. In Lab 02 the course gives you the driver,
+and you write the monitor and the scoreboard as plain SystemVerilog classes. In Lab 04 you finish a
+UVM version of the same testbench. Both testbenches run on Verilator.
 
 DD105-A is part of the UofT ASIC Team education materials, published at
 <https://uoftasic.com/dd105-a/>. The labs run in the workbench: the IIC-OSIC-TOOLS container you
@@ -13,20 +15,18 @@ through it.
 
 ## Who this course is for
 
-You have finished [DD104](https://uoftasic.com/dd104/), so you know what a testbench has to catch:
-you wrote flat cocotb tests in Python that found all thirteen bugs planted in SimProc. This course
-is about what it takes to build a testbench that you can reuse and extend, with the stimulus kept
-apart from the checking and the test chosen when you run it, and about what that structure costs.
-You'll measure both on your own runs: the lines of code and the build times that the structure
-costs, and what each testbench catches.
+You have finished [DD104](https://uoftasic.com/dd104/), where you wrote flat cocotb tests in Python
+that found all thirteen bugs planted in SimProc. The testbenches in this course keep the stimulus
+apart from the checking and let you choose the test when you run it, so that you can reuse and
+extend them. On your own runs you measure what that structure costs in lines of code and build
+time, and what each testbench catches.
 
-The design you verify is a small packet router written for the course, about 730 lines of
-SystemVerilog: one input stream, two output streams with their own buffers, a routing table, drop
-counters and an interrupt behind an APB register port, and fifteen one-line bugs planted behind a
-switch you set when you run. Lab 01 starts on a design you already know, SimProc's ALU from DD104,
-with its three ALU bugs. From Lab 02 on you verify the router, first with a class testbench and no
-UVM, and at the end with a full UVM environment that catches all fifteen bugs, along with a
-verification plan and a verification report.
+The router was written for the course. It is about 730 lines of SystemVerilog: one input stream,
+two output streams with their own buffers, a routing table, drop counters and an interrupt behind
+an APB register port, and fifteen one-line bugs planted behind a switch you set when you run.
+Lab 01 starts on a design you already know, SimProc's ALU from DD104, with its three ALU bugs. By
+the end of Lab 07 your UVM environment catches all fifteen of the router's bugs, and you have
+written a verification plan and a verification report.
 
 | | |
 |---|---|
