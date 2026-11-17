@@ -3,28 +3,31 @@
 This page answers: *the routing table, the packets and the backpressure are each driven by a
 different agent. How do you make them change together, from one place?*
 
-Lab 04's tests did one thing at a time, from the test's `run_phase`: write the routing table, set
-the sinks, send packets, drain, read `DROP_CNT`, and start again. Each step waited for the one
-before it to finish. In [Lab 05, Part 4](../labs/lab-05-protocol-rules-and-backpressure-overview.md#part-4-a-virtual-sequence)
-you'll want routes that move to the other output while packets are still going in, with both sinks
-changing their behaviour at the same time. That's three agents doing things at once, in an order you
-choose, and in UVM you do it with a **virtual sequence**: a sequence that starts other sequences on
-several agents' sequencers, and changes their knobs, but makes no items of its own.
+Lab 04's tests did one thing at a time, in the test's `body()`. A test wrote the routing table,
+set the sinks, sent packets, drained, read `DROP_CNT` and then started again, and each step waited
+for the one before it to finish. In
+[Lab 05, Part 4](../labs/lab-05-protocol-rules-and-backpressure-overview.md#part-4-a-virtual-sequence)
+you'll want routes that move to the other output while packets are still going in, and both sinks
+changing their behaviour at the same time. So the APB agent, the source agent and both sinks'
+agents all have work to do at the same time, in an order that you choose. In UVM you do this with a
+**virtual sequence**, which is a sequence that starts other sequences on several agents' sequencers
+and changes those agents' knobs, but makes no items of its own.
 
-This page builds one on a small design of our own, a four-beat FIFO with a valid/ready stream on
-each side, in
+This page builds one for a small design of our own, a FIFO that holds four beats and has a
+valid/ready stream on each side. The files are in
 [`guide-examples/virtual-sequences/`](https://github.com/uoftasic/dd105-a/tree/main/guide-examples/virtual-sequences).
-Two things drive the FIFO, and neither knows about the other: a source agent, whose sequences send
-one beat per item, and a sink driver with a knob, `ready_pct`, in a configuration object. The sink
-has no sequencer at all. Lab 05's sinks do have one, but a virtual sequence steers them the way you
-steer this sink, by changing their configuration rather than by sending them items, so it's a good
-stand-in for them.
+A source agent drives the FIFO's input, and its sequences send one beat per item. A sink driver
+drives `out_ready` on the output side, and how often it's ready depends on `ready_pct`, a knob in a
+configuration object. Neither of the two knows about the other. The sink has no sequencer at all.
+Lab 05's sinks do have one, but a virtual sequence steers them the way you steer this sink, by
+changing their configuration rather than by sending them items, so this sink is a good stand-in
+for them.
 
 ## A sequencer that holds handles
 
-A sequence runs on a sequencer, so a virtual sequence needs one too. A **virtual sequencer** is a
-sequencer with no driver connected to it. It exists to hold handles to everything the virtual
-sequence needs to reach:
+An ordinary sequence runs on its agent's sequencer, and in the labs each virtual sequence runs on a
+sequencer too. A **virtual sequencer** is a sequencer with no driver connected to it. It's there to
+hold handles to everything that the virtual sequence needs to reach, and ours holds four:
 
 ```systemverilog
 class vs_vsequencer extends uvm_sequencer;
@@ -36,19 +39,20 @@ class vs_vsequencer extends uvm_sequencer;
   ...
 ```
 
-The environment makes it in `build_phase` like any other component, and fills in the handles in
-`connect_phase`, after every agent exists. Lab 05's `router_vsequencer` holds the same kinds of
-thing for the router: the source's and the APB agent's sequencers, both sinks' sequencers and
-`out_cfg` objects, the scoreboard, and the APB interface.
+The environment makes it in `build_phase`, like any other component, and fills in its handles in
+`connect_phase`, when everything that they point to exists. Lab 05's `router_vsequencer` holds the
+same kinds of thing for the router. It has the sequencers of the source agent and the APB agent,
+the sequencer and the `out_cfg` object of each sink, the scoreboard, and the APB interface.
 
 ![The example's testbench: one virtual sequence steering two drivers](../assets/img/virtual-sequence-handles.svg){width=720 fig-alt="A block diagram. On the left, a box labelled virtual sequence on the virtual sequencer. One line from it, labelled starts sequences, goes to the source sequencer, which passes items to the source driver, which drives in_valid and in_data into the FIFO. A second line, labelled writes the knob, goes to the sink's knob, ready_pct, which the sink driver reads each cycle; the sink driver drives out_ready into the FIFO. Below the FIFO, a monitor watches every beat in and out."}
 
-*Our example's testbench. The virtual sequence reaches the source through its sequencer and the
-sink through its configuration object, both by handles that the virtual sequencer holds. The
-monitor checks every beat, whoever caused it.*
+*Our example's testbench. The virtual sequence reaches the source through the source's sequencer,
+and the sink through the sink's configuration object, using handles that the virtual sequencer
+holds. The monitor checks every beat, whatever caused it.*
 
-The virtual sequence gets at the virtual sequencer through `p_sequencer`, a handle of the right type
-that this macro declares and fills in when the sequence starts:
+The virtual sequence reaches the virtual sequencer through `p_sequencer`. That's a handle of the
+virtual sequencer's own type, and the `uvm_declare_p_sequencer` macro declares it and fills it in
+when the sequence starts:
 
 ```systemverilog
 class vs_base_vseq extends uvm_sequence;
@@ -67,21 +71,21 @@ class vs_base_vseq extends uvm_sequence;
 ```
 
 `s.start(p_sequencer.src_sqr, this)` runs the source agent's own sequence on the source agent's
-sequencer, as the test would, with the virtual sequence as its parent. `sink()` doesn't start
-anything; it writes the knob, and the sink's driver reads the new value at its next clock edge.
-Lab 05's `router_base_vseq` gives you a dozen tasks like these (`route()`, `ctrl()`, `burst()`,
-`send_rand()`, `stall()`, `drain()` and more), which are the base test's steps from Lab 04,
-rewritten as a sequence's tasks.
+sequencer, as a test would, with the virtual sequence as its parent. `sink()` only writes the knob,
+without starting anything, and the sink's driver reads the new value at its next clock edge.
+Lab 05's `router_base_vseq` gives you eleven helpers like these, among them `route()`, `ctrl()`,
+`burst()`, `send_rand()`, `stall()` and `drain()`. Most of them are the base test's steps from
+Lab 04, rewritten as tasks of a sequence.
 
-There is a second style, in which the test hands the virtual sequence its handles directly and
-starts it with `start(null)`, with no virtual sequencer, and it works as well. The labs use a
-virtual sequencer, because then the environment fills in the handles once, for every virtual
-sequence and every test.
+You can also do without a virtual sequencer. The test then hands the virtual sequence its handles
+itself and starts it with `start(null)`, and that works too. The labs use a virtual sequencer
+because then the environment fills in the handles once, for every virtual sequence and every test.
 
 ## Doing two things at once
 
-The test starts our virtual sequence, `vs_demo_vseq`, on the virtual sequencer, and its first step
-stalls the sink and sends six beats, while a second branch waits and then lets the sink go:
+The test starts our virtual sequence, `vs_demo_vseq`, on the virtual sequencer. The sequence's
+first step stalls the sink and then, in a `fork`, sends six beats in one branch while a second
+branch waits 15 cycles and lets the sink go:
 
 ```systemverilog
 sink(0);
@@ -107,20 +111,23 @@ UVM_INFO guide-examples/virtual-sequences/vseq_tb.sv(218) @ 175000: uvm_test_top
 UVM_INFO guide-examples/virtual-sequences/vseq_tb.sv(237) @ 235000: uvm_test_top.env.vsqr@@v [VSEQ] step 1: all 6 beats have gone in
 ```
 
-By 175 ns the FIFO was full, and `send()` was stuck with its fifth beat on the input, waiting for
-`in_ready`. It could only return once the sink had taken some beats, and the sink would only take
-beats once something set `ready_pct` again. Written as two statements one after the other, `send()`
-then `sink(100)`, that's a deadlock: `send()` waits for the sink, and the line that releases the
-sink waits for `send()` to return. With `fork ... join`, the two branches run at the same time, and
-`join` waits for both, so the step ends at 235 ns, when the last beat has gone in.
+By 175 ns the FIFO held four beats and was full, and `send()` still had two of its six beats to
+send. It could only return once the sink had taken some beats, and the sink would only take beats
+once something set `ready_pct` again. If you wrote the two as statements one after the other,
+`send()` and then `sink(100)`, they would deadlock, because `send()` waits for the sink and the
+line that releases the sink waits for `send()` to return. With `fork ... join` the two branches run
+at the same time, and `join` waits for both, so the step ended at 235 ns, when the last beat had
+gone in.
 
-The path in each message, `uvm_test_top.env.vsqr@@v`, says the report came from the sequence `v`
-running on `env.vsqr`, which is how you tell a virtual sequence's messages from an agent's.
+Every message carries the path `uvm_test_top.env.vsqr@@v`, which means that the report came from
+the sequence `v` running on `env.vsqr`. The path is how you tell a virtual sequence's messages
+apart from an agent's.
 
 ## A loop that ends with the traffic
 
-The second step sends 30 beats while a second branch keeps changing the sink. The changing branch
-doesn't know how long the traffic will take, so it loops until the traffic branch sets a flag:
+The second step sends 30 beats while another branch keeps changing how often the sink is ready.
+That branch can't know how long the traffic will take, so it loops until the traffic branch sets a
+flag, `traffic_done`:
 
 ```systemverilog
 traffic_done = 0;
@@ -136,20 +143,21 @@ fork
 join
 ```
 
-The sink changed twelve times between 335 ns and 1415 ns, and the last beat went in at 1445 ns.
-Lab 05's step 4 has this shape, with `backpressure()` as the looping branch and a third branch that
-moves routes. If the traffic branch didn't set `traffic_done`, the loop would go on changing the
-sink for ever, and `join`, which waits for both branches, would never return.
+The loop set the sink twelve times between 335 ns and 1415 ns, and the last beat went in at
+1445 ns. Step 4 of the sequence you write in Lab 05, Part 4 has the same shape, with
+`backpressure()` as the looping branch and a third branch that moves routes. If the traffic branch
+didn't set `traffic_done`, the loop would go on changing the sink for ever, and `join` would never
+return.
 
-None of these sequences checks anything. The monitor checks every beat in every cycle, whatever is
-driving the FIFO, and at the end of this run it said
-`44 beats in, 44 out, 0 out of order`. The sequences make situations happen, and the checking is
-left to the monitor here, and to the scoreboard and the assertions in the labs.
+None of these sequences checks anything. In this example the monitor does the checking, and in the
+labs the scoreboard and the assertions do. The monitor watches both sides of the FIFO in every
+cycle and checks every beat that comes out, whatever is driving the FIFO, and at the end of this
+run it said `44 beats in, 44 out, 0 out of order`.
 
 ## Two sequences on one sequencer
 
-The third step starts two source sequences at once, on the same sequencer, with four beats each,
-numbered from `80` and from `a0`:
+The third step starts two source sequences at once on the same sequencer. Each sends four beats.
+The first numbers its beats from `80`, and the second from `a0`:
 
 ```systemverilog
 fork
@@ -167,26 +175,27 @@ step 3: the sink took 80 a0 81 a1 82 a2 83 a3
 A sequencer takes one item at a time from the sequences that are running on it. Each
 `start_item()` is a request for the driver, and the sequencer grants them in turn, so the two
 sequences alternated item by item. Sometimes that's what you want, for example to mix two traffic
-streams together. But it means that starting a sequence on a sequencer that already has one
-running doesn't replace the first one; the two share the driver. Lab 05's sinks each run a sequence
-that never ends, and Part 4 asks you why the virtual sequencer holds each sink's `out_cfg` and not
-only its sequencer.
+streams together. It also means that a sequence you start on a sequencer that already has one
+running shares the driver with the first one rather than replacing it. Each of Lab 05's sinks runs
+a sequence that never ends, and Part 4 asks you why the virtual sequencer holds each sink's
+`out_cfg` and not only its sequencer.
 
 ## Configuration changes and the scoreboard
 
-A virtual sequence makes it easy to change the configuration while traffic is moving, and that
-puts a new demand on the scoreboard: it has to apply each change from the right cycle. In Lab 04
-the tests wrote the routing table only between phases, so the scoreboard could apply a write as soon
-as it saw it. In Lab 05 a route can change between one header and the next, and the specification
+With a virtual sequence it's easy to change the configuration while traffic is moving, and then
+the scoreboard has to apply each change from the right cycle. In Lab 04 the tests wrote the
+routing table only between phases, so the scoreboard could apply a write as soon as it saw it.
+In Lab 05 a route can change between one header and the next, and the specification
 says that a header accepted in the same cycle as the write completes still uses the old route.
 Lab 05's scoreboard stamps each write with the cycle it completed in, and Part 4 asks you why it
 uses the cycle rather than the order in which the two monitors report.
 
-Making a sequence and starting it both change the random values drawn after them (on Verilator
-5.050, even in other threads), so it also makes a difference where in a test you put a new
-sequence: one added at the start changes every random choice made after it, even if it does
-nothing. Lab 06, Part 1 shows this on `router_test`, and Lab 07 puts its new sequence at the end of the test for
-this reason. [Regressions and seeds](regressions-and-seeds.md) measures it.
+On Verilator 5.050, making a sequence and starting it both change the random values drawn after
+them, in the thread that does it and in other threads too. A sequence added at the start of a test therefore
+changes every random choice made after it, even if the sequence itself does nothing, so it matters
+where in a test you put a new one. In Lab 06, Part 1 you'll see this happen to `router_test`, and
+Lab 07 puts its new sequence at the end of `router_test` for this reason.
+[Regressions and seeds](regressions-and-seeds.md) has the measurements.
 
 ## Check yourself
 
@@ -198,7 +207,8 @@ this reason. [Regressions and seeds](regressions-and-seeds.md) measures it.
 
    `send()` returns only when all six beats have gone into the FIFO, and the FIFO holds four. The
    fifth beat waits for `in_ready`, which comes back only when the sink takes a beat, and the sink
-   takes beats only after `sink(100)`. In one branch, `sink(100)` would never be reached.
+   takes beats only after `sink(100)`. In the same branch as `send()`, `sink(100)` would never be
+   reached.
 
    </details>
 
@@ -210,8 +220,8 @@ this reason. [Regressions and seeds](regressions-and-seeds.md) measures it.
 
    For both branches to finish. Without the flag the backpressure loop never ends, so the
    virtual sequence never returns, the test never drops its objection, and the run goes on until
-   something stops it from outside. In the course that is `make`'s run timeout, which grades the
-   run BROKEN.
+   something stops it from outside. In the course that's `make`'s run timeout, and a run that it
+   stops is graded BROKEN.
 
    </details>
 
@@ -232,9 +242,9 @@ this reason. [Regressions and seeds](regressions-and-seeds.md) measures it.
   making it in the environment and filling in its handles in `connect_phase`. Its log was made from
   a different version of the code than the page shows, so the names in it don't match.
 - [UVM Virtual Sequence](https://www.chipverify.com/uvm/uvm-virtual-sequence): both styles,
-  `p_sequencer` and `start(null)`. Correction: two of its three code blocks create their child
-  sequences in `pre_body()` and start them without a parent, which the page itself advises
-  against.
+  `p_sequencer` and `start(null)`. Correction: two of its three example virtual sequences create
+  their child sequences in `pre_body()` and start them without a parent, against the page's own
+  advice.
 - [UVM Sequence Arbitration](https://www.chipverify.com/uvm/uvm-sequence-arbitration): how a
   sequencer chooses between sequences that run on it at the same time, mode by mode, with logs.
 - [UVM Lock & Grab](https://www.chipverify.com/uvm/uvm-lock-grab): how one sequence keeps a
