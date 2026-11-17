@@ -1,8 +1,8 @@
 # DD105-A — Testbenches with UVM
 
-In this course you build testbenches for a small packet router from separate parts: a driver that
-sends packets into the router, a monitor that turns the handshakes on each stream into packets, and
-a scoreboard that predicts what comes out and checks it. In Lab 02 the course gives you the driver,
+In this course you build testbenches for a small packet router. Each one has a driver that sends
+packets into the router, a monitor that turns a stream's valid/ready handshakes into packets, and a
+scoreboard that predicts what comes out and checks it. In Lab 02 the course gives you the driver,
 and you write the monitor and the scoreboard as plain SystemVerilog classes. In Lab 04 you finish a
 UVM version of the same testbench. Both testbenches run on Verilator.
 
@@ -15,15 +15,16 @@ through it.
 
 ## Who this course is for
 
-You have finished [DD104](https://uoftasic.com/dd104/), where you wrote flat cocotb tests in Python
-that found all thirteen bugs planted in SimProc. The testbenches in this course keep the stimulus
-apart from the checking and let you choose the test when you run it, so that you can reuse and
-extend them. On your own runs you measure what that structure costs in lines of code and build
-time, and what each testbench catches.
+You have finished [DD104](https://uoftasic.com/dd104/), where you wrote cocotb tests in Python
+that found all thirteen bugs planted in SimProc. The testbenches you write in this course keep the
+stimulus apart from the checking, and the UVM ones let you choose the test when you run it, so that
+you can reuse and extend them. On your own runs you measure what UVM costs in lines of code and
+build time, and what each testbench catches.
 
-The router was written for the course. It is about 730 lines of SystemVerilog: one input stream,
-two output streams with their own buffers, a routing table, drop counters and an interrupt behind
-an APB register port, and fifteen one-line bugs planted behind a switch you set when you run.
+The router was written for the course, in about 730 lines of SystemVerilog. It has one input
+stream and two output streams, each output with its own buffer. Its routing table, drop counters
+and interrupt enables are registers on an APB port. Fifteen one-line bugs are planted in it, and you
+switch one on when you run a simulation.
 Lab 01 starts on a design you already know, SimProc's ALU from DD104, with its three ALU bugs. By
 the end of Lab 07 your UVM environment catches all fifteen of the router's bugs, and you have
 written a verification plan and a verification report.
