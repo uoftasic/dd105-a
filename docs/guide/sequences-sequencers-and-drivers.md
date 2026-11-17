@@ -5,49 +5,51 @@ pins?*
 
 In Labs 02 and 03 the generator made packets and put them into a mailbox, and the driver took
 them out one at a time and drove them. In
-[Lab 04](../labs/lab-04-the-same-testbench-in-uvm-overview.md) the same job is split three ways.
-A **sequence** makes the items, a **sequencer** passes them on, and a **driver** puts each one on
-the pins. The table in Lab 04's Part 5 sums up the change: `start_item` and `finish_item`
-replace the mailbox `put`, and `get_next_item` and `item_done` replace the mailbox `get`. The
-driver's own work, the idle gaps and the clocking-block drives, moved across unchanged.
+[Lab 04](../labs/lab-04-the-same-testbench-in-uvm-overview.md) a **sequence** makes the items, a
+**sequencer** passes them on, and a **driver** puts each one on the pins. The table in Lab 04's
+Part 5 lists what changed. The sequence calls `start_item` and `finish_item` where the
+generator called the mailbox `put`, and the driver calls `get_next_item` and `item_done` where it
+called the mailbox `get`. Everything else the driver does is the same as before, including the
+idle gaps it leaves before beats and its drives through the clocking block.
 
-This page follows one item through that path. The example,
-[`guide-examples/sequences-sequencers-and-drivers/`](https://github.com/uoftasic/dd105-a/tree/main/guide-examples/sequences-sequencers-and-drivers),
-drives SimProc's ALU from Lab 01 and prints a line at every step, with the time.
+This page follows one item along that path. The example for it drives SimProc's ALU from Lab 01
+and prints a line, with the time, at every step. Its files are in
+[`guide-examples/sequences-sequencers-and-drivers/`](https://github.com/uoftasic/dd105-a/tree/main/guide-examples/sequences-sequencers-and-drivers).
 
 ## The pieces
 
-The item is a `uvm_sequence_item`, an object with `rand` fields, like Lab 04's `router_pkt` or
-the example's `alu_item` (an operation and two operands).
+The item is an object with `rand` fields, and its class extends `uvm_sequence_item`. Lab 04's
+item is `router_pkt`, and the example's is `alu_item`, which holds an operation and two operands.
 
-A sequence is also an object, not a component. It extends `uvm_sequence #(alu_item)`, and its
-`body()` task makes items and sends them. It exists only while something runs it: a test makes
-one, sets its knobs and calls `seq.start(sequencer)`, and `start()` returns when `body()` has
+A sequence is an object too, not a component. Its class extends `uvm_sequence #(alu_item)`, and
+its `body()` task makes the items and sends them. A test makes one during its run phase, when it
+needs it, sets its knobs and calls `seq.start(sequencer)`. `start()` returns when `body()` has
 finished.
 
 The sequencer is a component in the agent. It sits between any number of sequences and one
-driver, and hands the driver one item at a time. You hardly ever write one; Lab 04 declares each
-of its two sequencers with a `typedef`:
+driver, and it hands the driver one item at a time. You hardly ever write a sequencer class
+yourself. Lab 04 has two sequencers, in the input agent and the APB agent, and it declares each of
+them with a `typedef`:
 
 ```systemverilog
 typedef uvm_sequencer #(router_pkt) src_sequencer;
 ```
 
-The driver is a component that extends `uvm_driver #(router_pkt)`. That base class gives it a
-port, `seq_item_port`, which the agent connects to the sequencer in `connect_phase`:
+The driver is a component too. Lab 04's `src_driver` extends `uvm_driver #(router_pkt)`, and that
+base class gives it a port called `seq_item_port`, which the agent connects to the sequencer in
+`connect_phase`:
 
 ```systemverilog
 drv.seq_item_port.connect(sqr.seq_item_export);
 ```
 
-The driver's port connects to the sequencer, and not the other way round, because the driver
-asks for an item whenever it's ready for one; the sequencer never pushes one at it. That lets the
-driver set the pace: it takes the next item only when the pins can take it, and the sequence
-waits until then.
+The port is on the driver because the driver asks for each item when it's ready for one, and the
+sequencer hands items over only when asked. That lets the driver set the pace. It takes the next
+item only when the pins can take it, and the sequence waits until then.
 
 ## One item through the handshake
 
-Here is the example sequence's loop and the driver's:
+Here are the loops in the example's sequence and driver:
 
 ```systemverilog
 // alu_rand_seq::body()
@@ -70,9 +72,10 @@ forever begin
 end
 ```
 
-(The real files also print a line at each step, and tag each item with its sequence's name.)
-`sq_timeline_test` runs it for three items, with a 10 ns clock whose first rising edge is at
-5 ns:
+(The files in the example also print a line at each step, and they tag each item with a short
+label for the sequence that sent it, which is `a` here.) `sq_timeline_test` runs this sequence for
+three items. The clock has a 10 ns period, and its first rising edge is at 5 ns. The first two
+items of the run print these lines:
 
 ```text
 0    ns  [drv]    get_next_item: waiting for an item
@@ -89,39 +92,41 @@ end
 ```
 
 `start_item()` returns once the sequencer has picked this sequence and the driver is waiting for
-an item. At time 0 the driver was already waiting, so it returned at once. The sequence then
-randomizes the item, and `finish_item()` hands it over: the driver's `get_next_item()` returns
-with it in the same time step, and `finish_item()` blocks. The driver waits for the clock edge at
-5 ns, drives the vector through its clocking block (it reaches the pins 1 ns later, the block's
-output skew), holds it through the edge at 15 ns, and calls `item_done()`. Only then does
-`finish_item()` return, so the sequence's loop runs at the driver's pace, one item every 20 ns
-here. In the timing diagram:
+an item. At time 0 the driver was already waiting, so `start_item()` returned at once. The
+sequence then randomizes the item and calls `finish_item()`, which hands the item over and blocks.
+The driver's `get_next_item()` returns with the item in the same time step. The driver waits for
+the clock edge at 5 ns and drives the vector through its clocking block, and the vector reaches
+the pins 1 ns later, because the block's output skew is 1 ns. The driver holds the vector through
+the edge at 15 ns and then calls `item_done()`, and that is when `finish_item()` returns. So the
+sequence's loop runs at the driver's pace, which here is one item every 20 ns. This timing diagram
+shows the same two items:
 
 ![The first two items of sq_timeline_test: the sequence waits in finish_item from 0 to 15 ns while the driver waits for the edge at 5 ns and holds the vector until 15 ns.](../assets/img/sequences-handshake.svg)
 
 *The handshake for the first two items of `sq_timeline_test`. The sequence spends most of its
 time blocked in `finish_item()`, and the driver spends most of its time waiting on clock edges.*
 
-And on the ALU's pins, recorded with `make waves`:
+On the ALU's pins, recorded with `make waves`, the run looks like this:
 
 ![sq_timeline_test on the ALU in Surfer, 0 to 55 ns: three vectors, each with valid high for one cycle.](../assets/img/sequences-alu-pins.png)
 
 *The three vectors on the ALU's pins. Each one goes on 1 ns after a rising edge and holds for one
-cycle, and `ALUout` shows the ALU's answer (`b2`, `24`, `ff`). The cycle with `valid` low between
-them is the driver's `valid <= 0` before it asks for the next item.*
+cycle, and `ALUout` shows the ALU's answer (`b2`, `24`, `ff`). Between two vectors `valid` is low
+for one cycle. The driver drives `valid <= 0` right after the edge that ends a vector, before it
+asks for the next item, and it drives the next vector only after the edge that follows.*
 
-The sequence randomizes the item after `start_item()` returns, so the item gets its values at
-the moment the driver is ready for it rather than when the sequence made it. The constraints can
-use anything the sequence sets before that. Lab 04's `router_rand_seq` gives each packet
-the enable bits of the routing table the test wrote for the phase (`route_en`) before it
-randomizes the packet, and the packet's `c_dst` constraint uses them to keep it on an enabled
-route.
+Because the sequence randomizes the item after `start_item()` returns, the item gets its values
+when the driver is ready for it rather than when the sequence made it, and the constraints can use
+anything that the sequence has set by then. Lab 04's `router_rand_seq` copies `route_en` into each
+packet before it randomizes the packet. `route_en` holds the enable bits of the routing table that
+the test wrote for the current phase, and the packet's `c_dst` constraint uses those bits to keep
+the packet on an enabled route.
 
 ## Two sequences on one sequencer
 
-A sequencer can serve several sequences at once, which is how one test can run background
-traffic and a directed burst on the same agent. `sq_two_test` starts two sequences, `a` and `b`,
-of two items each, in a `fork`:
+A sequencer can serve several sequences at once, so one test can run background traffic and a
+directed burst on the same agent at the same time. `sq_two_test` starts two sequences of two items
+each, `a` and `b`, in a `fork`. These are the lines it prints, with some of the driver's left out:
 
 ```text
 0    ns  [seq a]  start_item(req): waiting for the sequencer
@@ -138,18 +143,23 @@ of two items each, in a `fork`:
 35   ns  [drv]    get_next_item returned a: SHR A=79 B=bd
 ```
 
-The items alternate. The sequencer's default arbitration grants requests in the order they
-arrived, and each sequence asks again only after its last item is done, so `b`'s waiting request
-is always older than `a`'s new one. A second sequence on a busy sequencer competes with the one
-already there, which is why Lab 05's virtual sequence steers each sink's backpressure through its
-`out_cfg` rather than by starting another sequence on the sink's sequencer.
+The items alternate between the two sequences. The sequencer's default arbitration grants
+requests in the order they arrived, and each sequence asks again only after its last item is done.
+So whenever an item finishes, the other sequence's request has been waiting longer than the new
+one from the sequence that just finished, and the other sequence goes next. A sequence that you
+start on a sequencer that's already busy therefore takes turns with the one running there, item by
+item. Each of Lab 05's sinks has a sequence that its agent starts and that runs for the whole
+test, which is why Lab 05's virtual sequence steers a sink's backpressure by
+changing its `out_cfg` rather than by starting another sequence on the sink's sequencer.
 
 ## Sequences that start sequences
 
-A sequence's `body()` can start other sequences on the same sequencer with
-`child.start(m_sequencer, this)`, where `m_sequencer` is the sequencer the parent is running on.
-That lets you build larger sequences out of small ones that each do one thing.
-`sq_nested_test` runs a sequence that sends two random vectors and then two directed SUBs:
+A sequence's `body()` can start other sequences on the same sequencer, so you can build a larger
+sequence out of smaller ones. The call is `child.start(m_sequencer, this)`, where
+`m_sequencer` is the sequencer that the parent is running on. `sq_nested_test` runs a sequence
+that starts two others: first one that sends two random vectors, then one that sends two directed
+SUBs. From the point where the random sequence finishes, the run prints these lines (one of the
+driver's lines is left out):
 
 ```text
 35   ns  [seq r]  finish_item returned: r: SHR A=db B=14 is done
@@ -160,13 +170,14 @@ That lets you build larger sequences out of small ones that each do one thing.
 75   ns  [drv]    item_done, ALUout was 39
 ```
 
-The directed sequence doesn't call `randomize()` at all. It sets `op`, `A` and `B` by hand
-between `start_item()` and `finish_item()`. That's the simplest way to send exactly the item you
-mean, and on this simulator it also avoids the failures that `randomize() with { ... }` has when a
-field has a `dist` (see [Constrained random on Verilator](constrained-random-on-verilator.md)).
+The directed sequence never calls `randomize()`. It sets `op`, `A` and `B` by hand between
+`start_item()` and `finish_item()`, which is the simplest way to send exactly the item you mean.
+On this simulator, `randomize() with { ... }` fails when its inline constraint rules out the entry
+that a `dist` picked, and setting the fields by hand is also how the course avoids those failures
+(see [Constrained random on Verilator](constrained-random-on-verilator.md)).
 
-A test is the outermost caller. Lab 04's base test writes a register by starting a one-item
-sequence on the APB agent's sequencer:
+A test starts sequences too. Lab 04's base test writes a register by starting a one-item sequence
+on the APB agent's sequencer:
 
 ```systemverilog
 task write_reg(bit [7:0] addr, bit [31:0] data);
@@ -178,29 +189,31 @@ task write_reg(bit [7:0] addr, bit [31:0] data);
 endtask
 ```
 
-`read_reg()` does the same with `write = 0`, and reads the result out of the item afterwards.
-That works because the APB driver fills in `rdata` before it calls `item_done()`, and
-`start()` doesn't return until then.
+`read_reg()` does the same with `write = 0`, and then reads the result out of the sequence's item.
+That works because the APB driver fills in the item's `rdata` before it calls `item_done()`, and
+`start()` doesn't return until the driver has called it.
 
 ## Driving from a clock edge
 
-Lab 04's drivers wait for a clock edge before their first drive of an item, as the example's does
-with `@(vif.drv_cb)` straight after `get_next_item()`. The reason is a timing
-detail of this simulator that the course's reference testbench found
+Lab 04's drivers wait for a clock edge before their first drive of an item, as the example's driver
+does with `@(vif.drv_cb)` straight after `get_next_item()`. They do it because of a timing problem
+in this simulator that turned up while the course's reference testbench was being written
 ([`labs/ref/README.md`](https://github.com/uoftasic/dd105-a/tree/main/labs/ref), "A
-clocking-block drive issued after an NBA-region wait lands a cycle late"). `try_next_item()`
-doesn't return until the nonblocking assignments of its time step have been made, and a
-clocking-block drive issued after that, in the same time step as a clock edge, takes effect at the
-next edge instead of this one. Lab 04's drivers ran into the same delay with items that the
-sequencer handed over in the time step of an edge. Waiting for an edge after getting the item puts every
-drive at the start of a time step. Lab 01's driver gets the same result the other way round: it
-calls `try_next_item()` before it waits for the edge.
+clocking-block drive after an NBA-region wait"). `try_next_item()` doesn't return until the
+nonblocking assignments of its time step have been made. If the driver then issues a drive through
+the clocking block in that same time step, and the time step is a clock edge, the drive takes
+effect at the next edge instead of this one. The same thing happens to Lab 04's drivers, which use
+`get_next_item()`, when the sequencer hands one of them an item in the time step of an edge and the
+driver drives straight away. Waiting for an edge after getting the item puts every drive at
+the start of a time step. Lab 01's driver calls `try_next_item()` instead of `get_next_item()`,
+and it too asks for the item before it waits for the edge.
 
-Drive through the clocking block, too, as every driver here does. On Verilator 5.050 a
-module-level task that does `x <= 1; @(posedge clk); x <= 0;`, called in a `repeat` loop, loses
-some of its assignments; class drivers kept every assignment in every shape the course tried, but
-the clocking block is correct everywhere (`labs/common/README.md`, "Drive through a clocking
-block").
+Drive through the clocking block too, as every driver on this page does. On Verilator 5.050,
+a module-level task that does `x <= 1; @(posedge clk); x <= 0;` loses some of its assignments when
+it's called in a `repeat` loop. Class drivers kept every assignment in every shape that the course
+tried. Use the clocking block anyway, because it gave the right result in every shape, and it
+doesn't depend on the order in which Verilator commits two nonblocking assignments in one time step
+(`labs/common/README.md`, "Drive through a clocking block").
 
 ## Check yourself
 
@@ -211,8 +224,8 @@ block").
    <summary>Answer</summary>
 
    The driver's `item_done()`. The driver got the item at 0 ns, drove it after the edge at 5 ns,
-   held it through the edge at 15 ns and only then called `item_done()`, which let
-   `finish_item()` return.
+   held it through the edge at 15 ns and then called `item_done()`, which let `finish_item()`
+   return.
 
    </details>
 
@@ -233,10 +246,11 @@ block").
    <details>
    <summary>Answer</summary>
 
-   No. `router_pkt` has a `dist` on `kind`, and an inline constraint that rules out the entry the
-   `dist` picked makes the call fail. It makes the packets by hand (`router_pkt::make()`) and
-   sends each one with a sequence that only calls `start_item()` and `finish_item()`, which is what
-   Lab 04's `router_one_seq` does.
+   No. `router_pkt` has a `dist` on `kind`, and on this simulator an inline constraint that rules
+   out the entry that the `dist` picked makes the call fail. `len == n` rules out two of the three
+   kinds. So `close_holes()` makes its fill packets by hand with `router_pkt::make()`, and it sends
+   each one with Lab 04's `router_one_seq`, a sequence that only calls `start_item()` and
+   `finish_item()`.
 
    </details>
 
@@ -246,10 +260,12 @@ ChipVerify's walkthrough builds these pieces for a small register file:
 [Defining the Transaction Class](https://www.chipverify.com/uvm/uvm-defining-the-transaction-class),
 [UVM Sequence](https://www.chipverify.com/uvm/uvm-sequence),
 [UVM Sequencer](https://www.chipverify.com/uvm/uvm-sequencer) and
-[UVM Driver](https://www.chipverify.com/uvm/uvm-driver). Two corrections for those pages: the
-driver page's "simplified" `get_next_item()` loop never clears the request signals, which is the
-mistake that page's own list of common mistakes warns about, and the transaction page's exercise
-solution adds an `idle` field that can never be 1 while the original constraint stays in.
+[UVM Driver](https://www.chipverify.com/uvm/uvm-driver). Two of those pages have mistakes in them.
+The driver page's "simplified" `get_next_item()` loop never clears the request signals, and it
+calls `item_done()` straight after one clock wait, which is the mistake that the page's own list of
+common mistakes warns about ("Driving signals with only one clock wait"). The transaction
+page's exercise solution adds an `idle` field that can never be 1 while the original constraint
+stays in.
 
 - [Using get_next_item()](https://www.chipverify.com/uvm/uvm-using-get-next-item), for the
   handshake in more detail, with `try_next_item()` and responses.
@@ -260,8 +276,8 @@ solution adds an `idle` field that can never be 1 while the original constraint 
 - [UVM Sequence Arbitration](https://www.chipverify.com/uvm/uvm-sequence-arbitration), for the
   other ways a sequencer can choose between sequences.
 - [Executing Sequences with uvm_do Macros](https://www.chipverify.com/uvm/how-to-execute-sequences-via-uvm-do-macros)
-  shows what the macros expand into. This course writes `start_item` and `finish_item` out
-  instead, and the macros' expansions on that page come from an older version of UVM than the
-  course's library.
+  shows what the macros expand into. This course writes out `start_item` and `finish_item`
+  instead of using the macros. The expansions on that page are from an older version of UVM than
+  the course's library.
 
 Next: [Monitors, analysis ports and scoreboards](../guide/monitors-analysis-ports-and-scoreboards.md).
