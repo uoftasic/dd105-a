@@ -2,8 +2,8 @@
 
 This page is the specification of the packet router, the design you verify in DD105. It describes
 everything the router does at its pins, cycle by cycle. You shouldn't need to read the RTL to write
-a testbench for it, and in the later labs you'll be checking builds whose RTL you can't trust
-anyway. If this page and the router ever disagree, one of them has a bug, and you should tell us
+a testbench for it, and from Lab 02 on you'll be testing faulty builds of it, whose RTL you can't
+trust anyway. If this page and the router ever disagree, one of them has a bug, and you should tell us
 which.
 
 The router takes packets from one input stream and sends each one to one of two output streams,
@@ -28,25 +28,27 @@ The top module is `router`.
 | APB data width | 32 bits |
 | APB address width | 8 bits (byte addresses), 10 registers |
 
-The sizes are small on purpose, so that every corner of the design is a short simulation away:
+The sizes are small on purpose, so that a short simulation can reach every corner case of the
+design:
 
 - A beat is one byte, so you can read a packet straight off a waveform in hex, and the header fits in
   one beat.
-- Four routes and two outputs give a routing table you can cover completely: each entry does one of
-  three things (drop, send to output 0, send to output 1), and there are only four entries.
+- With four routes and two outputs you can cover the routing table completely, because it has only
+  four entries and each one does one of three things: drop the packet, send it to output 0, or send
+  it to output 1.
 - Packets are 1 to 8 beats long, so packet length is a coverpoint with eight bins, and the shortest
   oversize packet is only one beat longer than the longest legal one.
 - The buffer holds exactly two maximum-length packets. Because a packet is admitted only while its
-  output holds 8 beats or fewer, a stalled output that keeps receiving packets drops one as soon as
-  it holds more than 8 beats, which takes between 9 beats of traffic (nine 1-beat packets) and 16
-  (two 8-beat packets).
+  output holds 8 beats or fewer, a stalled output that keeps receiving packets starts dropping them
+  once it holds more than 8 beats, and it takes between 9 beats of traffic (nine 1-beat packets) and
+  16 (two 8-beat packets) to get there.
 - The counters saturate at 255. A stream of 1-beat packets to a disabled route drops one packet per
   cycle, so you reach saturation in 255 cycles.
 - The APB address space has 256 byte addresses, of which 246 are bad. A read takes 3 cycles, so a
   test can read all 256 in 768 cycles.
 
-Our own directed test of the router, which covers every section of this page, runs for 6,852 clock
-cycles.
+The directed test we use to check the RTL against this page runs a reference model and 19 directed
+checks, and it takes 6,852 clock cycles in all.
 
 ## Ports
 
@@ -84,19 +86,20 @@ never compare `out0_data` or `out0_last` in a cycle where `out0_valid` is low.
 
 The tables and rules on this page number clock cycles. **Cycle n** is the clock period that ends at
 rising edge n, and the value of a signal "in cycle n" is the value it holds just before that edge.
-The router samples its inputs at rising edges. Most of its outputs come straight from flip-flops,
-so they change just after a rising edge or when `rst_n` falls (see [Reset](#reset)). The exceptions
+The router samples its inputs at rising edges. Most of its outputs depend only on flip-flops inside
+the router, so they change just after a rising edge or when `rst_n` falls (see [Reset](#reset)). The exceptions
 are `pready` and `pslverr`, which also depend on `psel`, `penable`, `pwrite` and `paddr` in the same
 cycle, so sample them at the end of the cycle, as you would any APB slave's.
 
 A **handshake** on a stream happens in a cycle where `valid` and `ready` are both 1. The beat moves at
-the rising edge at the end of that cycle. Our testbenches change inputs 1 ns after a rising edge and
-look at outputs at the falling edge in the middle of the cycle, so nothing changes at the moment
-anything is sampled.
+the rising edge at the end of that cycle. Our testbenches change inputs 1 ns after a rising edge,
+and they look at outputs either at the falling edge in the middle of the cycle or through a clocking
+block with `#1step`, which gives the value just before the rising edge that ends the cycle. Either
+way, nothing changes at the moment anything is sampled.
 
 ## Packets
 
-A packet is 1 to 8 beats on the input stream. Its first beat is the **header**, and the beat with
+A packet on the input stream is 1 to 8 beats long, unless it's oversize. Its first beat is the **header**, and the beat with
 `in_last` = 1 ends it. A 1-beat packet is a header with `in_last` = 1.
 
 The header carries the route:
@@ -129,14 +132,14 @@ that cycle, and then:
 
 The **level** of an output in cycle t is the number of beats written into it in input handshake
 cycles before t, minus the number taken from it in output handshake cycles before t, counting both
-from the last reset. It counts the
-beat on the output's pins as well as the ones behind it (in example E2, the level in cycle 4 is 2:
-`05` is on `out0_data` and `11` is behind it), it ranges from 0 to 16, and it's what the `LEVEL`
-register reads. A testbench can track both levels exactly: the beats written into an output are the
-input beats of the packets it predicts are routed there, and the beats taken are the handshakes on
-that output's pins. That's enough to predict every FULL drop. The decision uses the level in the
-header's own cycle, so neither the header itself nor a handshake on the output in that same cycle
-counts.
+from the last reset. It counts the beat on the output's pins as well as the beats behind it: in
+example E2 the level in cycle 4 is 2, because `05` is on `out0_data` and `11` is behind it. The
+level ranges from 0 to 16, and it's the value the `LEVEL` register reads. A testbench can track both
+levels exactly, and so predict every FULL drop. The beats written into an output are the input beats
+of the packets that the testbench predicts are routed there (only the first 8 of an oversize
+packet), and the beats taken from it are the handshakes on that output's pins. The decision uses the
+level in the header's own cycle, so neither the header itself nor a handshake on the output in that
+same cycle counts.
 
 Because a packet is admitted only at a level of 8 or less, and no packet writes more than 8 beats,
 an admitted packet always fits. For example, with output 0 stalled, an 8-beat packet raises its
@@ -228,8 +231,8 @@ while `rst_n` is 0 (`disable iff (!rst_n)`). The rules about reset itself are th
 I7, the first half of O4, the first half of A4 and the [reset values](#reset) say what holds while
 `rst_n` is 0, so check them without that `disable iff`, sampled at each rising edge.
 
-Most rules are properties over one or two cycles, and each becomes a plain assertion. The others
-need more:
+Most rules are properties over one or two cycles, and each of those becomes a plain assertion. The
+rest don't fit in a single plain assertion:
 
 - O5, O6 and O8 need state kept for each output: the order of the beats, how many beats the
   current packet has had, and the $t_k$ and $h_k$ of each beat. They belong in a scoreboard, or in
@@ -260,7 +263,7 @@ need more:
 The source may leave `in_valid` at 0 for any number of cycles, between packets or between the beats
 of one packet, and packets may also follow each other with no idle cycle at all. The router looks
 at `in_data` and `in_last` only in cycles with a handshake, so it doesn't notice a source that
-breaks I1 or I2: it handles whatever it took.
+breaks I1 or I2. It handles whichever beats it accepted.
 
 ### Output streams
 
@@ -269,14 +272,14 @@ Each rule holds for output 0 and output 1 separately.
 - **O1**. Once `out_valid` is 1, it stays 1 until the cycle of the handshake, or until a reset.
 - **O2**. While `out_valid` is 1 and `out_ready` is 0, `out_data` and `out_last` don't change.
 - **O3**. `out_valid`, `out_data` and `out_last` don't depend on `out_ready`, or on any other input,
-  in the same cycle. (They come from flip-flops; only a falling `rst_n` changes them between
-  edges.)
+  in the same cycle. (They come from flip-flops, and the only change between edges is a falling
+  `rst_n` clearing `out_valid`.)
 - **O4**. `out_valid` is 0 while `rst_n` is 0, and stays 0 after reset until a beat accepted after
   the reset reaches the output.
 - **O5**. An output delivers the beats of the packets routed to it in the order the router accepted
-  them, unchanged except for the `out_last` of a cut packet. One packet's beats are never
-  interleaved with another's.
-- **O6**. Every packet on an output is 1 to 8 beats long and ends with the only beat that has
+  them, unchanged, except that a cut packet ends at its 8th beat, which has `out_last` = 1. One
+  packet's beats are never interleaved with another's.
+- **O6**. Every packet on an output is 1 to 8 beats long, and its last beat is the only one with
   `out_last` = 1, unless a reset cuts it short (see [Reset](#reset)).
 - **O7**. Nothing about output 0 depends on `out1_ready`, and nothing about output 1 depends on
   `out0_ready`.
@@ -296,8 +299,8 @@ write, a read and a read of a bad address.
 
 A read returns the register's value as it is in the first access cycle. In the first access cycle of
 a read the router copies the register into an output register, and drives `prdata` from it in the
-second. For registers that change on their own, like `LEVEL`, this means that a beat that arrives
-at the end of the first access cycle isn't in the value you read.
+second. For registers that change on their own, like `LEVEL`, this means that a beat that enters or
+leaves a buffer at the edge that ends the first access cycle doesn't show in the value you read.
 
 A write takes effect at the rising edge that ends its access cycle. From the next cycle on, the
 router behaves according to the new value.
@@ -388,8 +391,7 @@ Each bit records that an event has happened since software last cleared it:
 
 A bit is set at the edge that ends the cycle of its event and stays set until software writes a 1 to
 it. Writing 0 to a bit leaves it alone, so writing `0x2` clears `FULL` and nothing else. If an event
-sets a bit in the same cycle that a write clears it, the event wins and the bit stays 1, so no event
-is lost to a clearing write. `INT_EN` doesn't affect `STATUS`: the bits record events whether or
+sets a bit in the same cycle that a write clears it, the event wins and the bit stays 1. `INT_EN` doesn't affect `STATUS`: the bits record events whether or
 not their interrupts are enabled.
 
 ### INT_EN
@@ -474,8 +476,8 @@ that was waiting on a stalled output, and nothing from before the reset ever com
 
 These tables come from runs of the RTL (`labs/common/smoke/tb_examples.sv` prints them). Each
 column is one cycle, numbered from 1 at the start of the example, and each value is what the signal
-holds in that cycle. A dash means the value doesn't matter in that cycle, and stands for whatever
-is left on the wires:
+holds in that cycle. A dash means the value doesn't matter in that cycle, and the table shows a dash
+in place of whatever is left on the wires. The dashes are on
 
 - `in_data` and `in_last` while `in_valid` is 0, and `out0_data` and `out0_last` while `out0_valid`
   is 0;
@@ -524,9 +526,8 @@ cycle 2 and appears on output 0 in cycle 4.
 
 #### E3: a stalling sink
 
-Setup as in E2, and the same packet, with `out0_ready` low in cycles 5 to 7 and 9. Beat `11` waits
-on output 0 from cycle 5 to cycle 8 and moves in cycle 8; beat `22` waits in cycle 9 and moves in
-cycle 10. Neither changes while it waits (rules O1 and O2).
+Setup as in E2, and the same packet, with `out0_ready` low in cycles 5 to 7 and 9. Beat `11` is on
+output 0 from cycle 5 and moves in cycle 8; beat `22` is on it from cycle 9 and moves in cycle 10. Neither changes while it waits (rules O1 and O2).
 
 | cycle | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -690,8 +691,8 @@ clock.
 | `router.sv` | The top module, `router`, which connects the four |
 
 The labs also use a **faulty build** of the router, made by `labs/common/inject.py --all --out DIR`.
-It compiles from `DIR/router.f` in exactly the same way and has the same ports, and on its own it
-behaves exactly like the RTL above. With `+BUG=Bnn` on the simulator's command line, it switches on
+It compiles from `DIR/router.f` in exactly the same way and has the same ports, and with no bug
+switched on it behaves exactly like the RTL above. With `+BUG=Bnn` on the simulator's command line, it switches on
 one of the course's planted bugs at time 0, so you can change `+BUG` without rebuilding. An unknown
 value stops the simulation with a fatal error. The faulty build prints nothing about which bug is
 on, so a log can't give it away. Add `+BUG_ECHO` and it prints one line at time 0 that names the
