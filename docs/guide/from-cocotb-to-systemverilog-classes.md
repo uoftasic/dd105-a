@@ -3,44 +3,51 @@
 This page answers: *I can write a cocotb test. What changes when the testbench is written in
 SystemVerilog instead?*
 
-A cocotb test and a SystemVerilog class testbench do the same three jobs (drive, observe and
-decide), and most of the Python you wrote in DD104 has a direct SystemVerilog counterpart. The
-main differences are where the testbench runs, the fact that every value has a fixed width, and
-the way a failed check is reported. This page goes through them with one
-example, DD104's `t01` translated line by line. You'll read a full UVM testbench written in
-SystemVerilog classes in [Lab 01](../labs/lab-01-one-alu-two-testbenches-overview.md), Part 3, and
-write your own classes from Lab 02 on.
+A cocotb test and a SystemVerilog class testbench do the same work: they drive the design's
+inputs, read its outputs and decide whether the outputs are right. Most of the Python you wrote in
+DD104 has a direct SystemVerilog counterpart. The main differences are that the testbench runs
+inside the simulator rather than beside it, that a failed check is reported differently, and that
+every value has a fixed width. This page goes through them with DD104's `t01` translated line by
+line, and then with two short examples, one on widths and one on string literals. In
+[Lab 01](../labs/lab-01-one-alu-two-testbenches-overview.md), Part 3 you'll read a whole UVM
+testbench, which is written in SystemVerilog classes, and in Part 5 you'll extend its scoreboard.
+From Lab 02 on you write classes of your own.
 
 We ran every example on this page in the course image. The source is in
 [`guide-examples/from-cocotb-to-systemverilog-classes/`](https://github.com/uoftasic/dd105-a/tree/main/guide-examples/from-cocotb-to-systemverilog-classes),
-and its README gives the command for each output.
+and `guide-examples/README.md` gives the command for each output, in its section for this page.
 
 ## Where the testbench runs
 
 In DD104 your test was a Python program running beside the simulator. Icarus or Verilator ran the
-design, cocotb reached into it through VPI, and the two took turns: every `await` handed control
-back to the simulator until the thing you were waiting for happened.
+design, and cocotb reached into it through VPI. The two took turns. Every `await` handed control
+back to the simulator, and your test carried on once the thing it was waiting for had happened.
 
-A SystemVerilog testbench is part of the simulation. On Verilator that means it's translated into
-C++ along with the design and compiled into one program, the simulator, which runs both. This has
-three consequences you'll feel from the first lab:
+A SystemVerilog testbench is part of the simulation. On Verilator, the testbench is translated into
+C++ along with the design, and the two are compiled into one program, which is the simulator. That
+has three consequences for how you work:
 
-- **Every change to the testbench is a rebuild.** Changing a Python test costs nothing before the
-  next run. Changing a SystemVerilog class means running Verilator and g++ again, and with the UVM
-  library in the build that takes from about 25 s to well over a minute.
-  [What a framework buys you](../guide/what-a-framework-buys-you.md) has Lab 01's numbers.
+- **Every change to the testbench means a rebuild.** You can rerun a Python test as soon as you've
+  changed it, because Python isn't compiled. A changed SystemVerilog class has to go through
+  Verilator and g++ again, and because the UVM library is compiled in with it, a rebuild in Lab 01
+  took from 26 s to 99 s, depending on what was changed.
+  [What a framework buys you](../guide/what-a-framework-buys-you.md) has Lab 01's numbers and
+  explains why they differ.
 - **Mistakes show up at two different times.** A type error, a misspelt name or a missing
   semicolon stops Verilator before anything runs, usually within a few seconds. Everything else
-  shows up when the simulator runs. The labs give you `make lint`, which runs only the first stage,
-  so you can find the first kind of mistake without waiting for a build.
-- **What changes without a rebuild is decided when the simulator starts.** The test, the seed, the
-  planted bug and the test's knobs are all arguments on the simulator's command line (`+UVM_TESTNAME`,
-  `+verilator+seed+`, `+BUG` and plusargs), so trying another one takes a second or so and no rebuild.
+  shows up when the simulator runs. Every lab has `make lint`, which runs only Verilator's front
+  end and takes seconds, so you can find the first kind of mistake without starting a full build.
+- **Anything chosen when the simulator starts needs no rebuild.** The test, the seed, the planted
+  bug and the test's own knobs are all given as plusargs, the arguments on the simulator's command
+  line that start with `+`, such as `+UVM_TESTNAME`, `+verilator+seed+` and `+BUG`. Trying a
+  different one takes a second or so.
 
 ## DD104's t01 in SystemVerilog
 
 `cocotb/test_alu.py` in Lab 01 is DD104 Lab 03's reference test for SimProc's ALU. Its first test,
-`t01`, checks one vector for each of the six operations. These are the parts that do the work:
+`t01`, checks one vector for each of the six operations. It uses two helpers. `spec()` works out
+what the ALU should produce, and `alu()` drives one vector and reads the three outputs back. Here
+they are, with most of `spec()`'s cases left out:
 
 ```python
 def spec(op, a, b):
@@ -59,7 +66,7 @@ async def alu(dut, op, a, b):
     return int(dut.ALUout.value), int(dut.N.value), int(dut.Z.value)
 ```
 
-and, in the test itself, for each of the six cases:
+and the test calls them like this for each of its six cases:
 
 ```python
 got = await alu(dut, op, a, b)
@@ -70,8 +77,8 @@ assert got == want, (
     f"N={want[1]} Z={want[2]}")
 ```
 
-Here is the same test as one SystemVerilog class, `alu_t01`. `spec()` becomes a function called
-`predict()`, and the tuple it returns becomes a packed struct:
+In SystemVerilog the same test is one class, `alu_t01`. In it, `spec()` becomes a function called
+`predict()`, and the tuple that `spec()` returns becomes a packed struct:
 
 ```systemverilog
 typedef enum bit [2:0] {ADD, SUB, OR, NAND, SHL, SHR} alu_op_e;
@@ -95,7 +102,8 @@ function alu_result_t predict(alu_op_e op, bit [7:0] a, bit [7:0] b);
 endfunction
 ```
 
-The coroutine `alu()` becomes a task, which is the kind of routine that's allowed to wait:
+The coroutine `alu()` becomes a task, `drive_and_read()`, because a task is the kind of routine
+that's allowed to wait:
 
 ```systemverilog
 task drive_and_read(alu_op_e op, bit [7:0] a, bit [7:0] b, output alu_result_t got);
@@ -118,27 +126,31 @@ if (got != want)
          ops[i].name(), as[i], bs[i], got.out, got.n, got.z, want.out, want.n, want.z);
 ```
 
-Most lines translate one for one. The differences are these:
+Most lines translate one for one, and there are five differences:
 
-- **Every argument and every variable has a type.** `op` is an `alu_op_e`, an enum, and
-  `ops[i].name()` gives back the name of its value as a string, `"SUB"`, which does the job of the
-  `OPS` dictionary in the Python.
-- **`& 0xFF` is gone.** `r.out` is 8 bits wide, so a sum that comes to 260 wraps to 4 as it's
-  stored, the way the ALU's own adder wraps. The next section says when that helps you and when it
-  doesn't.
-- **The class can't name the design's pins.** cocotb hands your test the design as `dut`. A
-  SystemVerilog class lives in a package, outside the module hierarchy, so it reaches the pins
-  through `vif`, a *virtual interface*: a handle to an interface instance that the top module
-  connects to the ALU. The task writes the pins directly, as `alu()` does, because the ALU has no
-  clock to time the writes against. From Lab 01 on, every driver writes through a clocking block
-  instead, which [Interfaces, clocking blocks and virtual interfaces](../guide/interfaces-clocking-blocks-and-virtual-interfaces.md)
-  explains.
-- **`await Timer(1, unit="ns")` becomes `#1`.** The unit comes from the time unit the code is
-  compiled with. The example's Makefile sets 1 ns, as every lab's does.
-- **A task can wait and a function can't.** `predict()` takes no simulated time, so it's a
-  function. `drive_and_read()` waits 1 ns, so it has to be a task;
-  [Classes for testbenches](../guide/classes-for-testbenches.md) shows the error you get if you try
-  it in a function.
+- **Every argument and every variable has a type.** `op` is an `alu_op_e`, which is an enum.
+  `ops[i].name()` returns the name of its value as a string, such as `"SUB"`, and that does the job
+  of the `OPS` dictionary in the Python.
+- **`predict()` has no `& 0xFF`.** `r.out` is 8 bits wide, so a sum that comes to 260 wraps to 4
+  as it's stored, the way the ALU's own adder wraps. The next section explains the width rule
+  behind this, and how the same rule can make a model lose a carry it was meant to keep.
+- **The class can't name the design's pins.** cocotb hands your test the design as `dut`. The
+  classes of a testbench live in a package, and code in a package can't name anything in the
+  module hierarchy, so the class reaches the pins through `vif` instead. `vif` is a *virtual
+  interface*, a handle to an interface instance, and here the instance is the one that the top
+  module connects to the ALU. `drive_and_read()` writes the pins directly and waits 1 ns, as
+  `alu()` does, because this example copies what the cocotb test does. Lab 01's UVM testbench gives the same
+  ALU an interface with a clock, which the ALU itself doesn't use, and from Lab 01 on every driver
+  writes through a clocking block.
+  [Interfaces, clocking blocks and virtual interfaces](../guide/interfaces-clocking-blocks-and-virtual-interfaces.md)
+  explains clocking blocks.
+- **`await Timer(1, unit="ns")` becomes `#1`.** The unit of `#1` is the time unit that the code is
+  compiled with. The example's Makefile sets it to 1 ns with `--timescale 1ns/1ps`, and so does
+  every lab's Makefile.
+- **A task can wait and a function can't.** `predict()` takes no simulated time, so it can be a
+  function. `drive_and_read()` waits 1 ns, so it has to be a task.
+  [Classes for testbenches](../guide/classes-for-testbenches.md) shows the error you get if you put
+  a delay in a function.
 
 On the correct ALU the class checks its six vectors and prints its summary line:
 
@@ -154,27 +166,30 @@ With bug A01 switched on, where `SUB` computes `B - A`, it stops at the second v
 Aborting...
 ```
 
-The message is the cocotb test's message, with three differences you should know about before
-you read your first SystemVerilog log:
+The message is the cocotb test's message, and three things about this log differ from a cocotb
+log:
 
-- `[2000]` is the simulated time, in the simulation's precision of 1 ps, so this is 2 ns, which
-  is the second vector, because each vector takes 1 ns. The file, line and enclosing routine come before your text.
-- The hex digits are lower case. In Python `X` asks for upper-case digits, but SystemVerilog's
+- `[2000]` is the simulated time in units of the simulation's precision, which is 1 ps, so the
+  error came at 2 ns. Each vector takes 1 ns, so 2 ns is the end of the second vector. Between
+  `%Error:` and your text come the file and line of the `$error`, and then the scope it ran in,
+  which ends with the task's name and an unnamed block.
+- The hex digits are lower case. In Python `X` asks for upper-case digits, but in SystemVerilog
   `%X` means the same as `%x`, and Verilator printed lower case.
 - The run stopped. A failed `assert` in cocotb ends that test, and cocotb moves on to the next one.
   Verilator's default is to stop the whole simulation at the first `$error`, which is why there's no
-  summary line after it. [Lab 02](../labs/lab-02-a-class-testbench-without-uvm-overview.md), Part 3
-  adds `+verilator+error+limit+100` to every run so that a scoreboard can report more than one
-  mismatch.
+  summary line after it. In [Lab 02](../labs/lab-02-a-class-testbench-without-uvm-overview.md) the
+  Makefile adds `+verilator+error+limit+100` to every run so that a scoreboard can report more
+  than one mismatch, and Part 3 of that lab explains it.
 
-In a UVM testbench you report with `` `uvm_error `` instead, as Lab 01's scoreboard does. That goes
-through UVM's report server, which counts the errors by ID and keeps the run going.
+In a UVM testbench you report with `` `uvm_error `` instead, as Lab 01's scoreboard does. The macro
+sends your message to UVM's report server, which counts errors by ID and lets the run carry on.
 
 ## Widths
 
-Python integers have no width, which is why `spec()` has to mask every result with `& 0xFF`. In
-SystemVerilog every value has a width, and the width of an expression is decided by where its
-result goes. The example adds `a = 200` and `b = 60`, both `bit [7:0]`, in three places:
+Python integers have no width, which is why `spec()` has to mask its `ADD`, `SUB`, `NAND` and `SHL`
+results with `& 0xFF`, the four that could fall outside 0 to 255. In SystemVerilog every value
+has a width, and the width that an expression is computed at depends on its operands and on where
+its result goes. The example adds `a = 200` and `b = 60`, both `bit [7:0]`, in three places:
 
 ```systemverilog
 sum8 = a + b;               // sum8 is bit [7:0]
@@ -190,13 +205,14 @@ sum9 = a + b      -> 260
 $display(a + b)   -> 4
 ```
 
-The two assignments run the same expression and get different answers. In an assignment the
-operands are widened to the width of the left-hand side before the addition, so `sum9` keeps the
-carry. Inside `$display` the expression has nothing to take its width from, so it's computed at
-the width of its widest operand, 8 bits, and the carry is gone. That's the standard's rule, not
-anything peculiar to Verilator, and it's why `predict()` gets the ALU's wrap-around for free. It's
-also how a model loses a carry it was meant to keep, so when a scoreboard reports mismatches only on
-results that overflow, check the widths in the model before you blame the design.
+The two assignments have the same expression on the right and get different answers. In an
+assignment the operands are widened to the width of the left-hand side before the addition, so
+`sum9` keeps the carry. Inside `$display` the expression has nothing to take its width from, so
+it's computed at the width of its widest operand, 8 bits, and the carry is lost. Both rules come
+from the SystemVerilog standard rather than from Verilator. Under the first rule, `predict()` gets
+the ALU's wrap-around without a mask, because `r.out` is 8 bits wide. The same rules are also how a
+model loses a carry it was meant to keep, so when a scoreboard reports mismatches only on results
+that overflow, check the widths in the model before you blame the design.
 
 DD104 also taught you that Verilator has two states, 0 and 1, and no X. That still holds in a
 SystemVerilog testbench, whether you declare a variable `bit` or `logic`.
@@ -204,8 +220,9 @@ SystemVerilog testbench, whether you declare a variable `bit` or `logic`.
 ## Strings
 
 A string literal in SystemVerilog is a number, a packed array of 8-bit characters, until something
-makes it a `string`. Most of the time you won't notice, but a conditional between two literals of
-different lengths is one place you will. The example prints the same thing two ways:
+makes it a `string`. Most of the time you won't notice, but you will in a `?:` that picks between
+two literals when one of them is empty or shorter than the other. The example prints the same thing
+two ways:
 
 ```systemverilog
 $display("[%0d beat%s]", n, n == 1 ? "" : "s");
@@ -217,9 +234,12 @@ $display("[%0d beat%s]", n, n == 1 ? string'("") : string'("s"));
 [1 beat]
 ```
 
-In the first line the `?:` has two numbers of different widths, so the empty literal is padded to
-the width of `"s"`, and the padding prints as a space. Casting both sides to `string` keeps them
-strings. That's why Lab 02's `packet::sprint()` writes `string'("")` and `string'("s")`.
+In the first line `?:` picks between two numbers. As a number, the empty literal `""` is one byte
+of zeros, as wide as `"s"`, so when `n` is 1 the result is a zero byte, and `%s` prints a zero byte
+as a space. A literal that's shorter than the other side of the `?:` gets zero bytes added in
+front, and those print as spaces too. Casting both sides to `string` keeps them strings, and an
+empty `string` prints as nothing. That's why Lab 02's `packet::sprint()` writes `string'("")` and
+`string'("s")`.
 
 ## Python and SystemVerilog side by side
 
@@ -243,7 +263,7 @@ strings. That's why Lab 02's `packet::sprint()` writes `string'("")` and `string
 | a tuple | a packed struct |
 | `f"0x{a:02X}"` | `$sformatf("0x%02X", a)` |
 | `assert got == want, "message"` | `if (got != want) $error("message")`, or `` `uvm_error `` in UVM |
-| `random.randint(0, 255)` | `$urandom_range(255, 0)`, or `randomize()` with constraints from Lab 03 |
+| `random.randint(0, 255)` | `$urandom_range(255, 0)`, or `randomize()` with constraints, which Lab 01's `alu_item` uses and you write yourself from Lab 03 on |
 | the `@cocotb.test()` functions in a module | UVM test classes, one chosen per run by `+UVM_TESTNAME=` |
 
 The rows about threads, events and mailboxes are the subject of
@@ -251,17 +271,18 @@ The rows about threads, events and mailboxes are the subject of
 
 ## Check yourself
 
-1. `spec()` masks every result with `& 0xFF` and `predict()` doesn't. Why not, and in what kind of
-   expression could a SystemVerilog model still lose a carry it needed?
+1. `spec()` masks its `ADD`, `SUB`, `NAND` and `SHL` results with `& 0xFF`, and `predict()`
+   masks nothing. Why doesn't `predict()` need to, and in what kind of expression could a
+   SystemVerilog model still lose a carry it needed?
 
    <details>
    <summary>Answer</summary>
 
    `r.out` is 8 bits wide, so a result is cut to 8 bits as it's stored, the way the ALU's adder
    cuts it. A carry goes missing when an expression is computed at the width of its operands with
-   nothing wider to take its width from, as `a + b` was inside `$display`, or when you store it in a
-   variable that's too narrow, as `sum8` was. Stored in a 9-bit variable, the same sum kept its
-   carry.
+   nothing wider to take its width from, as `a + b` was inside `$display`, or when you store the
+   result in a variable that's too narrow, such as `sum8`. In `sum9`, which is 9 bits wide, the
+   same sum kept its carry.
 
    </details>
 
@@ -271,9 +292,9 @@ The rows about threads, events and mailboxes are the subject of
    <details>
    <summary>Answer</summary>
 
-   You can't tell, because nothing after the first error ran. Verilator stops a simulation at its
-   first `$error` unless the run raises the limit with `+verilator+error+limit+N`, so the vectors
-   after that one were never checked. In cocotb only the failing test would have stopped.
+   You can't tell. Verilator stops a simulation at its first `$error` unless the run raises the
+   limit with `+verilator+error+limit+N`, so the vectors after the failing one were never checked.
+   In cocotb only the failing test would have stopped, and the next test would still have run.
 
    </details>
 
@@ -291,7 +312,7 @@ The rows about threads, events and mailboxes are the subject of
 
 ChipVerify's SystemVerilog pages cover each of these language features at more length. Most of
 their logs come from Cadence simulators rather than Verilator, and the course doesn't reuse their
-code, but the explanations apply.
+code, but their explanations of the language apply here too.
 
 - [Testbench Evolution](https://chipverify.com/verification/testbench-evolution): six styles of
   testbench, from a linear one to UVM. Your DD104 suites sit near the end of that list.
@@ -303,9 +324,10 @@ code, but the explanations apply.
 - [Queue](https://chipverify.com/systemverilog/systemverilog-queue) and
   [Associative Array](https://chipverify.com/systemverilog/systemverilog-associative-array).
 - [Class vs Struct](https://chipverify.com/systemverilog/systemverilog-class-vs-struct): why
-  assigning a class copies a handle and assigning a struct copies the value.
+  assigning a class variable copies a handle, while assigning a struct copies its value.
 - [Testbench Example Adder](https://chipverify.com/systemverilog/systemverilog-testbench-example-adder):
-  a class testbench without UVM, for a design much like the ALU. Correction: its "buggy design"
-  listing is the same as the correct one, so the bug it describes isn't in the code shown.
+  a class testbench without UVM, for a design much like the ALU. Its "buggy design" listing has
+  the same code as the correct design, so the bug that the page describes isn't in the code it
+  shows.
 
 Next: [Lab 01: One ALU, two testbenches](../labs/lab-01-one-alu-two-testbenches-overview.md).
