@@ -230,13 +230,15 @@ later. Every peek returned the poked value. These are the lines for `DROP_CNT`:
 ```
 
 That's a measurement of three registers in one design, so before you rely on a poke anywhere else,
-peek the register after a rising edge, as that test does. A poke updates the register model's
-mirror, as a write of the same value would, but it puts nothing on the bus, so a scoreboard that
-keeps its own copy of the register never hears about it. Lab 06's scoreboard learns `DROP_CNT`
-only from the transfers it sees on the bus, so after a poke its copy and the router's disagree. In
-Part 6 you read the poked value through the front door to see what the scoreboard makes of it. A
-peek changes nothing in the design, so it can't leave a copy out of date, and that makes `peek()`
-the safer of the two.
+peek the register after a rising edge, as that test does. A poke also sets the register model's
+mirror to the value poked, without applying the field's access policy. Any write clears
+`DROP_CNT`, so when auto-predict or a predictor updates the mirror after a write of `505`, the
+mirror becomes 0, but after the poke it holds `505`. A poke puts nothing on the bus, so a
+scoreboard that keeps its own copy of the register never hears about it. Lab 06's scoreboard
+learns `DROP_CNT` only from the transfers it sees on the bus, so after a poke its copy and the
+router's disagree. In Part 6 you read the poked value through the front door to see what the
+scoreboard makes of it. A peek changes nothing in the design, so it can't leave a copy out of
+date, and that makes `peek()` the safer of the two.
 
 ## Check yourself
 
