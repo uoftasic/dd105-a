@@ -17,8 +17,8 @@ The setup has three pieces:
 - the noVNC desktop, started from your `workspace` clone with `./scripts/start_vnc.sh`
   (`scripts\start_vnc.bat` on Windows). Ports, passwords and blank-page fixes are in
   [IC101: Launch the noVNC desktop](https://uoftasic.com/ic101/guide/launch-novnc.html);
-- `. /foss/designs/common/.designinit`, which defines the workbench's `mod` command. You have to
-  load it in every new terminal;
+- `. /foss/designs/common/.designinit`, which defines the workbench's `mod` command. A new
+  terminal on the desktop loads it by itself, and running it again does no harm;
 - `mod add dd105-a`, which you run once. It clones the course from `github.com/uoftasic/dd105-a`
   into `/foss/designs/modules/dd105-a`, and from then on `mod dd105-a` takes you there. Your
   `workspace` folder is bind-mounted into the container at `/foss/designs`, so the course folder

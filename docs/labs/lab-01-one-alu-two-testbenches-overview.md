@@ -45,7 +45,7 @@ recorded with? If you haven't set up the workbench yet, do
 2. Load the environment and get the course files:
 
    ```bash
-   . /foss/designs/common/.designinit   # in every new terminal
+   . /foss/designs/common/.designinit   # a new terminal loads this by itself; safe to rerun
    mod add dd105-a                      # first time only: clones github.com/uoftasic/dd105-a
    mod dd105-a                          # every time, including the first
    ```
@@ -84,7 +84,7 @@ recorded with? If you haven't set up the workbench yet, do
 | If you see | Do this |
 |---|---|
 | `bash: /foss/designs/common/.designinit: No such file or directory` | The workspace isn't mounted, so relaunch `start_vnc` from your `workspace` clone. In the meantime you can run this lab from a plain `git clone` of `github.com/uoftasic/dd105-a` inside the workbench image, because `make` needs neither `.designinit` nor `mod`. |
-| `bash: mod: command not found` | You haven't loaded `.designinit` in this terminal (the first line of step 2). Every new terminal starts without it. |
+| `bash: mod: command not found` | Run the first line of step 2 in this terminal. It loads `.designinit`, which defines `mod`. |
 | `mod: no such module: dd105-a` | You ran `mod dd105-a` before `mod add dd105-a`. |
 | `VERILATOR_SOLVER is "yices-smt2 --incremental", and yices-smt2 is not on PATH.` | You ran `make` outside the course image. Without a solver every constrained `randomize()` fails, nothing is randomized and the test still passes, so the makefile stops with this message instead. Run it in the workbench terminal. |
 
